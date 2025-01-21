@@ -27,4 +27,4 @@ SYS_PARAMS:
 
 STATE:
     x0: [0.0, 0.7, 1.0, 1.0,    # COM: px, pz, vx, vz  (center of mass state)
-         0.65, 0.0, 0.65, 0.0]  # COMMANDS: l0_command, thetadot_command (single integrator state)
+         0.65, 0.1, 0.65, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
