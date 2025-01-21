@@ -7,10 +7,11 @@
 #include <tuple>
 
 // ***********************************************************************************
-// ENUMS
+// Domain Class
 // ***********************************************************************************
 
-enum class Domain {FLIGHT, GROUND};
+enum class Contact {SWING, STANCE};   // STANCE: in contanct, SWING: not in contact
+using Domain = std::vector<Contact>;  // For multiple legs
 
 // ***********************************************************************************
 // ARRAYS
@@ -23,24 +24,25 @@ using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 // Fixed size arrays
 using Vector_2d = Eigen::Vector<double, 2>;
 using Vector_4d = Eigen::Vector<double, 4>;
-using Vector_6d = Eigen::Vector<double, 6>;
 using Vector_8d = Eigen::Vector<double, 8>;
+using Vector_12d = Eigen::Vector<double, 12>;
 
 using Matrix_2d = Eigen::Matrix<double, 2, 2>;
+using Matrix_4d = Eigen::Matrix<double, 4, 4>;
 using Matrix_8d = Eigen::Matrix<double, 8, 8>;
+using Matrix_12d = Eigen::Matrix<double, 12, 12>;
 
-// Time Series Types
-using Vector_1i_Traj = std::vector<int>;
-using Vector_1d_Traj = std::vector<double>;
-using Vector_2d_Traj = std::vector<Vector_2d>;
-using Vector_4d_Traj = std::vector<Vector_4d>;
-using Vector_6d_Traj = std::vector<Vector_6d>;
-using Vector_8d_Traj = std::vector<Vector_8d>;
+// Vector of Eigen Vectors Types
+using Vector_1i_List = std::vector<int>;
+using Vector_1d_List = std::vector<double>;
+using Vector_2d_List = std::vector<Vector_2d>;
+using Vector_4d_List = std::vector<Vector_4d>;
+using Vector_8d_List = std::vector<Vector_8d>;
 
-using Vector_d_Traj = std::vector<Vector_d>;
-using Matrix_d_Traj = std::vector<Matrix_d>;
+using Vector_d_List = std::vector<Vector_d>;
+using Matrix_d_List = std::vector<Matrix_d>;
 
-using Domain_Traj = std::vector<Domain>;
+using Domain_List = std::vector<Domain>;
 
 // ***********************************************************************************
 // STRUCTS
@@ -76,9 +78,9 @@ struct ControlParams
     int Nu;          // number of control points
     int N_elite;     // number of elite control sequences
     int CEM_iters;   // number of CEM iterations
-    Matrix_8d Q;     // diagonal elements of Q matrix
-    Matrix_8d Qf;    // diagonal elements of Qf matrix
-    Matrix_2d R;     // diagonal elements of R matrix
+    Matrix_12d Q;     // diagonal elements of Q matrix
+    Matrix_12d Qf;    // diagonal elements of Qf matrix
+    Matrix_4d R;     // diagonal elements of R matrix
 };
 
 // Distribution struct
@@ -95,12 +97,12 @@ struct GaussianDistribution
 // dynamics solution struct
 struct Solution
 {
-    Vector_1d_Traj t;        // time trajectory
-    Vector_6d_Traj x_sys_t;  // system state trajectory
-    Vector_4d_Traj x_leg_t;  // leg state trajectory
-    Vector_4d_Traj x_foot_t; // foot state trajectory
-    Vector_2d_Traj u_t;      // interpolated control input trajectory
-    Domain_Traj domain_t;    // domain trajectory
+    Vector_1d_List t;        // time trajectory
+    Vector_8d_List x_sys_t;  // system state trajectory
+    Vector_8d_List x_leg_t;  // leg state trajectory
+    Vector_8d_List x_foot_t; // foot state trajectory
+    Vector_4d_List u_t;      // interpolated control input trajectory
+    Domain_List domain_t;    // domain trajectory
     bool viability;          // viability of the trajectory
 };
 
@@ -109,9 +111,11 @@ struct Solution
 // ***********************************************************************************
 
 // Bundle of Trajectories
-using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
-using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
-using Vector_d_Traj_Bundle = std::vector<Vector_d_Traj>;
+using Vector_1d_Bundle = std::vector<Vector_1d_List>;
+using Vector_2d_Bundle = std::vector<Vector_2d_List>;
+using Vector_4d_Bundle = std::vector<Vector_4d_List>;
+using Vector_8d_Bundle = std::vector<Vector_8d_List>;
+using Vector_d_Bundle = std::vector<Vector_d_List>;
 
 // Bundle of Solutions
 using Solution_Bundle = std::vector<Solution>;
@@ -122,9 +126,9 @@ using Solution_Bundle = std::vector<Solution>;
 
 struct MC_Result
 {
-    Solution_Bundle S;        // Solutions
-    Vector_2d_Traj_Bundle U;  // Control Inputs  
-    Vector_1d_Traj J;         // Costs
+    Solution_Bundle S;  // Solutions
+    Vector_4d_Bundle U; // Control Inputs  
+    Vector_1d_Bundle J; // Costs
 };
 
 #endif
