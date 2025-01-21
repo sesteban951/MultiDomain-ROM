@@ -287,7 +287,7 @@ bool Dynamics::S_TO(Vector_8d x_sys, Vector_4d x_leg, Leg_Idx leg_idx)
 Domain Dynamics::check_switching_event(Vector_8d x_sys, Vector_4d_List x_leg, Vector_4d_List x_foot, Domain d_current)
 {
     // return the next domain after checking the switching surfaces
-    Domain d_next(2);
+    Domain d_next(this->n_leg);
 
     // loop through the legs
     for (int i = 0; i < this->n_leg; i++)
@@ -321,3 +321,54 @@ Domain Dynamics::check_switching_event(Vector_8d x_sys, Vector_4d_List x_leg, Ve
 
 
 // apply the reset map
+void Dynamics::reset_map(Vector_8d& x_sys, Vector_4d_List& x_leg, Vector_4d_List& x_foot, Vector_2d_List u, Domain d_prev, Domain d_next)
+{
+    // states to apply reset map to 
+    Vector_8d x_sys_post;
+    Vector_4d_List x_leg_post(this->n_leg);
+    Vector_4d_List x_foot_post(this->n_leg);
+    x_leg_post = x_leg;    // we will intialize as prev and modify for post as needed
+    x_foot_post = x_foot;  // we will intialize as prev and modify for post as needed
+
+    // useful intermmediate variables
+    Vector_2d_List p_feet_post(this->n_leg);
+
+    // loop through the legs
+    for (int i = 0; i < this->n_leg; i++)
+    {
+        // determine if there was a switch
+        bool switched = d_prev[i] != d_next[i];
+
+        // this leg did not switch
+        if (switched == false) {
+            // skip this tieration of the for lop
+            continue;
+        }
+
+        // this leg went through a switch
+        else if (switched == true) {
+            // unpack the state variables
+            Vector_4d x_foot_i = x_foot[i];
+            Vector_4d x_leg_i = x_leg[i];
+            Contact d_i_prev = d_prev[i];
+            Contact d_i_next = d_next[i];
+
+            // the i-th leg is in CONTACT
+            if (d_i_prev == Contact::SWING && d_i_next == Contact::STANCE) {
+                
+                // update the foot location (based on hueristic)
+                p_foot_i_post << x_foot_i(0), 0.0;
+
+                // update the leg state
+                x_leg_post[i] << this->compute_leg_state
+                
+            }
+
+            // the i-th leg is in STANCE
+            else if (d_i_prev == Contact::STANCE && d_i_next == Contact::SWING) {
+                // apply the reset map for takeoff
+                
+            }
+        }
+    }   
+}
