@@ -72,19 +72,19 @@ int main()
     std::cout << "x_foot: " << x_foot.transpose() << std::endl;
 
     // example rollout of the dynamics
-    int N = 100;
+    int N = 300;
     Vector_1d_Traj T_x(N);
     for (int i = 0; i < N; i++) {
         T_x[i] = i * 0.01;
     }
 
-    int Nu = 50;
+    int Nu = 150;
     Vector_1d_Traj T_u(Nu);
     Vector_2d_Traj U(Nu);
     Vector_2d U1, U2;
     Vector_2d_List Ui(2);
-    U1 << 0.0, 0.0;
-    U2 << 0.0, 0.0;
+    U1 << 0.1, -0.01;
+    U2 << 0.1, 0.01;
     for (int i = 0; i < Nu; i++) {
         T_u[i] = i * 0.02;
         Ui[0] = U1;

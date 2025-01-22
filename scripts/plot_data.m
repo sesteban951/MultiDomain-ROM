@@ -14,12 +14,12 @@ d = load('../data/domain.csv');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
-% t_interval = [t(1) t(end)];
-t_interval = [0 0.5];
+t_interval = [t(1) t(end)];
+% t_interval = [0 0.18];
 
 % plotting / animation
 animate = 1;   % animatio = 1; plot states = 0
-rt = 0.1;      % realtime rate
+rt = 1.0;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 1;  % plot the foot trajectory
 plot_foot = 1; % plot the foot trajectory
@@ -124,7 +124,7 @@ if animate == 0
     plot(t, u_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\dot{r}$ [m/s]', 'Interpreter', 'latex');
-    title('LEG Length');
+    title('LEG Length Rate');
     legend('$\dot{r}_L$', '$\dot{\hat{r}}_L$', '$\dot{r}_R$', '$\dot{\hat{r}}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,10);
@@ -135,7 +135,7 @@ if animate == 0
     plot(t, u_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\dot{\theta}$ [rad/s]', 'Interpreter', 'latex');
-    title('LEG Angle');
+    title('LEG Angle Rate');
     legend('$\dot{\theta_L}$', '$\dot{\hat{\theta}}_L$', '$\dot{\theta}_R$', '$\dot{\hat{\theta}}_R$', 'Interpreter', 'latex');
 
     % FOOT STATES
@@ -252,7 +252,7 @@ if animate == 1
             ball_foot_R = plot(px_foot_R, pz_foot_R, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', [0.6350 0.0780 0.1840]);
             
             % draw the mass
-            mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0.5863, 0.5863, 0.5590], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
+            mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0.3, 0.3, 0.3], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
             
             %  draw trajectory trail
             if plot_foot == 1

@@ -70,6 +70,7 @@ Vector_8d Dynamics::dynamics(Vector_8d x, Vector_2d_List u, Vector_2d_List p_fee
             // leg r vector
             r_vec = p_feet[i] - p_com;
             r_norm = r_vec.norm();
+            r_hat = r_vec / r_norm;
             r_x = r_vec(0);
             r_z = r_vec(1);
 
@@ -85,6 +86,7 @@ Vector_8d Dynamics::dynamics(Vector_8d x, Vector_2d_List u, Vector_2d_List p_fee
             lambd_leg = -r_hat * (k * (l0_command - r_norm) - b * rdot_norm); // TODO: don't I need to add the input velocity to track?
                                                                               // But then you need to modify the take off switching manifold
 
+            // TODO: think about how having torque on both legs when both are in stance. Doesn't make sense...
             // compute the ankle torque
             if (this->params.torque_ankle == true) {
                 // actual angle state and commanded angle states
@@ -160,7 +162,7 @@ Vector_4d Dynamics::compute_leg_state(Vector_8d x_sys, Vector_2d_List p_feet, Ve
     }
 
     // on ground (leg state goverened by the COM dynamics)
-    else if (c == Contact::SWING) {
+    else if (c == Contact::STANCE) {
        
         // unpack COM state
         Vector_2d p_com, v_com;
@@ -205,11 +207,10 @@ Vector_4d Dynamics::compute_foot_state(Vector_8d x_sys, Vector_4d_List x_leg_, V
 
     // unpack variables for leg index
     Contact c = d[leg_idx];
-    Vector_4d x_leg = x_leg_[leg_idx];
-    Vector_2d p_foot = p_feet[leg_idx];
 
     // Foot is in SWING
     if (c == Contact::SWING) {
+
         // com varaibles
         double px_com, pz_com, vx_com, vz_com;
         px_com = x_sys(0);
@@ -218,6 +219,7 @@ Vector_4d Dynamics::compute_foot_state(Vector_8d x_sys, Vector_4d_List x_leg_, V
         vz_com = x_sys(3);
 
         // leg states
+        Vector_4d x_leg = x_leg_[leg_idx];
         double r, theta, rdot, thetadot;
         r = x_leg(0);
         theta = x_leg(1);
@@ -238,6 +240,7 @@ Vector_4d Dynamics::compute_foot_state(Vector_8d x_sys, Vector_4d_List x_leg_, V
     // Foot is in STANCE
     else if (c == Contact::STANCE) {
         // foot state is the same as the foot position w/ zero velocity
+        Vector_2d p_foot = p_feet[leg_idx];
         x_foot << p_foot(0), p_foot(1), 0.0, 0.0;
     }
 
@@ -267,11 +270,11 @@ bool Dynamics::S_TD(Vector_4d x_foot)
 bool Dynamics::S_TO(Vector_8d x_sys, Vector_4d x_leg, Leg_Idx leg_idx) 
 {    
     // unpack the state variables
-    double r, rdot, l0_command, thetadot_command;
+    double r, rdot, l0_command, l0dot_command;
     r = x_leg(0);
     rdot = x_leg(2);
     l0_command = x_sys(4 + 2*leg_idx);
-    thetadot_command = x_sys(5 + 2*leg_idx); // TODO: would put this in the pos_vel boolean
+    l0dot_command = x_sys(5 + 2*leg_idx); // TODO: would put this in the pos_vel boolean
 
     // check the switching surface condition (zero force in leg)
     bool nom_length, pos_vel, takeoff;
@@ -334,10 +337,9 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_4d_List& x_leg, Vector_4d_List
     // useful intermmediate variables
     Vector_2d_List p_feet_post(this->n_leg);
     for (int i = 0; i < this->n_leg; ++i) {
-        p_feet_post[i] << x_foot_post[i](0), 
-                          x_foot_post[i](0); // we will initialize as prev and modify for post as needed
+        p_feet_post[i] << x_foot[i](0), 
+                          x_foot[i](1); // we will initialize as prev and modify for post as needed
     }
-
     Vector_2d p_foot_i_post;
 
     // loop through the legs
@@ -382,8 +384,9 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_4d_List& x_leg, Vector_4d_List
             // the i-th leg is now in STANCE
             else if (d_i_prev == Contact::STANCE && d_i_next == Contact::SWING) {
                 
-                // update the foot location (based on hueristic)
-                p_foot_i_post << p_foot_i(0), p_foot_i(1);
+                // update the foot location (based on hueristic) FIXME: probably dont need to update pos foot here
+                // p_foot_i_post << p_foot_i(0), p_foot_i(1);
+                // p_feet_post[i] = p_foot_i_post;
 
                 // update the leg state
                 x_leg_post[i](2) = u[i](0); // leg velocity is the commanded velocity
@@ -503,8 +506,6 @@ Solution Dynamics::RK_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     // forward propagate the system dynamics
     for (int k = 1; k < N; k++) {
 
-        // std::cout << "integration step " << k << std::endl;
-
         // interpolation times
         tk = k * dt;
         t1 = tk;
@@ -516,7 +517,7 @@ Solution Dynamics::RK_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
         u2 = this->interpolate_control_input(t2, T_u, U);
         u3 = this->interpolate_control_input(t3, T_u, U);
 
-        // vector filesd for Rk3 integration
+        // vector fields for RK3 integration
         f1 = this->dynamics(xk_sys, 
                             u1, p_feet, dk);
         f2 = this->dynamics(xk_sys + 0.5 * dt * f1,
@@ -532,7 +533,23 @@ Solution Dynamics::RK_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
         }
 
         // check for switching events
-        // dk_next = this->check_switching_event(xk_sys, xk_leg, xk_foot, dk);
+        dk_next = this->check_switching_event(xk_sys, xk_leg, xk_foot, dk);
+
+        // if there was a switching event, apply the reset map
+        if (dk_next != dk) {
+            
+            // update all the states
+            this->reset_map(xk_sys, xk_leg, xk_foot, u3, dk, dk_next);
+
+            // update the foot positions
+            for (int i = 0; i < this->n_leg; i++) {
+                p_feet[i] << xk_foot[i](0), 
+                             xk_foot[i](1);
+            }
+
+            // update the domain
+            dk = dk_next;
+        }
 
         // store the states
         x_sys_t[k] = xk_sys;
