@@ -18,7 +18,7 @@ t_interval = [t(1) t(end)];
 % t_interval = [0 1.0];
 
 % plotting / animation
-animate = 1;   % animatio = 1; plot states = 0
+animate = 0;   % animatio = 1; plot states = 0
 rt = 1.0;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 1;  % plot the foot trajectory
@@ -38,11 +38,24 @@ d = d(idx,:);
 % system state
 p_com = x_sys(:,1:2);
 v_com = x_sys(:,3:4);
-leg_pos_commands = x_sys(:,5:6);
+leg_pos_commands_L = x_sys(:,5:6);
+leg_pos_commands_R = x_sys(:,7:8);
+
+% leg states
+x_leg_L = x_leg(:,1:4);
+x_leg_R = x_leg(:,5:8);
 
 % foot states
-p_foot = x_foot(:,1:2);
-v_foot = x_foot(:,3:4);
+x_foot_L = x_foot(:,1:4);
+x_foot_R = x_foot(:,5:8);
+
+% inputs
+u_L = u(:,1:2);
+u_R = u(:,3:4);
+
+% domain
+d_L = d(:,1);
+d_R = d(:,2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -56,213 +69,238 @@ if animate == 0
     plot(t, p_com(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$p_x$ [m]', 'Interpreter', 'latex');
-    title('x-pos');
+    title('COM x-pos');
 
     subplot(3,6,2);
     hold on; grid on;
     plot(t, p_com(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$p_z$ [m]', 'Interpreter', 'latex');
-    title('z-pos');
+    title('COM z-pos');
 
     subplot(3,6,7); 
     hold on; grid on;
     plot(t, v_com(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$v_x$ [m/s]', 'Interpreter', 'latex');
-    title('x-vel');
+    title('COM x-vel');
 
     subplot(3,6,8);
     hold on; grid on;
     plot(t, v_com(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$v_z$ [m/s]', 'Interpreter', 'latex');
-    title('z-vel');
+    title('COM z-vel');
 
     % LEG STATES
     subplot(3,6,3);
     hold on; grid on;
-    plot(t, x_leg(:,1), 'LineWidth', 2);
-    plot(t, leg_pos_commands(:,1), 'LineWidth', 1.0);
+    plot(t, x_leg_L(:,1), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    plot(t, leg_pos_commands_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,1), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    plot(t, leg_pos_commands_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$r$ [m]', 'Interpreter', 'latex');
-    title('Leg Length, r');
+    title('LEG Length');
     legend('actual', 'command');
+    legend('$r_L$', '$\hat{r}_L$', '$r_R$', '$\hat{r}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,4);
     hold on; grid on;
-    plot(t, x_leg(:,2), 'LineWidth', 2);
-    plot(t, leg_pos_commands(:,2), 'LineWidth', 1.0);
+    plot(t, x_leg_L(:,2), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    plot(t, leg_pos_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,2), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    plot(t, leg_pos_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\theta$ [rad]', 'Interpreter', 'latex');
-    title('Leg Angle, theta');
-    legend('actual', 'command');
+    title('LEG Angle');
+    legend('$\theta_L$', '$\hat{\theta}_L$', '$\theta_R$', '$\hat{\theta}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,9);
     hold on; grid on;
-    plot(t, x_leg(:,3), 'LineWidth', 2);
-    plot(t, u(:,1), 'LineWidth', 1.0);
+    plot(t, x_leg_L(:,3), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    plot(t, u_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,3), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    plot(t, u_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\dot{r}$ [m/s]', 'Interpreter', 'latex');
-    title('Leg Length Rate, r-dot');
-    legend('actual', 'command');
+    title('LEG Length');
+    legend('$\dot{r}_L$', '$\dot{\hat{r}}_L$', '$\dot{r}_R$', '$\dot{\hat{r}}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,10);
     hold on; grid on;
-    plot(t, x_leg(:,4), 'LineWidth', 2);
-    plot(t, u(:,2), 'LineWidth', 1.0);
+    plot(t, x_leg_L(:,4), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    plot(t, u_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,4), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    plot(t, u_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\dot{\theta}$ [rad/s]', 'Interpreter', 'latex');
-    title('Leg Angle Rate, theta-dot');
-    legend('actual', 'command');
+    title('LEG Angle');
+    legend('$\dot{\theta_L}$', '$\dot{\hat{\theta}}_L$', '$\dot{\theta}_R$', '$\dot{\hat{\theta}}_R$', 'Interpreter', 'latex');
 
     % FOOT STATES
     subplot(3,6,5);
-    plot(t, p_foot(:,1), 'LineWidth', 2);
+    hold on; grid on;
+    plot(t, x_foot_L(:,1), 'LineWidth', 2);
+    plot(t, x_foot_R(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$p_{foot,x}$ [m]', 'Interpreter', 'latex');
-    title('Foot x-pos');
-    grid on;
+    title('FOOT x-pos');
+    legend('L', 'R');
 
     subplot(3,6,6);
-    plot(t, p_foot(:,2), 'LineWidth', 2);
+    hold on; grid on;
+    plot(t, x_foot_L(:,2), 'LineWidth', 2);
+    plot(t, x_foot_R(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$p_{foot,z}$ [m]', 'Interpreter', 'latex');
-    title('Foot z-pos');
-    grid on;
+    title('FOOT z-pos');
+    legend('L', 'R');
 
     subplot(3,6,11);
-    plot(t, v_foot(:,1), 'LineWidth', 2);
+    hold on; grid on;
+    plot(t, x_foot_L(:,3), 'LineWidth', 2);
+    plot(t, x_foot_R(:,3), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$v_{foot,x}$ [m/s]', 'Interpreter', 'latex');
-    title('Foot x-vel');
-    grid on;
+    title('FOOT x-vel');
+    legend('L', 'R');
 
     subplot(3,6,12);
-    plot(t, v_foot(:,2), 'LineWidth', 2);
+    hold on; grid on;
+    plot(t, x_foot_L(:,4), 'LineWidth', 2);
+    plot(t, x_foot_R(:,4), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$v_{foot,z}$ [m/s]', 'Interpreter', 'latex');
-    title('Foot z-vel');
-    grid on;
+    title('FOOT z-vel');
+    legend('L', 'R');
 
     % INPUT
+    subplot(3,6,[13,14]); 
+    hold on; grid on;
+    plot(t, u_L(:,1), 'LineWidth', 2);
+    plot(t, u_R(:,1), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\hat{\dot{l_0}}$', 'interpreter', 'latex');
+    title('leg rate input');
+    legend('L', 'R');
+
     subplot(3,6,[15,16]); 
     hold on; grid on;
-    plot(t, u(:,1), 'LineWidth', 2);
-    plot(t, u(:,2), 'LineWidth', 2);
+    plot(t, u_L(:,2), 'LineWidth', 2);
+    plot(t, u_R(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
-    ylabel('Input');
-    title('rate input');
-    legend('$\hat{\dot{l_0}}$', '$\hat{\dot{\theta}}$', 'interpreter', 'latex');
-    grid on;
+    ylabel('$\hat{\dot{\theta}}$', 'interpreter', 'latex');
+    title('angle rate input');
+    legend('L', 'R');
 
     % DOMAIN
     subplot(3,6,[17:18]);
     hold on; grid on;
-    stairs(t, d, 'LineWidth', 2);
+    stairs(t, d_L, 'LineWidth', 2);
+    stairs(t, d_R, 'LineWidth', 2);
     xlabel('Time [sec]');
-    ylabel('Domain');
     title('Domain');
     ylim([-0.5, 1.5]);
     yticks([0, 1]);
     yticklabels({'F', 'G'});
-
+    legend('L', 'R');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% animate the com trajectory
-if animate == 1
+% % animate the com trajectory
+% if animate == 1
 
-    figure('Name', 'Animation');
-    hold on;
+%     figure('Name', 'Animation');
+%     hold on;
 
-    xline(0);
-    yline(0);
-    xlabel('$p_x$ [m]', 'Interpreter', 'latex');
-    ylabel('$p_z$ [m]', 'Interpreter', 'latex');
-    grid on; axis equal;
-    px_min = min([p_com(:,1); p_foot(:,1)]);
-    px_max = max([p_com(:,1); p_foot(:,1)]);
-    pz_min = min([p_com(:,2); p_foot(:,2)]);
-    pz_max = max([p_com(:,2); p_foot(:,2)]);
-    xlim([px_min-0.5, px_max+0.5]);
-    ylim([min(0, pz_min)-0.25, pz_max+0.25]);
+%     xline(0);
+%     yline(0);
+%     xlabel('$p_x$ [m]', 'Interpreter', 'latex');
+%     ylabel('$p_z$ [m]', 'Interpreter', 'latex');
+%     grid on; axis equal;
+%     px_min = min([p_com(:,1); p_foot(:,1)]);
+%     px_max = max([p_com(:,1); p_foot(:,1)]);
+%     pz_min = min([p_com(:,2); p_foot(:,2)]);
+%     pz_max = max([p_com(:,2); p_foot(:,2)]);
+%     xlim([px_min-0.5, px_max+0.5]);
+%     ylim([min(0, pz_min)-0.25, pz_max+0.25]);
 
-    t  = t * (1/rt);
-    for i = 1:replays
-        pause(0.25);
-        tic;
-        ind = 1;
-        com_pts = [];
-        foot_pts = [];
-        while true
+%     t  = t * (1/rt);
+%     for i = 1:replays
+%         pause(0.25);
+%         tic;
+%         ind = 1;
+%         com_pts = [];
+%         foot_pts = [];
+%         while true
 
-            % get COM position 
-            px = p_com(ind,1);
-            pz = p_com(ind,2);
+%             % get COM position 
+%             px = p_com(ind,1);
+%             pz = p_com(ind,2);
 
-            % draw the legs
-            px_foot = p_foot(ind,1);
-            pz_foot = p_foot(ind,2);
-            leg = plot([px, px_foot], [pz, pz_foot], 'k', 'LineWidth', 3);
-            ball_foot = plot(px_foot, pz_foot, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', 'k');
+%             % draw the legs
+%             px_foot = p_foot(ind,1);
+%             pz_foot = p_foot(ind,2);
+%             leg = plot([px, px_foot], [pz, pz_foot], 'k', 'LineWidth', 3);
+%             ball_foot = plot(px_foot, pz_foot, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', 'k');
             
-            % draw the mass
-            if d(ind) == 0
-                mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0 0.4470 0.7410], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
-            elseif d(ind) == 1
-                mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0.6350 0.0780 0.1840], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
-            end
+%             % draw the mass
+%             if d(ind) == 0
+%                 mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0 0.4470 0.7410], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
+%             elseif d(ind) == 1
+%                 mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0.6350 0.0780 0.1840], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
+%             end
 
-            %  draw trajectory trail
-            if plot_foot == 1
-                foot = plot(px_foot, pz_foot, 'bo', 'MarkerSize', 1, 'MarkerFaceColor', 'b');
-                foot_pts = [foot_pts; foot];
-            end
-            if plot_com == 1
-                pt_pos = plot(px, pz, 'k.', 'MarkerSize', 5);
-                com_pts = [com_pts; pt_pos];
-            end
+%             %  draw trajectory trail
+%             if plot_foot == 1
+%                 foot = plot(px_foot, pz_foot, 'bo', 'MarkerSize', 1, 'MarkerFaceColor', 'b');
+%                 foot_pts = [foot_pts; foot];
+%             end
+%             if plot_com == 1
+%                 pt_pos = plot(px, pz, 'k.', 'MarkerSize', 5);
+%                 com_pts = [com_pts; pt_pos];
+%             end
 
-            drawnow;
+%             drawnow;
             
-            % title
-            msg = sprintf('Time: %0.3f [sec]\n vx = %0.3f, px = %0.3f\n vz = %0.3f, pz = %0.3f',...
-                         t(ind) * rt, v_com(ind,1), p_com(ind,1), v_com(ind,2), p_com(ind,2));
-            title(msg);
+%             % title
+%             msg = sprintf('Time: %0.3f [sec]\n vx = %0.3f, px = %0.3f\n vz = %0.3f, pz = %0.3f',...
+%                          t(ind) * rt, v_com(ind,1), p_com(ind,1), v_com(ind,2), p_com(ind,2));
+%             title(msg);
             
-            % wait until the next time step
-            while toc< t(ind+1)
-                % wait
-            end
+%             % wait until the next time step
+%             while toc< t(ind+1)
+%                 % wait
+%             end
             
-            % increment the index
-            if ind+1 >= length(t)
-                break;
-            else
-                ind = ind + 1;
-                delete(mass);
-                delete(leg);
-                delete(ball_foot);
-            end
-        end
+%             % increment the index
+%             if ind+1 >= length(t)
+%                 break;
+%             else
+%                 ind = ind + 1;
+%                 delete(mass);
+%                 delete(leg);
+%                 delete(ball_foot);
+%             end
+%         end
 
-        % pause(0.25);
+%         % pause(0.25);
 
-        % clean the plot if still replaying
-        if i < replays
-            delete(mass);
-            delete(leg);
-            delete(ball_foot);
-            for j = 1:length(com_pts)
-                if plot_com == 1
-                    delete(com_pts(j));
-                end
-                if plot_foot == 1
-                    delete(foot_pts(j));
-                end
-            end
-        end
-    end
-end
+%         % clean the plot if still replaying
+%         if i < replays
+%             delete(mass);
+%             delete(leg);
+%             delete(ball_foot);
+%             for j = 1:length(com_pts)
+%                 if plot_com == 1
+%                     delete(com_pts(j));
+%                 end
+%                 if plot_foot == 1
+%                     delete(foot_pts(j));
+%                 end
+%             end
+%         end
+%     end
+% end

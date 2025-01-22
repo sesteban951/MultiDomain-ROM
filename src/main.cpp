@@ -105,12 +105,12 @@ int main()
     bool viability = sol.viability;
 
     // save the solution to a file
-    std::string time_file = "../data/time.txt";
-    std::string x_sys_file = "../data/state_sys.txt";
-    std::string x_leg_file = "../data/state_leg.txt";
-    std::string x_foot_file = "../data/state_foot.txt";
-    std::string u_file = "../data/input.txt";
-    std::string domain_file = "../data/domain.txt";
+    std::string time_file = "../data/time.csv";
+    std::string x_sys_file = "../data/state_sys.csv";
+    std::string x_leg_file = "../data/state_leg.csv";
+    std::string x_foot_file = "../data/state_foot.csv";
+    std::string u_file = "../data/input.csv";
+    std::string domain_file = "../data/domain.csv";
 
     // save the solution to a file
     std::ofstream file;
