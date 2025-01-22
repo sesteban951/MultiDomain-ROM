@@ -14,7 +14,7 @@ SYS_PARAMS:
     theta_max: 1.0          # max leg angle, [rad]
     rdot_lim: 1.0           # max leg velocity [m/s]
     thetadot_lim: 3.14      # max angle velocity [rad/s]
-    torque_ankle: False      # whether or not to enable the ankle torque
+    torque_ankle: False      # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
     torque_ankle_lim: 1   # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
