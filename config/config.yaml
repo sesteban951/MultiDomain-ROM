@@ -20,10 +20,45 @@ SYS_PARAMS:
     torque_ankle_kd: 10.0   # ankle torque derivative gain
     interp: 'L'             # control interpolation method
 
+
+####################################################################
+# Controller Parameters
+####################################################################
+
+CTRL_PARAMS:
+    N: 150                              # number of time steps
+    dt: 0.01                            # time step, [s]
+    K: 7500                             # number of rollouts
+    Nu: 40                              # number of control points
+    Q_com_diags:  [0.0, 3.0, 2.0, 0.05] # COM: px, pz, vx, vz
+    Q_leg_diags:  [10.0, 5.0, 1.5, 1.5] # LEG: r, theta, rdot, thetadot
+    Qf_com_diags: [0.0, 4.0, 3.0, 0.10] # COM: px, pz, vx, vz
+    Qf_leg_diags: [11.0, 6.0, 2.0, 2.0] # LEG: r, theta, rdot, thetadot
+    R_diags: [2.0, 2.0]                 # diagonal elements of the control cost matrix
+    N_elite: 750                        # number of elite samples
+    CEM_iters: 25                       # number of CEM iterations
+
+
+####################################################################
+# Distribution Parameters
+####################################################################
+
+DIST_PARAMS:
+    mu: [0.0, 0.0]              # initial means [l0dot_vel, thetadot_vel]
+    sigma: [1.0, 3.14]          # initial standard deviations
+    diag_cov: False             # strictly enforce diagonal covariance matrix
+    epsilon: 0.0001             # small value to add to ill posed covariance matrix eigs
+    seed_enabled: False         # enable random seed
+    seed: 0                     # random seed
+
+
 ####################################################################
 # INITIAL STATE and DESIRED STATE
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.8, 1.0, -1.0,    # COM: px, pz, vx, vz  (center of mass state)
+    x0: [0.0, 0.8, 1.0, 1.0,    # COM: px, pz, vx, vz  (center of mass state)
          0.65, 0.5, 0.65, -0.5]  # COMMANDS: l0_command, thetadot_command (single integrator state)
+    pz_des: 0.6              # desired z-position [m]
+    vx_des: 2.0              # desired velocity [m/s]
+    r_des: 0.6               # desired leg length [m]

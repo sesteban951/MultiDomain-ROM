@@ -18,11 +18,14 @@
 class Controller
 {
     public:
+        
         // Constructor and Destructor
         Controller(YAML::Node config_file);
         ~Controller(){};
 
-    // private:
+        // to initialize the initial distribution
+        void initialize_distribution(YAML::Node config_file);
+
         // internal dynamics object
         Dynamics dynamics;
 
