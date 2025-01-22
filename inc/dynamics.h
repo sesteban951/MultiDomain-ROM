@@ -48,14 +48,32 @@ class Dynamics
                                      Vector_4d_List x_leg, 
                                      Vector_4d_List x_foot, 
                                      Domain d);
+
+        // apply the reset map
+        void reset_map(Vector_8d& x_sys, 
+                      Vector_4d_List& x_leg, 
+                      Vector_4d_List& x_foot, 
+                      Vector_2d_List u, 
+                      Domain d_prev, 
+                      Domain d_next);
+
+        // interpolate the input signal
+        Vector_2d_List interpolate_control_input(double t, 
+                                                Vector_1d_Traj T_u, 
+                                                Vector_2d_Traj U);
         
+        // RK forwaqrd propagation
+        Solution RK_rollout(Vector_1d_Traj T_x, 
+                            Vector_1d_Traj T_u, 
+                            Vector_8d x0_sys, 
+                            Vector_2d_List p0_feet, 
+                            Domain d0, 
+                            Vector_2d_Traj U);
+
         // System parameters
         SystemParams params;
 
         // fixed parameters
-        // const double nx_sys = 8;  // vector size of system state variables
-        // const double nx_leg = 4;  // vector size of control inputs
-        // const double nu = 4;      // vector size of control inputs
         const int n_leg = 2;      // vector size of legs
 };
 

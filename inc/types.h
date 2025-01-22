@@ -28,6 +28,7 @@ using Vector_d = Eigen::Vector<double, Eigen::Dynamic>;
 using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 
 // Fixed size arrays
+using Vector_2i = Eigen::Vector<int, 2>;
 using Vector_2d = Eigen::Vector<double, 2>;
 using Vector_4d = Eigen::Vector<double, 4>;
 using Vector_8d = Eigen::Vector<double, 8>;
@@ -44,11 +45,19 @@ using Vector_1d_List = std::vector<double>;
 using Vector_2d_List = std::vector<Vector_2d>;
 using Vector_4d_List = std::vector<Vector_4d>;
 using Vector_8d_List = std::vector<Vector_8d>;
+using Vector_12d_List = std::vector<Vector_12d>;
 
 using Vector_d_List = std::vector<Vector_d>;
 using Matrix_d_List = std::vector<Matrix_d>;
 
 using Domain_List = std::vector<Domain>;
+
+// Trajectory types
+using Vector_1d_Traj = std::vector<double>;
+using Vector_2d_Traj = std::vector<Vector_2d_List>;
+using Vector_4d_Traj = std::vector<Vector_4d_List>;
+using Vector_8d_Traj = std::vector<Vector_8d_List>;
+using Vector_12d_Traj = std::vector<Vector_12d_List>;
 
 // ***********************************************************************************
 // STRUCTS
@@ -105,9 +114,9 @@ struct Solution
 {
     Vector_1d_List t;        // time trajectory
     Vector_8d_List x_sys_t;  // system state trajectory
-    Vector_8d_List x_leg_t;  // leg state trajectory
-    Vector_8d_List x_foot_t; // foot state trajectory
-    Vector_4d_List u_t;      // interpolated control input trajectory
+    Vector_4d_Traj x_leg_t;  // leg state trajectory
+    Vector_4d_Traj x_foot_t; // foot state trajectory
+    Vector_2d_Traj u_t;      // interpolated control input trajectory
     Domain_List domain_t;    // domain trajectory
     bool viability;          // viability of the trajectory
 };

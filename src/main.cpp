@@ -71,5 +71,115 @@ int main()
     x_feet[1] = x_foot;
     std::cout << "x_foot: " << x_foot.transpose() << std::endl;
 
+    // example rollout of the dynamics
+    int N = 100;
+    Vector_1d_Traj T_x(N);
+    for (int i = 0; i < N; i++) {
+        T_x[i] = i * 0.01;
+    }
+
+    int Nu = 50;
+    Vector_1d_Traj T_u(Nu);
+    Vector_2d_Traj U(Nu);
+    Vector_2d U1, U2;
+    Vector_2d_List Ui(2);
+    U1 << 0.0, 0.0;
+    U2 << 0.0, 0.0;
+    for (int i = 0; i < Nu; i++) {
+        T_u[i] = i * 0.02;
+        Ui[0] = U1;
+        Ui[1] = U2;
+        U[i] = Ui;
+    }
+
+    // Do a rollout of the dynamics
+    Solution sol = dynamics.RK_rollout(T_x, T_u, x0, p0_feet, d0, U);
+
+    // unpack the solution
+    Vector_1d_List t = sol.t;
+    Vector_8d_List x_sys_t = sol.x_sys_t;
+    Vector_4d_Traj x_leg_t = sol.x_leg_t;
+    Vector_4d_Traj x_foot_t = sol.x_foot_t;
+    Vector_2d_Traj u_t = sol.u_t;
+    Domain_List domain_t = sol.domain_t;
+    bool viability = sol.viability;
+
+    // save the solution to a file
+    std::string time_file = "../data/time.txt";
+    std::string x_sys_file = "../data/state_sys.txt";
+    std::string x_leg_file = "../data/state_leg.txt";
+    std::string x_foot_file = "../data/state_foot.txt";
+    std::string u_file = "../data/input.txt";
+    std::string domain_file = "../data/domain.txt";
+
+    // save the solution to a file
+    std::ofstream file;
+
+    file.open(time_file);
+    for (int i = 0; i < N; i++) {
+        file << t[i] << std::endl;
+    }
+    file.close();
+
+    file.open(x_sys_file);
+    for (int i = 0; i < N; i++) {
+        file << x_sys_t[i].transpose() << std::endl;
+    }
+    file.close();
+
+    Vector_8d x_leg_;
+    Vector_4d_List x_leg_k;
+    file.open(x_leg_file);
+    for (int i = 0; i < N; i++) {
+        x_leg_k = x_leg_t[i];
+        x_leg_ << x_leg_k[0], x_leg_k[1];
+        file << x_leg_.transpose() << std::endl;
+    }
+    file.close();
+
+    Vector_8d x_foot_;
+    Vector_4d_List x_foot_k;
+    file.open(x_foot_file);
+    for (int i = 0; i < N; i++) {
+        x_foot_k = x_foot_t[i];
+        x_foot_ << x_foot_k[0], x_foot_k[1];
+        file << x_foot_.transpose() << std::endl;
+    }
+    file.close();
+
+    Vector_4d u_;
+    Vector_2d_List u_k;
+    file.open(u_file);
+    for (int i = 0; i < N; i++) {
+        u_k = u_t[i];
+        u_ << u_k[0], u_k[1];
+        file << u_.transpose() << std::endl;
+    }
+    file.close();
+
+    Domain domain_t_(2);
+    Vector_2i domain_;
+    file.open(domain_file);
+    for (int i = 0; i < N; i++) {
+        
+        domain_t_ = domain_t[i];
+
+        if (domain_t_[0] == Contact::STANCE) {
+            domain_[0] = 1;
+        }
+        else {
+            domain_[0] = 0;
+        }
+
+        if (domain_t_[1] == Contact::STANCE) {
+            domain_[1] = 1;
+        }
+        else {
+            domain_[1] = 0;
+        }
+
+        file << domain_.transpose() << std::endl;
+    }
+
     return 0;
 }

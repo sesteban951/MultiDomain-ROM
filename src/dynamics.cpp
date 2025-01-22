@@ -327,11 +327,18 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_4d_List& x_leg, Vector_4d_List
     Vector_8d x_sys_post;
     Vector_4d_List x_leg_post(this->n_leg);
     Vector_4d_List x_foot_post(this->n_leg);
+    x_sys_post = x_sys;    // we will intialize as prev and modify for post as needed
     x_leg_post = x_leg;    // we will intialize as prev and modify for post as needed
     x_foot_post = x_foot;  // we will intialize as prev and modify for post as needed
 
     // useful intermmediate variables
     Vector_2d_List p_feet_post(this->n_leg);
+    for (int i = 0; i < this->n_leg; ++i) {
+        p_feet_post[i] << x_foot_post[i](0), 
+                          x_foot_post[i](0); // we will initialize as prev and modify for post as needed
+    }
+
+    Vector_2d p_foot_i_post;
 
     // loop through the legs
     for (int i = 0; i < this->n_leg; i++)
@@ -350,25 +357,200 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_4d_List& x_leg, Vector_4d_List
             // unpack the state variables
             Vector_4d x_foot_i = x_foot[i];
             Vector_4d x_leg_i = x_leg[i];
+            Vector_2d p_foot_i = p_feet_post[i];
             Contact d_i_prev = d_prev[i];
             Contact d_i_next = d_next[i];
 
-            // the i-th leg is in CONTACT
+            // the i-th leg is now in CONTACT
             if (d_i_prev == Contact::SWING && d_i_next == Contact::STANCE) {
                 
                 // update the foot location (based on hueristic)
-                p_foot_i_post << x_foot_i(0), 0.0;
+                p_foot_i_post << p_foot_i(0), 0.0;
+                p_feet_post[i] = p_foot_i_post;
 
                 // update the leg state
-                x_leg_post[i] << this->compute_leg_state
-                
+                x_leg_post[i] = this->compute_leg_state(x_sys_post, p_feet_post, u, d_next, i);
+
+                // update the system state
+                x_sys_post(4 + 2*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
+                x_sys_post(5 + 2*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
+
+                // update the foot state
+                x_foot_post[i] << this->compute_foot_state(x_sys_post, x_leg_post, p_feet_post, d_next, i);
             }
 
-            // the i-th leg is in STANCE
+            // the i-th leg is now in STANCE
             else if (d_i_prev == Contact::STANCE && d_i_next == Contact::SWING) {
-                // apply the reset map for takeoff
                 
+                // update the foot location (based on hueristic)
+                p_foot_i_post << p_foot_i(0), p_foot_i(1);
+
+                // update the leg state
+                x_leg_post[i](2) = u[i](0); // leg velocity is the commanded velocity
+                x_leg_post[i](3) = u[i](1); // leg angular velocity is the commanded angular velocity
+
+                // update the system state
+                x_sys_post(4 + 2*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
+                x_sys_post(5 + 2*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
+
+                // update the foot state
+                x_foot_post[i] = this->compute_foot_state(x_sys_post, x_leg_post, p_feet_post, d_next, i);
             }
         }
-    }   
+    }
+
+    // update the states
+    x_sys = x_sys_post;
+    x_leg = x_leg_post;
+    x_foot = x_foot_post;
+}
+
+
+// interpolate an input signal
+Vector_2d_List Dynamics::interpolate_control_input(double t, Vector_1d_Traj T_u, Vector_2d_Traj U) 
+{
+    // we want to find the interpolated control input
+    Vector_2d_List u(this->n_leg);
+
+    // find the first element in the time vector that is greater than the current time
+    auto it = std::upper_bound(T_u.begin(), T_u.end(), t);
+    int idx = std::distance(T_u.begin(), it) - 1; // returns -1 if before the first element,
+                                                  // returns N - 1 if after the last element
+
+    // Zero-order hold (Z)
+    if (this->params.interp == 'Z') {
+        // contant control input
+        u = U[idx];
+    }
+
+    // Linear Interpolation (L)
+    else if (this->params.interp == 'L') {
+        // beyond the last element
+        if (idx == T_u.size() - 1) {
+            u = U[idx];
+        }
+        // before the last element (shouldn't happen)
+        else if (idx == -1) {
+            u = U[0];
+        }
+        // within a time interval
+        else {
+            // find the time interval
+            double t0 = T_u[idx];
+            double tf = T_u[idx + 1];
+            Vector_2d_List u0 = U[idx];
+            Vector_2d_List uf = U[idx + 1];
+
+            // linear interpolation
+            for (int i = 0; i < this->n_leg; i++) {
+                u[i] = u0[i] + (uf[i] - u0[i]) * (t - t0) / (tf - t0);
+            }
+        }
+    }
+
+    return u;
+}
+
+
+// RK3 Integration of the system dynamics
+Solution Dynamics::RK_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u, 
+                              Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0, 
+                              Vector_2d_Traj U)
+{
+    // time integration parameters
+    double dt = T_x[1] - T_x[0];
+    int N = T_x.size();
+
+    // make the solutiuon trajectory containers
+    Vector_8d_List x_sys_t(N);  // system state trajectory
+    Vector_4d_Traj x_leg_t(N);  // leg state trajectory
+    Vector_4d_Traj x_foot_t(N); // foot state trajectory
+    Vector_2d_Traj u_t(N);      // interpolated control input trajectory
+    Domain_List domain_t(N);    // domain trajectory
+
+    // initial condition
+    Vector_4d_List x0_leg(this->n_leg);
+    Vector_4d_List x0_foot(this->n_leg);
+    for (int i = 0; i < this->n_leg; i++) {
+        x0_leg[i] = this->compute_leg_state(x0_sys, p0_feet, U[0], d0, i);
+        x0_foot[i] = this->compute_foot_state(x0_sys, x0_leg, p0_feet, d0, i);
+    }
+
+    x_sys_t[0] = x0_sys;
+    x_leg_t[0] = x0_leg;
+    x_foot_t[0] = x0_foot;
+    u_t[0] = U[0];
+    domain_t[0] = d0;
+
+    // current state variables
+    Vector_8d xk_sys = x0_sys;
+    Vector_4d_List xk_leg = x0_leg;
+    Vector_4d_List xk_foot = x0_foot;
+    Vector_2d_List p_feet = p0_feet;
+    Vector_2d_List uk = U[0];
+    Domain dk = d0;
+    Domain dk_next;
+
+    // ************************************* RK Integration *************************************
+    // viability variable (for viability kernel)
+    bool viability = true;
+
+    // intermmediate times, inputs, and vector fields
+    double tk, t1, t2, t3;
+    Vector_2d_List u1, u2, u3;
+    Vector_8d f1, f2, f3;
+
+    // forward propagate the system dynamics
+    for (int k = 1; k < N; k++) {
+
+        // std::cout << "integration step " << k << std::endl;
+
+        // interpolation times
+        tk = k * dt;
+        t1 = tk;
+        t2 = tk + 0.5 * dt;
+        t3 = tk + dt;
+
+        // interpolate the control input
+        u1 = this->interpolate_control_input(t1, T_u, U);
+        u2 = this->interpolate_control_input(t2, T_u, U);
+        u3 = this->interpolate_control_input(t3, T_u, U);
+
+        // vector filesd for Rk3 integration
+        f1 = this->dynamics(xk_sys, 
+                            u1, p_feet, dk);
+        f2 = this->dynamics(xk_sys + 0.5 * dt * f1,
+                            u2, p_feet, dk);
+        f3 = this->dynamics(xk_sys - dt * f1 + 2 * dt * f2,
+                            u3, p_feet, dk);
+
+        // take the RK3 step
+        xk_sys = xk_sys + (dt / 6) * (f1 + 4 * f2 + f3);
+        for (int i = 0; i < this->n_leg; i++) {
+            xk_leg[i] = this->compute_leg_state(xk_sys, p_feet, u3, dk, i);
+            xk_foot[i] = this->compute_foot_state(xk_sys, xk_leg, p_feet, dk, i);
+        }
+
+        // check for switching events
+        // dk_next = this->check_switching_event(xk_sys, xk_leg, xk_foot, dk);
+
+        // store the states
+        x_sys_t[k] = xk_sys;
+        x_leg_t[k] = xk_leg;
+        x_foot_t[k] = xk_foot;
+        u_t[k] = u3;
+        domain_t[k] = dk_next;
+    }
+
+    // pack the solution into the solution struct
+    Solution sol;
+    sol.t = T_x;
+    sol.x_sys_t = x_sys_t;
+    sol.x_leg_t = x_leg_t;
+    sol.x_foot_t = x_foot_t;
+    sol.u_t = u_t;
+    sol.domain_t = domain_t;
+    sol.viability = viability;
+
+    return sol;
 }
