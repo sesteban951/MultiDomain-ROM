@@ -59,8 +59,8 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 void Controller::initialize_distribution(YAML::Node config_file)
 {
     // some useful ints to use
-    int n_leg = this->dynamics.n_leg;
-    int Nu = this->params.Nu;
+    const int n_leg = this->dynamics.n_leg;
+    const int Nu = this->params.Nu;
 
     // initialize the matrices
     this->dist.mean.resize(2 * Nu * n_leg);
@@ -73,29 +73,39 @@ void Controller::initialize_distribution(YAML::Node config_file)
 
     // set the initial mean
     std::vector<double> mean_temp = config_file["DIST_PARAMS"]["mu"].as<std::vector<double>>();
-    Vector_2d mean_;
     Vector_4d mean;
-    mean_ << mean_temp[0], mean_temp[1];
-    mean << mean_, mean_;
+    mean << mean_temp[0], mean_temp[1], mean_temp[0], mean_temp[1];
     for (int i = 0; i < Nu; i++) {
-        this->dist.mean.segment<n_leg * Nu>(2 * i * n_leg) = mean;
+        this->dist.mean.segment<4>(2 * i * n_leg) = mean;
     }
+
+    std::cout << "mean:\n" << this->dist.mean.transpose() << std::endl;
 
     // set the initial covariance
     std::vector<double> cov_temp = config_file["DIST_PARAMS"]["sigma"].as<std::vector<double>>();
-    Matrix_4d cov;
-    cov << cov_temp[0], 0.0, 0.0, 0.0,
-           0.0, cov_temp[1], ;
-    for (int i = 0; i < this->params.Nu * this->dynamics.n_leg; i++) {
-        this->dist.cov.block<2, 2 * this>(2 * i, 2 * i) = cov;
+    Vector_4d cov_diags;
+    cov_diags << cov_temp[0], cov_temp[1], cov_temp[0], cov_temp[1];
+    Matrix_4d cov = cov_diags.asDiagonal();
+
+    std::cout << "cov:\n" << cov << std::endl;
+
+    for (int i = 0; i < Nu; i++) {
+        this->dist.cov.block<4, 4>(2 * i * n_leg, 2 * i * n_leg) = cov;
     }
+
+    std::cout << "cov:\n" << this->dist.cov << std::endl;
 
     // set if covariance should be strictly diagonal
     this->dist.diag_cov = config_file["DIST_PARAMS"]["diag_cov"].as<bool>();
 
+    std::cout << "diag covariance: " << this->dist.diag_cov << std::endl;
+
     // set the random 
-    this->dist.seed = config_file["DIST_PARAMS"]["seed"].as<int>();
     this->dist.seed_enabled = config_file["DIST_PARAMS"]["seed_enabled"].as<bool>();
+    this->dist.seed = config_file["DIST_PARAMS"]["seed"].as<int>();
+
+    std::cout << "seed enabled: " << this->dist.seed_enabled << std::endl;
+    std::cout << "seed: " << this->dist.seed << std::endl;
 
     // create random device
     std::random_device rand_device;
