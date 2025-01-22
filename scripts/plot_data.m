@@ -14,12 +14,12 @@ d = load('../data/domain.csv');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
-t_interval = [t(1) t(end)];
-% t_interval = [0 1.0];
+% t_interval = [t(1) t(end)];
+t_interval = [0 0.5];
 
 % plotting / animation
-animate = 0;   % animatio = 1; plot states = 0
-rt = 1.0;      % realtime rate
+animate = 1;   % animatio = 1; plot states = 0
+rt = 0.1;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 1;  % plot the foot trajectory
 plot_foot = 1; % plot the foot trajectory
@@ -209,98 +209,106 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% % animate the com trajectory
-% if animate == 1
+% animate the com trajectory
+if animate == 1
 
-%     figure('Name', 'Animation');
-%     hold on;
+    figure('Name', 'Animation');
+    hold on;
 
-%     xline(0);
-%     yline(0);
-%     xlabel('$p_x$ [m]', 'Interpreter', 'latex');
-%     ylabel('$p_z$ [m]', 'Interpreter', 'latex');
-%     grid on; axis equal;
-%     px_min = min([p_com(:,1); p_foot(:,1)]);
-%     px_max = max([p_com(:,1); p_foot(:,1)]);
-%     pz_min = min([p_com(:,2); p_foot(:,2)]);
-%     pz_max = max([p_com(:,2); p_foot(:,2)]);
-%     xlim([px_min-0.5, px_max+0.5]);
-%     ylim([min(0, pz_min)-0.25, pz_max+0.25]);
+    xline(0);
+    yline(0);
+    xlabel('$p_x$ [m]', 'Interpreter', 'latex');
+    ylabel('$p_z$ [m]', 'Interpreter', 'latex');
+    grid on; axis equal;
+    px_min = min([p_com(:,1); x_foot_L(:,1); x_foot_R(:,1)]);
+    px_max = max([p_com(:,1); x_foot_L(:,1); x_foot_R(:,1)]);
+    pz_min = min([p_com(:,2); x_foot_L(:,2); x_foot_R(:,2)]);
+    pz_max = max([p_com(:,2); x_foot_L(:,2); x_foot_R(:,2)]);
+    xlim([px_min-0.5, px_max+0.5]);
+    ylim([min(0, pz_min)-0.25, pz_max+0.25]);
 
-%     t  = t * (1/rt);
-%     for i = 1:replays
-%         pause(0.25);
-%         tic;
-%         ind = 1;
-%         com_pts = [];
-%         foot_pts = [];
-%         while true
+    t  = t * (1/rt);
+    for i = 1:replays
+        pause(0.25);
+        tic;
+        ind = 1;
+        com_pts = [];
+        foot_pts_L = [];
+        foot_pts_R = [];
+        while true
 
-%             % get COM position 
-%             px = p_com(ind,1);
-%             pz = p_com(ind,2);
+            % get COM position 
+            px = p_com(ind,1);
+            pz = p_com(ind,2);
 
-%             % draw the legs
-%             px_foot = p_foot(ind,1);
-%             pz_foot = p_foot(ind,2);
-%             leg = plot([px, px_foot], [pz, pz_foot], 'k', 'LineWidth', 3);
-%             ball_foot = plot(px_foot, pz_foot, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', 'k');
+            % draw the legs
+            px_foot_L = x_foot_L(ind,1);
+            pz_foot_L = x_foot_L(ind,2);
+            px_foot_R = x_foot_R(ind,1);
+            pz_foot_R = x_foot_R(ind,2);
+            leg_L = plot([px, px_foot_L], [pz, pz_foot_L], 'LineWidth', 3, 'Color', [0 0.4470 0.7410]);
+            leg_R = plot([px, px_foot_R], [pz, pz_foot_R], 'LineWidth', 3, 'Color', [0.6350 0.0780 0.1840]);
+            ball_foot_L = plot(px_foot_L, pz_foot_L, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', [0 0.4470 0.7410]);
+            ball_foot_R = plot(px_foot_R, pz_foot_R, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', [0.6350 0.0780 0.1840]);
             
-%             % draw the mass
-%             if d(ind) == 0
-%                 mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0 0.4470 0.7410], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
-%             elseif d(ind) == 1
-%                 mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0.6350 0.0780 0.1840], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
-%             end
-
-%             %  draw trajectory trail
-%             if plot_foot == 1
-%                 foot = plot(px_foot, pz_foot, 'bo', 'MarkerSize', 1, 'MarkerFaceColor', 'b');
-%                 foot_pts = [foot_pts; foot];
-%             end
-%             if plot_com == 1
-%                 pt_pos = plot(px, pz, 'k.', 'MarkerSize', 5);
-%                 com_pts = [com_pts; pt_pos];
-%             end
-
-%             drawnow;
+            % draw the mass
+            mass = plot(px, pz, 'ko', 'MarkerSize', 35, 'MarkerFaceColor', [0.5863, 0.5863, 0.5590], 'LineWidth', 1.5, 'MarkerEdgeColor', 'k');
             
-%             % title
-%             msg = sprintf('Time: %0.3f [sec]\n vx = %0.3f, px = %0.3f\n vz = %0.3f, pz = %0.3f',...
-%                          t(ind) * rt, v_com(ind,1), p_com(ind,1), v_com(ind,2), p_com(ind,2));
-%             title(msg);
-            
-%             % wait until the next time step
-%             while toc< t(ind+1)
-%                 % wait
-%             end
-            
-%             % increment the index
-%             if ind+1 >= length(t)
-%                 break;
-%             else
-%                 ind = ind + 1;
-%                 delete(mass);
-%                 delete(leg);
-%                 delete(ball_foot);
-%             end
-%         end
+            %  draw trajectory trail
+            if plot_foot == 1
+                foot_L = plot(px_foot_L, pz_foot_L, 'bo', 'MarkerSize', 1, 'MarkerFaceColor', 'b');
+                foot_R = plot(px_foot_R, pz_foot_R, 'ro', 'MarkerSize', 1, 'MarkerFaceColor', 'r');
+                foot_pts_L = [foot_pts_L; foot_L];
+                foot_pts_R = [foot_pts_R; foot_R];
+            end
+            if plot_com == 1
+                pt_pos = plot(px, pz, 'k.', 'MarkerSize', 5);
+                com_pts = [com_pts; pt_pos];
+            end
 
-%         % pause(0.25);
+            drawnow;
+            
+            % title
+            msg = sprintf('Time: %0.3f [sec]\n vx = %0.3f, px = %0.3f\n vz = %0.3f, pz = %0.3f',...
+                         t(ind) * rt, v_com(ind,1), p_com(ind,1), v_com(ind,2), p_com(ind,2));
+            title(msg);
+            
+            % wait until the next time step
+            while toc< t(ind+1)
+                % wait
+            end
+            
+            % increment the index
+            if ind+1 >= length(t)
+                break;
+            else
+                ind = ind + 1;
+                delete(mass);
+                delete(leg_L);
+                delete(leg_R);
+                delete(ball_foot_L);
+                delete(ball_foot_R);
+            end
+        end
 
-%         % clean the plot if still replaying
-%         if i < replays
-%             delete(mass);
-%             delete(leg);
-%             delete(ball_foot);
-%             for j = 1:length(com_pts)
-%                 if plot_com == 1
-%                     delete(com_pts(j));
-%                 end
-%                 if plot_foot == 1
-%                     delete(foot_pts(j));
-%                 end
-%             end
-%         end
-%     end
-% end
+        % pause(0.25);
+
+        % clean the plot if still replaying
+        if i < replays
+            delete(mass);
+            delete(leg_L);
+            delete(leg_R);
+            delete(ball_foot_L);
+            delete(ball_foot_R);
+            for j = 1:length(com_pts)
+                if plot_com == 1
+                    delete(com_pts(j));
+                end
+                if plot_foot == 1
+                    delete(foot_pts_L(j));
+                    delete(foot_pts_R(j));
+                end
+            end
+        end
+    end
+end
