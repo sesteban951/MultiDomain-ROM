@@ -28,7 +28,7 @@ SYS_PARAMS:
 CTRL_PARAMS:
     N: 150                              # number of time steps
     dt: 0.01                            # time step, [s]
-    K: 7500                             # number of rollouts
+    K: 10                             # number of rollouts
     Nu: 2                               # number of control points
     N_elite: 750                        # number of elite samples
     CEM_iters: 25                       # number of CEM iterations

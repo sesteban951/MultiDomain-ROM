@@ -63,7 +63,7 @@ class Dynamics
                                                 Vector_2d_Traj U);
         
         // RK forwaqrd propagation
-        Solution RK_rollout(Vector_1d_Traj T_x, 
+        Solution RK3_rollout(Vector_1d_Traj T_x, 
                             Vector_1d_Traj T_u, 
                             Vector_8d x0_sys, 
                             Vector_2d_List p0_feet, 

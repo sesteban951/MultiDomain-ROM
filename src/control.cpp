@@ -147,19 +147,21 @@ Vector_2d_Traj_Bundle Controller::sample_input_trajectory(int K)
     for (int i = 0; i < K; i++) {
         
         // populate the Z vector; Z ~ N(0, I)
-        for (int i = 0; i < mu.size(); i++) {
-            Z_vec(i) = this->normal_dist(this->rand_generator);
+        for (int j = 0; j < mu.size(); j++) {
+            Z_vec(j) = this->normal_dist(this->rand_generator);
         }
 
         // generate the vectorized input trajectory
         U_vec = L * Z_vec + mu;
 
+        std::cout << "U_vec: " << U_vec.transpose() << std::endl;
+
         // unvectorize U_vec into U_traj
-        for (int j = 0; j < this->params.Nu; j++) {
-            U_t = U_vec.segment<4>(4 * j);
+        for (int k = 0; k < this->params.Nu; k++) {
+            U_t = U_vec.segment<4>(4 * k);
             U_t_list[0] = U_t.segment<2>(0);
             U_t_list[1] = U_t.segment<2>(2);
-            U_traj[j] = U_t_list;
+            U_traj[k] = U_t_list;
         }
 
         // store the input trajectory
@@ -293,6 +295,9 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
     Vector_8d x_leg;
     X_sys_mat.resize(8, N);
     X_leg_mat.resize(8, N);
+
+    std::cout << "a" << std::endl;
+
     for (int i = 0; i < N; i++) {
         // populate the system matrix
         X_sys_mat.col(i) = X_sys[i];
@@ -305,6 +310,8 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
         // populate the leg matrix
         X_leg_mat.col(i) = x_leg;
     }
+
+    std::cout << "b" << std::endl;
 
     // combine the COM state with the leg state
     Matrix_d X_com;
@@ -330,19 +337,34 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
         J_state += cost;
     }
 
+    std::cout << "c" << std::endl;
+
     // input cost
     Vector_2d ui_L, ui_R;
     Vector_4d ui;
     double J_input = 0.0;
     for (int i = 0; i < N; i++) {
+
+        std::cout << "c1" << std::endl;
+
         // left and right leg input vector
         ui_L = U[i][0];
         ui_R = U[i][1];
+        std::cout << ui_L.transpose() << std::endl;
+        std::cout << ui_R.transpose() << std::endl;
         ui << ui_L, ui_R;
+
+        std::cout << "c2" << std::endl;
+
+
+        // std::cout << i << std::endl;
 
         // compute quadratic cost
         J_input += ui.transpose() * this->params.R * ui;
+
     }
+
+    std::cout << "d" << std::endl;
 
     // terminal cost
     xi = X.col(N - 1);
@@ -356,5 +378,71 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
     J_total = J_state + J_input;
 
     return J_total;
+}
+
+
+// perform open loop rollouts
+MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0)
+{
+    // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
+    double T = (this->params.N-1) * this->params.dt;
+    double dt_u = T / (this->params.Nu-1);
+
+    // generate the time arrays
+    Vector_1d_Traj T_x;
+    Vector_1d_Traj T_u;
+    T_x.resize(this->params.N);
+    T_u.resize(this->params.Nu);
+    for (int i = 0; i < this->params.N; i++) {
+        T_x[i] = i * this->params.dt;
+    }
+    for (int i = 0; i < this->params.Nu; i++) {
+        T_u[i] = i * dt_u;
+    }
+
+    // generate bundle of input trajectories
+    Vector_2d_Traj_Bundle U_bundle;
+    U_bundle = this->sample_input_trajectory(this->params.K);
+
+    // initialize the containers for the solutions
+    Solution_Bundle Sol_bundle;
+    Vector_1d_List J;
+    J.resize(this->params.K);
+    Sol_bundle.resize(this->params.K);
+
+    // generate the reference trajectory
+    Vector_12d_List X_ref;
+    X_ref = this->generate_reference_trajectory(x0_sys.head<4>());
+
+    // loop over the input trajectories
+    Solution sol;
+    std::cout << "good" << std::endl;
+    for (int k = 0; k < U_bundle.size(); k++) {
+
+        // perform the rollout
+        sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[0]);
+
+        std::cout << "1" << std::endl;
+
+        // compute the cost
+        J[k] = this->cost_function(X_ref, sol, U_bundle[0]);
+
+        std::cout << "2" << std::endl;
+
+        // store the solution
+        Sol_bundle[k] = sol;
+    }
+
+    std::cout << "good" << std::endl;
+
+
+    // pack solutions into a tuple
+    MC_Result mc;
+    // mc.S = Sol_bundle;
+    // mc.U = U_bundle;
+    // mc.J = J;
+
+    // return the solutions
+    return mc;
 }
 

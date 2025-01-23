@@ -68,15 +68,15 @@ int main()
         U[i] = Ui;
     }
 
-    // Do a rollout of the dynamics
-    Solution sol = dynamics.RK_rollout(T_x, T_u, x0, p0_feet, d0, U);
+    // // Do a rollout of the dynamics
+    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0, p0_feet, d0, U);
 
-    // generate a reference trajectory
-    Vector_12d_List X_ref = controller.generate_reference_trajectory(x0.head<4>());
+    // // generate a reference trajectory
+    // Vector_12d_List X_ref = controller.generate_reference_trajectory(x0.head<4>());
 
-    double J = controller.cost_function(X_ref, sol, U);
+    // double J = controller.cost_function(X_ref, sol, U);
 
-    std::cout << "cost: " << J << std::endl;
+    // std::cout << "cost: " << J << std::endl;
 
     // // unpack the solution
     // Vector_1d_List t = sol.t;
@@ -165,8 +165,10 @@ int main()
     // }
 
 
-    Vector_2d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
-    controller.update_distribution_params(U_bundle);
+    // Vector_2d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
+    // controller.update_distribution_params(U_bundle);
+
+    MC_Result mc = controller.monte_carlo(x0, p0_feet, d0);
 
     std::cout << "final boss complete" << std::endl;
 

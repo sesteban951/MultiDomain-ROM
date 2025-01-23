@@ -456,7 +456,7 @@ Vector_2d_List Dynamics::interpolate_control_input(double t, Vector_1d_Traj T_u,
 
 
 // RK3 Integration of the system dynamics
-Solution Dynamics::RK_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u, 
+Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u, 
                               Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0, 
                               Vector_2d_Traj U)
 {

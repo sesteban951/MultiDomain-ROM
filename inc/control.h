@@ -38,6 +38,9 @@ class Controller
         // evaluate the cost function given a solution
         double cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_Traj U);
 
+        // perform open loop rollouts
+        MC_Result monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0);
+
         // internal dynamics object
         Dynamics dynamics;
 
