@@ -153,7 +153,7 @@ Vector_2d_Traj_Bundle Controller::sample_input_trajectory(int K)
 
         // generate the vectorized input trajectory
         U_vec = L * Z_vec + mu;
-        
+
         // unvectorize U_vec into U_traj
         for (int k = 0; k < this->params.Nu; k++) {
             U_t = U_vec.segment<4>(4 * k);
@@ -286,7 +286,7 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
     // upack the relevant variables
     Vector_8d_List X_sys = Sol.x_sys_t;
     Vector_4d_Traj X_leg = Sol.x_leg_t;
-    Vector_4d_Traj X_foot = Sol.x_foot_t; // TODO: add some kind of cost for the foot state
+    // Vector_4d_Traj X_foot = Sol.x_foot_t; // TODO: add some kind of cost for the foot state
 
     // convert to matrix
     Matrix_d X_sys_mat, X_leg_mat;
@@ -403,10 +403,10 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Doma
     for (int k = 0; k < U_bundle.size(); k++) {
 
         // perform the rollout
-        sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[0]);
+        sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[k]);
 
         // compute the cost
-        J[k] = this->cost_function(X_ref, sol, U_bundle[0]);
+        J[k] = this->cost_function(X_ref, sol, U_bundle[k]);
 
         // store the solution
         Sol_bundle[k] = sol;
@@ -414,11 +414,89 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Doma
 
     // pack solutions into a tuple
     MC_Result mc;
-    // mc.S = Sol_bundle;
-    // mc.U = U_bundle;
-    // mc.J = J;
+    mc.S = Sol_bundle;
+    mc.U = U_bundle;
+    mc.J = J;
 
     // return the solutions
     return mc;
 }
+
+
+// select solutions based on cost
+void Controller::sort_trajectories(Solution_Bundle  S,       Vector_2d_Traj_Bundle U,
+                                   Solution_Bundle& S_elite, Vector_2d_Traj_Bundle& U_elite,
+                                   Vector_1d_Traj J)
+{
+    // sort the cost vector in ascending order
+    std::vector<int> idx(J.size());
+    std::iota(idx.begin(), idx.end(), 0);
+    std::sort(idx.begin(), idx.end(), [&J](int i1, int i2) {return J[i1] < J[i2];});
+
+    // select the best solutions
+    Solution_Bundle S_elite_(this->params.N_elite);
+    for (int i = 0; i < this->params.N_elite; i++) {
+        S_elite_[i] = S[idx[i]];
+    }
+    S_elite = S_elite_;
+
+    // select the best inputs
+    Vector_2d_Traj_Bundle U_elite_(this->params.N_elite);
+    for (int i = 0; i < this->params.N_elite; i++) {
+        U_elite_[i] = U[idx[i]];
+    }
+    U_elite = U_elite_;
+}
+
+
+// perform sampling predictive control of your choice here
+Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_List p0_foot, Domain d0)
+{
+    // Monte Carlo Result to return
+    MC_Result mc;
+
+    // variables for unpacked variables
+    Solution_Bundle S, S_elite;
+    Vector_2d_Traj_Bundle U, U_elite;
+    S_elite.resize(this->params.N_elite);
+    U_elite.resize(this->params.N_elite);
+    
+    Vector_1d_List J;
+    J.resize(this->params.K);
+
+    // perform the CEM iterations
+    for (int i = 0; i < this->params.CEM_iters; i++) {
+
+        // perform monte carlo simulation
+        auto t0 = std::chrono::high_resolution_clock::now();
+        mc = this->monte_carlo(x0_sys, p0_foot, d0);
+
+        // monte carlo results
+        S = mc.S;
+        U = mc.U;
+        J = mc.J;
+
+        // sort the cost vector in ascending order
+        this->sort_trajectories(S, U, S_elite, U_elite, J);
+
+        // update the distribution parameters
+        this->update_distribution_params(U_elite);
+        auto tf = std::chrono::high_resolution_clock::now();
+
+        // print some info
+        std::cout << "\n-----------------------------------" << std::endl;
+        std::cout << "CEM Iteration: " << i << std::endl;
+        std::cout << "-----------------------------------" << std::endl;
+        std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+
+        // print the norm of the covaraince matrix
+        std::cout << "Norm of covariance: " << this->dist.cov.norm() << std::endl;
+    }
+    
+    std::cout << "CEM complete" << std::endl;
+
+    // return the best solution
+    return S_elite[0];
+}
+
 

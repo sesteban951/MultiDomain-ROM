@@ -41,6 +41,14 @@ class Controller
         // perform open loop rollouts
         MC_Result monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0);
 
+        // select solutions based on cost
+        void sort_trajectories(Solution_Bundle  S,       Vector_2d_Traj_Bundle U,
+                               Solution_Bundle& S_elite, Vector_2d_Traj_Bundle& U_elite,
+                               Vector_1d_List J);
+
+        // perform sampling predictive control
+        Solution sampling_predictive_control(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0);
+
         // internal dynamics object
         Dynamics dynamics;
 
