@@ -12,11 +12,11 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.CEM_iters = config_file["CTRL_PARAMS"]["CEM_iters"].as<int>();
     
     // build the cost matrices from the diagonal elements
-    std::vector<double> Q_com_diags_temp = config_file["CTRL_PARAMS"]["Q_com_diags"].as<std::vector<double>>();
-    std::vector<double> Q_leg_diags_temp = config_file["CTRL_PARAMS"]["Q_leg_diags"].as<std::vector<double>>();
-    std::vector<double> Qf_com_diags_temp = config_file["CTRL_PARAMS"]["Qf_com_diags"].as<std::vector<double>>();
-    std::vector<double> Qf_leg_diags_temp = config_file["CTRL_PARAMS"]["Qf_leg_diags"].as<std::vector<double>>();
-    std::vector<double> R_diags_temp = config_file["CTRL_PARAMS"]["R_diags"].as<std::vector<double>>();
+    std::vector<double> Q_com_diags_temp = config_file["COST"]["Q_com_diags"].as<std::vector<double>>();
+    std::vector<double> Q_leg_diags_temp = config_file["COST"]["Q_leg_diags"].as<std::vector<double>>();
+    std::vector<double> Qf_com_diags_temp = config_file["COST"]["Qf_com_diags"].as<std::vector<double>>();
+    std::vector<double> Qf_leg_diags_temp = config_file["COST"]["Qf_leg_diags"].as<std::vector<double>>();
+    std::vector<double> R_diags_temp = config_file["COST"]["R_diags"].as<std::vector<double>>();
 
     Vector_4d Q_com_diags, Q_leg_diags, Qf_com_diags, Qf_leg_diags;
     for (int i = 0; i < Q_com_diags_temp.size(); i++) {
@@ -41,10 +41,11 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.Qf = Qf_diags.asDiagonal();
     this->params.R  = R_diags.asDiagonal();
     
-    // desired state variables
-    this->pz_des = config_file["STATE"]["pz_des"].as<double>();
-    this->vx_des = config_file["STATE"]["vx_des"].as<double>();
-    this->r_des = config_file["STATE"]["r_des"].as<double>();
+    // cost parameters
+    this->pz_des = config_file["COST"]["pz_des"].as<double>();
+    this->vx_des = config_file["COST"]["vx_des"].as<double>();
+    this->r_des = config_file["COST"]["r_des"].as<double>();
+    this->theta_des = config_file["COST"]["theta_des"].as<double>();
 
     // construct the initial distribution
     this->initialize_distribution(config_file);
@@ -240,5 +241,120 @@ void Controller::update_distribution_params(Vector_2d_Traj_Bundle U_bundle)
     // update the distribution
     this->dist.mean = mean;
     this->dist.cov = cov;    
+}
+
+
+// generate a reference trajectory for the predictive control to track
+Vector_12d_List Controller::generate_reference_trajectory(Vector_4d x0_com)
+{
+    // pass reference to the dynamics
+    Vector_12d_List X_ref;
+    X_ref.resize(this->params.N);
+
+    // populate the reference trajectory
+    Vector_12d xi_ref;
+    Vector_4d xi_com_ref, xi_leg_left_ref, xi_leg_right_ref;
+    xi_leg_left_ref <<  this->r_des,  this->theta_des, 0.0, 0.0;
+    xi_leg_right_ref << this->r_des, -this->theta_des, 0.0, 0.0;
+    
+    for (int i = 0; i < this->params.N; i++) {
+        
+        // build the COM reference    
+        xi_com_ref << x0_com(0) + this->vx_des * i * this->params.dt, 
+                      this->pz_des, 
+                      this->vx_des, 
+                      0.0;
+
+        // build full state reference
+        xi_ref << xi_com_ref, xi_leg_left_ref, xi_leg_right_ref;
+
+        // insert into trajectory
+        X_ref[i] = xi_ref;
+    }
+
+    return X_ref;
+}
+
+
+// evaluate the cost function given a solution
+double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_Traj U)
+{
+    // trajectory length 
+    int N = this->params.N;
+
+    // upack the relevant variables
+    Vector_8d_List X_sys = Sol.x_sys_t;
+    Vector_4d_Traj X_leg = Sol.x_leg_t;
+    Vector_4d_Traj X_foot = Sol.x_foot_t; // TODO: add some kind of cost for the foot state
+
+    // convert to matrix
+    Matrix_d X_sys_mat, X_leg_mat;
+    Vector_4d x_sys, x_leg_L, x_leg_R;
+    Vector_8d x_leg;
+    X_sys_mat.resize(8, N);
+    X_leg_mat.resize(8, N);
+    for (int i = 0; i < N; i++) {
+        // populate the system matrix
+        X_sys_mat.col(i) = X_sys[i];
+
+        // left and right leg state vectors
+        x_leg_L = X_leg[i][0];
+        x_leg_R = X_leg[i][1];
+        x_leg << x_leg_L, x_leg_R;
+
+        // populate the leg matrix
+        X_leg_mat.col(i) = x_leg;
+    }
+
+    // combine the COM state with the leg state
+    Matrix_d X_com;
+    X_com.resize(4, N);
+    X_com = X_sys_mat.block(0, 0, 4, N);
+    
+    Matrix_d X;
+    X.resize(12, N);
+    X << X_com, X_leg_mat;
+
+    // state cost
+    Vector_12d xi, xi_des, ei;
+    double J_state, cost;
+    J_state = 0.0;
+    for (int i = 0; i < N; i++) {
+        // compute error state
+        xi = X.col(i);
+        xi_des = X_ref[i];
+        ei = (xi - xi_des);
+
+        // compute the stage cost
+        cost = ei.transpose() * this->params.Q * ei;
+        J_state += cost;
+    }
+
+    // input cost
+    Vector_2d ui_L, ui_R;
+    Vector_4d ui;
+    double J_input = 0.0;
+    for (int i = 0; i < N; i++) {
+        // left and right leg input vector
+        ui_L = U[i][0];
+        ui_R = U[i][1];
+        ui << ui_L, ui_R;
+
+        // compute quadratic cost
+        J_input += ui.transpose() * this->params.R * ui;
+    }
+
+    // terminal cost
+    xi = X.col(N - 1);
+    xi_des = X_ref[N - 1];
+    ei = (xi - xi_des);
+    cost = ei.transpose() * this->params.Qf * ei;
+    J_state += cost;
+
+    // total cost
+    double J_total; 
+    J_total = J_state + J_input;
+
+    return J_total;
 }
 

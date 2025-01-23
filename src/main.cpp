@@ -18,82 +18,65 @@ int main()
     std::string config_file_path = "../config/config.yaml";   
     YAML::Node config_file = YAML::LoadFile(config_file_path);
     
-    // // create dynamics object
-    // Dynamics dynamics(config_file);
+    // create dynamics object
+    Dynamics dynamics(config_file);
+
+    Controller controller(config_file);
+
 
     // // initial conditions
-    // Vector_8d x0;
-    // Vector_2d p0_left, p0_right;
-    // Vector_2d_List p0_feet(2);
-    // Domain d0(2, Contact::SWING);
+    Vector_8d x0;
+    Vector_2d p0_left, p0_right;
+    Vector_2d_List p0_feet(2);
+    Domain d0(2, Contact::SWING);
 
-    // std::vector<double> x0_temp = config_file["STATE"]["x0"].as<std::vector<double>>();
-    // x0 << x0_temp[0],    // px_com
-    //       x0_temp[1],    // pz_com
-    //       x0_temp[2],    // vx_com
-    //       x0_temp[3],    // vz_com
-    //       x0_temp[4],    // l0_command (left)
-    //       x0_temp[5],    // theta_command (left)
-    //       x0_temp[6],    // l0_command (right)
-    //       x0_temp[7];    // theta_command (right)
-    // p0_left << -0.1, 0;
-    // p0_right << 0.1, 0;
-    // p0_feet[0] = p0_left;
-    // p0_feet[1] = p0_right;
-    // Vector_2d_List u(2);
-    // u[0] << 0.04, 0.5;
-    // u[1] << -0.04, -0.5;
+    std::vector<double> x0_temp = config_file["STATE"]["x0"].as<std::vector<double>>();
+    x0 << x0_temp[0],    // px_com
+          x0_temp[1],    // pz_com
+          x0_temp[2],    // vx_com
+          x0_temp[3],    // vz_com
+          x0_temp[4],    // l0_command (left)
+          x0_temp[5],    // theta_command (left)
+          x0_temp[6],    // l0_command (right)
+          x0_temp[7];    // theta_command (right)
+    p0_left << -0.1, 0;
+    p0_right << 0.1, 0;
+    p0_feet[0] = p0_left;
+    p0_feet[1] = p0_right;
+    Vector_2d_List u(2);
+    u[0] << 0.04, 0.5;
+    u[1] << -0.04, -0.5;
 
-    // // query the dynamics
-    // Vector_8d xdot = dynamics.dynamics(x0, u, p0_feet, d0);
+    // example rollout of the dynamics
+    int N = 300;
+    Vector_1d_Traj T_x(N);
+    for (int i = 0; i < N; i++) {
+        T_x[i] = i * 0.01;
+    }
 
-    // std::cout << "xdot: " << xdot.transpose() << std::endl;
+    int Nu = 150;
+    Vector_1d_Traj T_u(Nu);
+    Vector_2d_Traj U(Nu);
+    Vector_2d U1, U2;
+    Vector_2d_List Ui(2);
+    U1 << 0., -0.0;
+    U2 << 0., 0.0;
+    for (int i = 0; i < Nu; i++) {
+        T_u[i] = i * 0.02;
+        Ui[0] = U1;
+        Ui[1] = U2;
+        U[i] = Ui;
+    }
 
-    // // leg states
-    // Vector_4d_List x_legs(2);
+    // Do a rollout of the dynamics
+    Solution sol = dynamics.RK_rollout(T_x, T_u, x0, p0_feet, d0, U);
 
-    // Vector_4d x_leg = dynamics.compute_leg_state(x0, p0_feet, u, d0, 0);
-    // x_legs[0] = x_leg;
-    // std::cout << "x_leg: " << x_leg.transpose() << std::endl;
+    // generate a reference trajectory
+    Vector_12d_List X_ref = controller.generate_reference_trajectory(x0.head<4>());
 
-    // x_leg = dynamics.compute_leg_state(x0, p0_feet, u, d0, 1);
-    // x_legs[1] = x_leg;
-    // std::cout << "x_leg: " << x_leg.transpose() << std::endl;
+    double J = controller.cost_function(X_ref, sol, U);
 
-    // // foot states
-    // Vector_4d_List x_feet(2);
-    
-    // Vector_4d x_foot = dynamics.compute_foot_state(x0, x_legs, p0_feet, d0, 0);
-    // x_feet[0] = x_foot;
-    // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
-
-    // x_foot = dynamics.compute_foot_state(x0, x_legs, p0_feet, d0, 1);
-    // x_feet[1] = x_foot;
-    // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
-
-    // // example rollout of the dynamics
-    // int N = 300;
-    // Vector_1d_Traj T_x(N);
-    // for (int i = 0; i < N; i++) {
-    //     T_x[i] = i * 0.01;
-    // }
-
-    // int Nu = 150;
-    // Vector_1d_Traj T_u(Nu);
-    // Vector_2d_Traj U(Nu);
-    // Vector_2d U1, U2;
-    // Vector_2d_List Ui(2);
-    // U1 << 0.1, -0.01;
-    // U2 << 0.1, 0.01;
-    // for (int i = 0; i < Nu; i++) {
-    //     T_u[i] = i * 0.02;
-    //     Ui[0] = U1;
-    //     Ui[1] = U2;
-    //     U[i] = Ui;
-    // }
-
-    // // Do a rollout of the dynamics
-    // Solution sol = dynamics.RK_rollout(T_x, T_u, x0, p0_feet, d0, U);
+    std::cout << "cost: " << J << std::endl;
 
     // // unpack the solution
     // Vector_1d_List t = sol.t;
@@ -182,12 +165,8 @@ int main()
     // }
 
 
-    Controller controller(config_file);
-    Vector_2d_Traj_Bundle U = controller.sample_input_trajectory(1000);
-    controller.update_distribution_params(U);
-
-    std::cout << "mean: \n" << controller.dist.mean.transpose() << std::endl;
-    std::cout << "cov: \n" << controller.dist.cov << std::endl;
+    Vector_2d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
+    controller.update_distribution_params(U_bundle);
 
     std::cout << "final boss complete" << std::endl;
 

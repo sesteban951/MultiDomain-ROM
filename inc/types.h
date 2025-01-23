@@ -57,7 +57,6 @@ using Vector_1d_Traj = std::vector<double>;
 using Vector_2d_Traj = std::vector<Vector_2d_List>;
 using Vector_4d_Traj = std::vector<Vector_4d_List>;
 using Vector_8d_Traj = std::vector<Vector_8d_List>;
-using Vector_12d_Traj = std::vector<Vector_12d_List>;
 
 // using Vector_d_Traj = std::vector<Vector_d>;
 // using Matrix_d_Traj = std::vector<Matrix_d>;

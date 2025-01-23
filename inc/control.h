@@ -32,6 +32,12 @@ class Controller
         // update the distribution parameters from a bundle of control inputs
         void update_distribution_params(Vector_2d_Traj_Bundle U_bundle);
 
+        // generate a reference trajectory for the predictive control to track
+        Vector_12d_List generate_reference_trajectory(Vector_4d x0_com);
+
+        // evaluate the cost function given a solution
+        double cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_Traj U);
+
         // internal dynamics object
         Dynamics dynamics;
 
@@ -49,6 +55,7 @@ class Controller
         double pz_des;
         double vx_des;
         double r_des;
+        double theta_des;
 };
 
 #endif
