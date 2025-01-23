@@ -153,9 +153,7 @@ Vector_2d_Traj_Bundle Controller::sample_input_trajectory(int K)
 
         // generate the vectorized input trajectory
         U_vec = L * Z_vec + mu;
-
-        std::cout << "U_vec: " << U_vec.transpose() << std::endl;
-
+        
         // unvectorize U_vec into U_traj
         for (int k = 0; k < this->params.Nu; k++) {
             U_t = U_vec.segment<4>(4 * k);
@@ -283,6 +281,7 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
 {
     // trajectory length 
     int N = this->params.N;
+    int Nu = this->params.Nu;
 
     // upack the relevant variables
     Vector_8d_List X_sys = Sol.x_sys_t;
@@ -296,8 +295,6 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
     X_sys_mat.resize(8, N);
     X_leg_mat.resize(8, N);
 
-    std::cout << "a" << std::endl;
-
     for (int i = 0; i < N; i++) {
         // populate the system matrix
         X_sys_mat.col(i) = X_sys[i];
@@ -310,8 +307,6 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
         // populate the leg matrix
         X_leg_mat.col(i) = x_leg;
     }
-
-    std::cout << "b" << std::endl;
 
     // combine the COM state with the leg state
     Matrix_d X_com;
@@ -337,34 +332,23 @@ double Controller::cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_
         J_state += cost;
     }
 
-    std::cout << "c" << std::endl;
-
     // input cost
     Vector_2d ui_L, ui_R;
+    ui_L.setZero();
+    ui_R.setZero();
     Vector_4d ui;
     double J_input = 0.0;
-    for (int i = 0; i < N; i++) {
-
-        std::cout << "c1" << std::endl;
+    for (int i = 0; i < Nu; i++) {
 
         // left and right leg input vector
         ui_L = U[i][0];
         ui_R = U[i][1];
-        std::cout << ui_L.transpose() << std::endl;
-        std::cout << ui_R.transpose() << std::endl;
         ui << ui_L, ui_R;
-
-        std::cout << "c2" << std::endl;
-
-
-        // std::cout << i << std::endl;
 
         // compute quadratic cost
         J_input += ui.transpose() * this->params.R * ui;
 
     }
-
-    std::cout << "d" << std::endl;
 
     // terminal cost
     xi = X.col(N - 1);
@@ -416,25 +400,17 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Doma
 
     // loop over the input trajectories
     Solution sol;
-    std::cout << "good" << std::endl;
     for (int k = 0; k < U_bundle.size(); k++) {
 
         // perform the rollout
         sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[0]);
 
-        std::cout << "1" << std::endl;
-
         // compute the cost
         J[k] = this->cost_function(X_ref, sol, U_bundle[0]);
-
-        std::cout << "2" << std::endl;
 
         // store the solution
         Sol_bundle[k] = sol;
     }
-
-    std::cout << "good" << std::endl;
-
 
     // pack solutions into a tuple
     MC_Result mc;

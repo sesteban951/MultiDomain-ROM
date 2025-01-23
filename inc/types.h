@@ -4,7 +4,6 @@
 // standard libraries
 #include <Eigen/Dense>
 #include <vector>
-#include <tuple>
 
 // ***********************************************************************************
 // Domain Class
