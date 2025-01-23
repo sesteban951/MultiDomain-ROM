@@ -59,6 +59,9 @@ using Vector_4d_Traj = std::vector<Vector_4d_List>;
 using Vector_8d_Traj = std::vector<Vector_8d_List>;
 using Vector_12d_Traj = std::vector<Vector_12d_List>;
 
+// using Vector_d_Traj = std::vector<Vector_d>;
+// using Matrix_d_Traj = std::vector<Matrix_d>;
+
 // ***********************************************************************************
 // STRUCTS
 // ***********************************************************************************
@@ -126,11 +129,9 @@ struct Solution
 // ***********************************************************************************
 
 // Bundle of Trajectories
-using Vector_1d_Bundle = std::vector<Vector_1d_List>;
-using Vector_2d_Bundle = std::vector<Vector_2d_List>;
-using Vector_4d_Bundle = std::vector<Vector_4d_List>;
-using Vector_8d_Bundle = std::vector<Vector_8d_List>;
-using Vector_d_Bundle = std::vector<Vector_d_List>;
+using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
+using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
+using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
 
 // Bundle of Solutions
 using Solution_Bundle = std::vector<Solution>;
@@ -142,8 +143,8 @@ using Solution_Bundle = std::vector<Solution>;
 struct MC_Result
 {
     Solution_Bundle S;  // Solutions
-    Vector_4d_Bundle U; // Control Inputs  
-    Vector_1d_Bundle J; // Costs
+    Vector_2d_Traj_Bundle U; // Control Inputs  
+    Vector_1d_List J; // Costs
 };
 
 #endif

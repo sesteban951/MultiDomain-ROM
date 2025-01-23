@@ -183,7 +183,13 @@ int main()
 
 
     Controller controller(config_file);
+    Vector_2d_Traj_Bundle U = controller.sample_input_trajectory(1000);
+    controller.update_distribution_params(U);
 
+    std::cout << "mean: \n" << controller.dist.mean.transpose() << std::endl;
+    std::cout << "cov: \n" << controller.dist.cov << std::endl;
+
+    std::cout << "final boss complete" << std::endl;
 
     return 0;
 }

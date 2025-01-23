@@ -29,7 +29,7 @@ CTRL_PARAMS:
     N: 150                              # number of time steps
     dt: 0.01                            # time step, [s]
     K: 7500                             # number of rollouts
-    Nu: 5                              # number of control points
+    Nu: 2                               # number of control points
     Q_com_diags:  [0.0, 3.0, 2.0, 0.05] # COM: px, pz, vx, vz
     Q_leg_diags:  [10.0, 5.0, 1.5, 1.5] # LEG: r, theta, rdot, thetadot
     Qf_com_diags: [0.0, 4.0, 3.0, 0.10] # COM: px, pz, vx, vz
@@ -45,7 +45,7 @@ CTRL_PARAMS:
 
 DIST_PARAMS:
     mu: [0.1, 0.2]              # initial means [l0dot_vel, thetadot_vel]
-    sigma: [1.0, 3.14]          # initial standard deviations
+    sigma: [0.0000001, 0.1]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
     epsilon: 0.0001             # small value to add to ill posed covariance matrix eigs
     seed_enabled: False         # enable random seed
