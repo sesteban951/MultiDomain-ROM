@@ -13,13 +13,25 @@ d = load('../data/domain.csv');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% unapack varaibles from the YAML config
+config_file = '../config/config.yaml';
+config = yaml.loadFile(config_file);
+
+% extract some variables
+pz_des = config.COST.pz_des;
+vx_des = config.COST.vx_des;
+r_des = config.COST.r_des;
+theta_des = config.COST.theta_des;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % segment the time
 t_interval = [t(1) t(end)];
 % t_interval = [0 0.18];
 
 % plotting / animation
 animate = 1;   % animatio = 1; plot states = 0
-rt = 0.1;      % realtime rate
+rt = 0.25;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 1;  % plot the foot trajectory
 plot_foot = 1; % plot the foot trajectory
@@ -99,6 +111,7 @@ if animate == 0
     plot(t, leg_pos_commands_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,1), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     plot(t, leg_pos_commands_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(r_des, '--', 'LineWidth', 1.0);
     xlabel('Time [sec]');
     ylabel('$r$ [m]', 'Interpreter', 'latex');
     title('LEG Length');
@@ -111,6 +124,8 @@ if animate == 0
     plot(t, leg_pos_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,2), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     plot(t, leg_pos_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline( theta_des, '--', 'LineWidth', 1.0, 'DisplayName', 'L');
+    yline(-theta_des, '--', 'LineWidth', 1.0, 'DisplayName', 'R');
     xlabel('Time [sec]');
     ylabel('$\theta$ [rad]', 'Interpreter', 'latex');
     title('LEG Angle');
@@ -227,6 +242,8 @@ if animate == 1
     xlim([px_min-0.5, px_max+0.5]);
     ylim([min(0, pz_min)-0.25, pz_max+0.25]);
 
+    yline(pz_des, '--', 'LineWidth', 1.0, 'DisplayName', 'pz_des');
+
     t  = t * (1/rt);
     for i = 1:replays
         pause(0.25);
@@ -266,6 +283,10 @@ if animate == 1
                 com_pts = [com_pts; pt_pos];
             end
 
+            % draw the desired trajectory      
+            px_des = vx_des * (t(ind)*rt);
+            px_des_line = xline(px_des, '--', 'LineWidth', 1.0,'DisplayName', 'px_des');
+
             drawnow;
             
             % title
@@ -288,6 +309,7 @@ if animate == 1
                 delete(leg_R);
                 delete(ball_foot_L);
                 delete(ball_foot_R);
+                delete(px_des_line);
             end
         end
 
@@ -300,6 +322,7 @@ if animate == 1
             delete(leg_R);
             delete(ball_foot_L);
             delete(ball_foot_R);
+            delete(px_des_line);
             for j = 1:length(com_pts)
                 if plot_com == 1
                     delete(com_pts(j));

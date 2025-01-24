@@ -30,7 +30,7 @@ CTRL_PARAMS:
     dt: 0.01                            # time step, [s]
     K: 7500                             # number of rollouts
     Nu: 40                               # number of control points
-    N_elite: 500                        # number of elite samples
+    N_elite: 750                        # number of elite samples
     CEM_iters: 25                       # number of CEM iterations
 
 
@@ -52,8 +52,8 @@ DIST_PARAMS:
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.7, 0.0, 0.0,    # COM: px, pz, vx, vz  (center of mass state)
-         0.6, 0.3, 0.6, -0.3]  # COMMANDS: l0_command, thetadot_command (single integrator state)
+    x0: [0.0, 0.65, 0.0, 0.0,    # COM: px, pz, vx, vz  (center of mass state)
+         0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 
 ####################################################################
@@ -62,15 +62,15 @@ STATE:
 
 COST:
     # Quadratic cost weights
-    Q_com_diags:  [0.0, 3.0, 2.0, 0.05] # COM: px, pz, vx, vz
-    Q_leg_diags:  [10.0, 5.0, 1.5, 1.5] # LEG: r, theta, rdot, thetadot
-    Qf_com_diags: [0.0, 4.0, 3.0, 0.10] # COM: px, pz, vx, vz
-    Qf_leg_diags: [11.0, 6.0, 2.0, 2.0] # LEG: r, theta, rdot, thetadot
-    R_diags: [2.0, 2.0]                 # diagonal elements of the control cost matrix
+    Q_com_diags:  [2.0, 3.0, 3.0, 1.0] # COM: px, pz, vx, vz
+    Qf_com_diags: [2.0, 3.0, 3.0, 1.0] # COM: px, pz, vx, vz
+    Q_leg_diags:  [5.0, 0.05, 0.1, 0.1] # LEG: r, theta, rdot, thetadot
+    Qf_leg_diags: [5.0, 0.05, 0.1, 0.1] # LEG: r, theta, rdot, thetadot
+    R_diags: [1.0, 1.0]                 # diagonal elements of the control cost matrix
 
     # Desired states
     pz_des: 0.6              # desired z-position [m]
-    vx_des: 1.5              # desired velocity [m/s]
+    vx_des: 2.0              # desired velocity [m/s]
     r_des: 0.6               # desired leg length [m]
     theta_des: 0.2          # desired leg angle [m]
 

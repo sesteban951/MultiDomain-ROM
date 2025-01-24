@@ -485,7 +485,7 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_Lis
 
         // print some info
         std::cout << "\n-----------------------------------" << std::endl;
-        std::cout << "CEM Iteration: " << i << std::endl;
+        std::cout << "CEM Iteration: " << i+1 << std::endl;
         std::cout << "-----------------------------------" << std::endl;
         std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
 
