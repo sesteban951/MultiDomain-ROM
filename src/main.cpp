@@ -43,33 +43,36 @@ int main()
     p0_feet[1] = p0_right;
     Domain d0(2, Contact::SWING);
 
-    // Vector_2d_List u(2);
-    // u[0] << 0.0, 0.0;
-    // u[1] << -0.0, -0.0+;
+    Vector_2d_List u(2);
+    u[0] << 0.0, 0.0;
+    u[1] << -0.0, -0.0;
 
-    // // example rollout of the dynamics
-    // int N = 300;
-    // Vector_1d_Traj T_x(N);
-    // for (int i = 0; i < N; i++) {
-    //     T_x[i] = i * 0.01;
-    // }
+    // example rollout of the dynamics
+    int N = controller.params.N;
+    Vector_1d_Traj T_x(N);
+    for (int i = 0; i < N; i++) {
+        T_x[i] = i * 0.01;
+    }
 
-    // int Nu = 150;
-    // Vector_1d_Traj T_u(Nu);
-    // Vector_2d_Traj U(Nu);
-    // Vector_2d U1, U2;
-    // Vector_2d_List Ui(2);
-    // U1 << 0., -0.0;
-    // U2 << 0., 0.0;
-    // for (int i = 0; i < Nu; i++) {
-    //     T_u[i] = i * 0.02;
-    //     Ui[0] = U1;
-    //     Ui[1] = U2;
-    //     U[i] = Ui;
-    // }
+    int Nu = controller.params.Nu;
+    Vector_1d_Traj T_u(Nu);
+    Vector_2d_Traj U(Nu);
+    Vector_2d U1, U2;
+    Vector_2d_List Ui(2);
+    U1 << 0., -0.0;
+    U2 << 0., 0.0;
+    for (int i = 0; i < Nu; i++) {
+        T_u[i] = i * 0.02;
+        Ui[0] = U1;
+        Ui[1] = U2;
+        U[i] = Ui;
+    }
+
+    Vector_2d_Traj_Bundle U_ = controller.sample_input_trajectory(1);
+    Vector_2d_Traj U_test = U_[0];
 
     // // Do a rollout of the dynamics
-    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0, p0_feet, d0, U);
+    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0, p0_feet, d0, U_[0]);
 
     // // generate a reference trajectory
     // Vector_12d_List X_ref = controller.generate_reference_trajectory(x0.head<4>());
@@ -78,7 +81,7 @@ int main()
 
     // std::cout << "cost: " << J << std::endl;
 
-    Solution sol = controller.sampling_predictive_control(x0, p0_feet, d0);
+    // Solution sol = controller.sampling_predictive_control(x0, p0_feet, d0);
 
     // unpack the solution
     Vector_1d_List t = sol.t;

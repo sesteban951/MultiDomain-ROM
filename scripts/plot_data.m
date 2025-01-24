@@ -26,15 +26,16 @@ theta_des = config.COST.theta_des;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
-t_interval = [t(1) t(end)];
-% t_interval = [0 0.18];
+% t_interval = [t(1) t(end)];
+t_interval = [0 0.75];
 
 % plotting / animation
 animate = 1;   % animatio = 1; plot states = 0
 rt = 0.25;      % realtime rate
 replays = 3;   % how many times to replay the animation
-plot_com = 1;  % plot the foot trajectory
-plot_foot = 1; % plot the foot trajectory
+plot_com = 0;  % plot the foot trajectory
+plot_foot = 0; % plot the foot trajectory
+plot_des = 0;  % plot the desired trajectory
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -242,7 +243,9 @@ if animate == 1
     xlim([px_min-0.5, px_max+0.5]);
     ylim([min(0, pz_min)-0.25, pz_max+0.25]);
 
-    yline(pz_des, '--', 'LineWidth', 1.0, 'DisplayName', 'pz_des');
+    if plot_des == 1
+        yline(pz_des, '--', 'LineWidth', 1.0, 'DisplayName', 'pz_des');
+    end
 
     t  = t * (1/rt);
     for i = 1:replays
@@ -263,8 +266,16 @@ if animate == 1
             pz_foot_L = x_foot_L(ind,2);
             px_foot_R = x_foot_R(ind,1);
             pz_foot_R = x_foot_R(ind,2);
-            leg_L = plot([px, px_foot_L], [pz, pz_foot_L], 'LineWidth', 3, 'Color', [0 0.4470 0.7410]);
-            leg_R = plot([px, px_foot_R], [pz, pz_foot_R], 'LineWidth', 3, 'Color', [0.6350 0.0780 0.1840]);
+            if d_L(ind) == 1
+                leg_L = plot([px, px_foot_L], [pz, pz_foot_L], 'LineWidth', 3, 'Color', [0 0.4470 0.7410]);
+            else
+                leg_L = plot([px, px_foot_L], [pz, pz_foot_L], 'LineWidth', 3, 'Color', [0 0.4470 0.7410], 'LineStyle', '-.');
+            end
+            if d_R(ind) == 1
+                leg_R = plot([px, px_foot_R], [pz, pz_foot_R], 'LineWidth', 3, 'Color', [0.6350 0.0780 0.1840]);
+            else
+                leg_R = plot([px, px_foot_R], [pz, pz_foot_R], 'LineWidth', 3, 'Color', [0.6350 0.0780 0.1840], 'LineStyle', '-.');
+            end
             ball_foot_L = plot(px_foot_L, pz_foot_L, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', [0 0.4470 0.7410]);
             ball_foot_R = plot(px_foot_R, pz_foot_R, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', [0.6350 0.0780 0.1840]);
             
@@ -283,9 +294,11 @@ if animate == 1
                 com_pts = [com_pts; pt_pos];
             end
 
-            % draw the desired trajectory      
-            px_des = vx_des * (t(ind)*rt);
-            px_des_line = xline(px_des, '--', 'LineWidth', 1.0,'DisplayName', 'px_des');
+            % draw the desired trajectory
+            if plot_des == 1
+                px_des = vx_des * (t(ind)*rt);
+                px_des_line = xline(px_des, '--', 'LineWidth', 1.0,'DisplayName', 'px_des');
+            end
 
             drawnow;
             
@@ -309,7 +322,16 @@ if animate == 1
                 delete(leg_R);
                 delete(ball_foot_L);
                 delete(ball_foot_R);
-                delete(px_des_line);
+                if plot_com == 1
+                    delete(pt_pos);
+                end
+                if plot_foot == 1
+                    delete(foot_L);
+                    delete(foot_R);
+                end
+                if plot_des == 1
+                    delete(px_des_line);
+                end
             end
         end
 
@@ -322,7 +344,6 @@ if animate == 1
             delete(leg_R);
             delete(ball_foot_L);
             delete(ball_foot_R);
-            delete(px_des_line);
             for j = 1:length(com_pts)
                 if plot_com == 1
                     delete(com_pts(j));
@@ -330,6 +351,9 @@ if animate == 1
                 if plot_foot == 1
                     delete(foot_pts_L(j));
                     delete(foot_pts_R(j));
+                end
+                if plot_des == 1
+                    delete(px_des_line);
                 end
             end
         end
