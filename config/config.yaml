@@ -31,7 +31,7 @@ CTRL_PARAMS:
     K: 1000                             # number of rollouts
     Nu: 40                               # number of control points
     N_elite: 50                        # number of elite samples
-    CEM_iters: 25                       # number of CEM iterations
+    CEM_iters: 300                       # number of CEM iterations
 
 
 ####################################################################

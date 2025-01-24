@@ -44,8 +44,8 @@ int main()
     Domain d0(2, Contact::SWING);
 
     // Vector_2d_List u(2);
-    // u[0] << 0.04, 0.5;
-    // u[1] << -0.04, -0.5;
+    // u[0] << 0.0, 0.0;
+    // u[1] << -0.0, -0.0+;
 
     // // example rollout of the dynamics
     // int N = 300;
