@@ -49,6 +49,12 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 
     // construct the initial distribution
     this->initialize_distribution(config_file);
+
+    // set the number of parallel threads to use
+    int num_threads = config_file["THREADING"]["num_threads"].as<int>();
+    int nested = config_file["THREADING"]["nested"].as<int>();
+    omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
+    omp_set_nested(nested);           // Enable nested parallelism
 }
 
 
@@ -144,6 +150,8 @@ Vector_2d_Traj_Bundle Controller::sample_input_trajectory(int K)
     // U ~ N(mu, Sigma) <=> U = L * Z + mu; Z ~ N(0, I)
     // initialize the input trajectory bundle
     Vector_2d_Traj_Bundle U_bundle(K);
+
+    // loop over the number of samples
     for (int i = 0; i < K; i++) {
         
         // populate the Z vector; Z ~ N(0, I)
@@ -400,16 +408,26 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Doma
 
     // loop over the input trajectories
     Solution sol;
+    double cost = 0.0;
+    #pragma omp parallel for private(sol, cost)
     for (int k = 0; k < U_bundle.size(); k++) {
+        
+        // initialize the solution and cost
+        sol = Solution();
+        cost = 0.0;
 
         // perform the rollout
         sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[k]);
 
         // compute the cost
-        J[k] = this->cost_function(X_ref, sol, U_bundle[k]);
+        cost = this->cost_function(X_ref, sol, U_bundle[k]);
 
-        // store the solution
-        Sol_bundle[k] = sol;
+        // store the results (use critical sections to avoid race conditions if necessary)
+        #pragma omp critical
+        {
+            Sol_bundle[k] = sol;
+            J[k] = cost;
+        }
     }
 
     // pack solutions into a tuple
@@ -465,6 +483,7 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_Lis
     J.resize(this->params.K);
 
     // perform the CEM iterations
+    auto t0_total = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < this->params.CEM_iters; i++) {
 
         // perform monte carlo simulation
@@ -484,17 +503,20 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_Lis
         auto tf = std::chrono::high_resolution_clock::now();
 
         // print some info
-        std::cout << "\n-----------------------------------" << std::endl;
+        std::cout << "-----------------------------------" << std::endl;
         std::cout << "CEM Iteration: " << i+1 << std::endl;
         std::cout << "-----------------------------------" << std::endl;
         std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
 
         // print the norm of the covaraince matrix
         std::cout << "Norm of covariance: " << this->dist.cov.norm() << std::endl;
+        std::cout << std::endl;
     }
+    auto tf_total = std::chrono::high_resolution_clock::now();
     
     std::cout << "CEM complete" << std::endl;
-
+    std::cout << "Total time: " << std::chrono::duration<double>(tf_total - t0_total).count() << " s" << std::endl;
+    
     // return the best solution
     return S_elite[0];
 }

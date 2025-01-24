@@ -28,9 +28,9 @@ SYS_PARAMS:
 CTRL_PARAMS:
     N: 150                              # number of time steps
     dt: 0.01                            # time step, [s]
-    K: 7500                             # number of rollouts
+    K: 1000                             # number of rollouts
     Nu: 40                               # number of control points
-    N_elite: 750                        # number of elite samples
+    N_elite: 50                        # number of elite samples
     CEM_iters: 25                       # number of CEM iterations
 
 
@@ -74,3 +74,13 @@ COST:
     r_des: 0.6               # desired leg length [m]
     theta_des: 0.2          # desired leg angle [m]
 
+
+####################################################################
+# THREADING (OpenMP)
+####################################################################
+
+THREADING:
+
+    # number of threads to use
+    num_threads: 16  # number of thread to use in parallel
+    nested: 0        # nested parallelism
