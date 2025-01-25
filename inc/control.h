@@ -66,6 +66,9 @@ class Controller
         double vx_des;
         double r_des;
         double theta_des;
+
+        // minimum covariance norm (theoretical)
+        double min_cov_norm;
 };
 
 #endif

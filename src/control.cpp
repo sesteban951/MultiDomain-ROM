@@ -74,6 +74,9 @@ void Controller::initialize_distribution(YAML::Node config_file)
     // set the epsilon for numerical stability of covariance matrix
     this->dist.epsilon = config_file["DIST_PARAMS"]["epsilon"].as<double>();
 
+    // compute the theoretical lower bound (lower bound of Frobenius norm, assume epsilon eigs)
+    this->min_cov_norm = std::sqrt(2 * Nu * n_leg) * this->dist.epsilon;
+
     // set the initial mean
     std::vector<double> mean_temp = config_file["DIST_PARAMS"]["mu"].as<std::vector<double>>();
     Vector_4d mean;
@@ -243,7 +246,7 @@ void Controller::update_distribution_params(Vector_2d_Traj_Bundle U_bundle)
     //  if stricly diagonal covariance option
     if (this->dist.diag_cov == true) {
         // set the covariance to be diagonal, (Hadamard Product, cov * I = diag(cov))
-        cov = cov.cwiseProduct(Matrix_d::Identity(this->params.Nu * 2, this->params.Nu * 2));
+        cov = cov.cwiseProduct(Matrix_d::Identity(2 * Nu * n_leg, 2 * Nu * n_leg));
     }
 
     // update the distribution
@@ -515,7 +518,7 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_Lis
         std::cout << "-----------------------------------" << std::endl;
         std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
         std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
-        std::cout << "Norm of covariance: " << this->dist.cov.norm() << std::endl;
+        std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
         std::cout << std::endl;
     }
     auto tf_total = std::chrono::high_resolution_clock::now();
