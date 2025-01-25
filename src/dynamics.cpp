@@ -82,11 +82,11 @@ Vector_8d Dynamics::dynamics(Vector_8d x, Vector_2d_List u, Vector_2d_List p_fee
 
             // compute the force along the leg
             l0_command = x(4 + 2*i);
-            l0dot_command = u[i][0]; // <-- TODO: add this to leg dynamics (next line)
-            lambd_leg = -r_hat * (k * (l0_command - r_norm) - b * rdot_norm); // TODO: don't I need to add the input velocity to track?
-                                                                              // But then you need to modify the take off switching manifold
+            l0dot_command = u[i][0]; 
+            lambd_leg = -r_hat * (k * (l0_command - r_norm) - b * (l0dot_command - rdot_norm)); 
+                                                                                        
 
-            // TODO: think about how having torque on both legs when both are in stance. Doesn't make sense...
+            // TODO: think about how having torque on both legs when both are in stance -- overactuated
             // compute the ankle torque
             if (this->params.torque_ankle == true) {
                 // actual angle state and commanded angle states
@@ -287,12 +287,12 @@ Vector_2d Dynamics::compute_leg_force(Vector_8d x_sys, Vector_4d_List x_leg_, Ve
         // leg commands 
         double l0_command, l0dot_command;
         l0_command = x_sys(4 + 2*leg_idx);
-        l0dot_command = u_[leg_idx](0); // TODO: add this in damping term
+        l0dot_command = u_[leg_idx](0); 
 
         // compute the leg force
         double k = this->params.k;
         double b = this->params.b;
-        lambd = -r_hat * (k * (l0_command - r) - b * rdot); // TODO: add this in damping term
+        lambd = -r_hat * (k * (l0_command - r) - b * (l0dot_command - rdot)); 
     }
 
     return lambd;
@@ -325,13 +325,13 @@ bool Dynamics::S_TO(Vector_8d x_sys, Vector_4d x_leg, Leg_Idx leg_idx)
     r = x_leg(0);
     rdot = x_leg(2);
     l0_command = x_sys(4 + 2*leg_idx);
-    l0dot_command = x_sys(5 + 2*leg_idx); // TODO: would put this in the pos_vel boolean
+    l0dot_command = x_sys(5 + 2*leg_idx); 
 
     // check the switching surface condition (zero force in leg)
     bool nom_length, pos_vel, takeoff;
-    nom_length = r >= l0_command;  // leg is at or above the commanded length
-    pos_vel = rdot >= 0.0;         // leg is moving upward   // TODO: if I end up tracking the commanded velocity, need to modify this to (l0dot - rdot) <= 0.0
-    takeoff = nom_length && pos_vel; // if true, the leg took off
+    nom_length = r >= l0_command;     // leg is at or above the commanded length
+    pos_vel = rdot >= l0dot_command;  // leg is moving upward 
+    takeoff = nom_length && pos_vel;  // if true, the leg took off
 
     return takeoff;
 }

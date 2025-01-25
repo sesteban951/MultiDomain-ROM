@@ -3,8 +3,8 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.7, 0.5, 1.0,    # COM: px, pz, vx, vz  (center of mass state)
-         0.6, 0.1, 0.6, -0.2]  # COMMANDS: l0_command, thetadot_command (single integrator state)
+    x0: [0.0, 0.65, 0.5, 1.0,    # COM: px, pz, vx, vz  (center of mass state)
+         0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 DES_COM_STATE:
     px_com_des: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
@@ -18,15 +18,15 @@ DES_COM_STATE:
 
 COST:
     # Quadratic cost weights
-    Q_com_diags:  [0.0, 3.0, 1.0, 1.0] # COM: px, pz, vx, vz
-    Qf_com_diags: [0.0, 3.0, 3.0, 1.0] # COM: px, pz, vx, vz
-    Q_leg_diags:  [0.1, 0.0, 0.5, 0.5] # LEG: r, theta, rdot, thetadot
-    Qf_leg_diags: [0.1, 0.0, 0.5, 0.5] # LEG: r, theta, rdot, thetadot
+    Q_com_diags:  [1.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
+    Qf_com_diags: [1.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
+    Q_leg_diags:  [5.0, 0.0, 0.5, 0.5] # LEG: r, theta, rdot, thetadot
+    Qf_leg_diags: [5.0, 0.0, 0.5, 0.5] # LEG: r, theta, rdot, thetadot
     R_diags: [1.0, 1.0]                 # diagonal elements of the control cost matrix
 
     # Desired states
-    pz_des: 0.5              # desired z-position [m]
-    vx_des: 0.0              # desired velocity [m/s]
+    pz_des: 0.55              # desired z-position [m]
+    vx_des: 1.0              # desired velocity [m/s]
     r_des: 0.6               # desired leg length [m]
     theta_des: 0.1          # desired leg angle [m]
 
@@ -37,11 +37,11 @@ COST:
 
 CTRL_PARAMS:
     N: 80                              # number of time steps
-    dt: 0.02                            # time step, [s]
-    K: 2500                             # number of rollouts
-    Nu: 20                               # number of control points
-    N_elite: 250                        # number of elite samples
-    CEM_iters: 30                       # number of CEM iterations
+    dt: 0.02                           # time step, [s]
+    K: 5000                            # number of rollouts
+    Nu: 20                             # number of control points
+    N_elite: 500                       # number of elite samples
+    CEM_iters: 30                      # number of CEM iterations
 
 
 ####################################################################
@@ -52,7 +52,7 @@ SYS_PARAMS:
     m: 35.0                 # COM mass,[kg] 
     g: 9.81                 # gravity, [m/s^2] 
     k: 7500.0               # spring stiffness, [N/m]
-    b: 50.0                 # damping coeff, [Ns/m]
+    b: 75.0                 # damping coeff, [Ns/m]
     l0: 0.65                # nominal rest length, [m]
     r_min: 0.4              # min leg length, [m]
     r_max: 0.8              # max leg length, [m]
@@ -61,7 +61,7 @@ SYS_PARAMS:
     rdot_lim: 1.0           # max leg velocity [m/s]
     thetadot_lim: 3.14      # max angle velocity [rad/s]
     torque_ankle: False      # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
-    torque_ankle_lim: 1   # ankle torque limit, [Nm]
+    torque_ankle_lim: 10    # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
     interp: 'L'             # control interpolation method
