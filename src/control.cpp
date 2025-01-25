@@ -42,10 +42,10 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.R  = R_diags.asDiagonal();
     
     // cost parameters
-    this->pz_des = config_file["COST"]["pz_des"].as<double>();
-    this->vx_des = config_file["COST"]["vx_des"].as<double>();
-    this->r_des = config_file["COST"]["r_des"].as<double>();
-    this->theta_des = config_file["COST"]["theta_des"].as<double>();
+    this->pz_des = config_file["REFERENCE"]["pz_des"].as<double>();
+    this->vx_des = config_file["REFERENCE"]["vx_des"].as<double>();
+    this->r_des = config_file["REFERENCE"]["r_des"].as<double>();
+    this->theta_des = config_file["REFERENCE"]["theta_des"].as<double>();
 
     // construct the initial distribution
     this->initialize_distribution(config_file);

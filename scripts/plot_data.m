@@ -19,10 +19,10 @@ config_file = '../config/config.yaml';
 config = yaml.loadFile(config_file);
 
 % extract some variables
-pz_des = config.COST.pz_des;
-vx_des = config.COST.vx_des;
-r_des = config.COST.r_des;
-theta_des = config.COST.theta_des;
+pz_des = config.REFERENCE.pz_des;
+vx_des = config.REFERENCE.vx_des;
+r_des = config.REFERENCE.r_des;
+theta_des = config.REFERENCE.theta_des;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -32,7 +32,7 @@ t_interval = [t(1) t(end)];
 
 % plotting / animation
 animate = 1;   % animatio = 1; plot states = 0
-rt = 0.1;      % realtime rate
+rt = 1.0;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
