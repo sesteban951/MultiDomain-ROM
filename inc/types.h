@@ -22,14 +22,11 @@ using Leg_Idx = int;
 // ARRAYS
 // ***********************************************************************************
 
-// Dynamic arrays
-using Vector_d = Eigen::Vector<double, Eigen::Dynamic>;
-using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
-
 // Fixed size arrays
 using Vector_2i = Eigen::Vector<int, 2>;
 using Vector_2d = Eigen::Vector<double, 2>;
 using Vector_4d = Eigen::Vector<double, 4>;
+using Vector_6d = Eigen::Vector<double, 6>;
 using Vector_8d = Eigen::Vector<double, 8>;
 using Vector_12d = Eigen::Vector<double, 12>;
 
@@ -38,27 +35,20 @@ using Matrix_4d = Eigen::Matrix<double, 4, 4>;
 using Matrix_8d = Eigen::Matrix<double, 8, 8>;
 using Matrix_12d = Eigen::Matrix<double, 12, 12>;
 
-// Vector of Eigen Vectors Types
-using Vector_1i_List = std::vector<int>;
-using Vector_1d_List = std::vector<double>;
-using Vector_2d_List = std::vector<Vector_2d>;
-using Vector_4d_List = std::vector<Vector_4d>;
-using Vector_8d_List = std::vector<Vector_8d>;
-using Vector_12d_List = std::vector<Vector_12d>;
+using Matrix_8x4d = Eigen::Matrix<double, 8, 4>;
 
-using Vector_d_List = std::vector<Vector_d>;
-using Matrix_d_List = std::vector<Matrix_d>;
-
-using Domain_List = std::vector<Domain>;
+// Dynamic arrays
+using Vector_d = Eigen::Vector<double, Eigen::Dynamic>;
+using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 
 // Trajectory types
 using Vector_1d_Traj = std::vector<double>;
-using Vector_2d_Traj = std::vector<Vector_2d_List>;
-using Vector_4d_Traj = std::vector<Vector_4d_List>;
-using Vector_8d_Traj = std::vector<Vector_8d_List>;
+using Vector_2d_Traj = std::vector<Vector_2d>;
+using Vector_4d_Traj = std::vector<Vector_4d>;
+using Vector_8d_Traj = std::vector<Vector_8d>;
+using Vector_12d_Traj = std::vector<Vector_12d>;
 
-// using Vector_d_Traj = std::vector<Vector_d>;
-// using Matrix_d_Traj = std::vector<Matrix_d>;
+using Domain_Traj = std::vector<Domain>;
 
 // ***********************************************************************************
 // STRUCTS
@@ -113,37 +103,37 @@ struct GaussianDistribution
 // dynamics solution struct
 struct Solution
 {
-    Vector_1d_List t;        // time trajectory
-    Vector_8d_List x_sys_t;  // system state trajectory
-    Vector_4d_Traj x_leg_t;  // leg state trajectory
-    Vector_4d_Traj x_foot_t; // foot state trajectory
-    Vector_2d_Traj u_t;      // interpolated control input trajectory
-    Vector_2d_Traj lambd_t;  // leg force trajectory
-    Domain_List domain_t;    // domain trajectory
+    Vector_1d_Traj t;        // time trajectory
+    Vector_12d_Traj x_sys_t;  // system state trajectory
+    Vector_8d_Traj x_leg_t;  // leg state trajectory
+    Vector_8d_Traj x_foot_t; // foot state trajectory
+    Vector_4d_Traj u_t;      // interpolated control input trajectory
+    Vector_4d_Traj lambd_t;  // leg force trajectory
+    Domain_Traj domain_t;    // domain trajectory
     bool viability;          // viability of the trajectory
 };
 
-// ***********************************************************************************
-// Bundles
-// ***********************************************************************************
+// // ***********************************************************************************
+// // Bundles
+// // ***********************************************************************************
 
-// Bundle of Trajectories
-using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
-using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
-using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
+// // Bundle of Trajectories
+// using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
+// using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
+// using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
 
-// Bundle of Solutions
-using Solution_Bundle = std::vector<Solution>;
+// // Bundle of Solutions
+// using Solution_Bundle = std::vector<Solution>;
 
-// ***********************************************************************************
-// Monte Carlo Result
-// ***********************************************************************************
+// // ***********************************************************************************
+// // Monte Carlo Result
+// // ***********************************************************************************
 
-struct MC_Result
-{
-    Solution_Bundle S;  // Solutions
-    Vector_2d_Traj_Bundle U; // Control Inputs  
-    Vector_1d_List J; // Costs
-};
+// struct MC_Result
+// {
+//     Solution_Bundle S;  // Solutions
+//     Vector_2d_Traj_Bundle U; // Control Inputs  
+//     Vector_1d_List J; // Costs
+// };
 
 #endif
