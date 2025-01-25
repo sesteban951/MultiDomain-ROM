@@ -248,6 +248,57 @@ Vector_4d Dynamics::compute_foot_state(Vector_8d x_sys, Vector_4d_List x_leg_, V
 }
 
 
+// compute the leg force
+Vector_2d Dynamics::compute_leg_force(Vector_8d x_sys, Vector_4d_List x_leg_, Vector_2d_List p_feet, Vector_2d_List u_, Domain d, Leg_Idx leg_idx)
+{
+    // leg force to compute
+    Vector_2d lambd;
+
+    // contact
+    Contact c = d[leg_idx];
+
+    // In SWING, no force
+    if (c == Contact::SWING) {
+        lambd << 0.0, 0.0;
+    }
+
+    // In STANCE, compute the leg force
+    else if (c == Contact::STANCE) {
+        
+        // com states
+        Vector_2d p_com, v_com;
+        p_com << x_sys(0), x_sys(1);
+        v_com << x_sys(2), x_sys(3);
+
+        // leg sates 
+        Vector_4d x_leg = x_leg_[leg_idx];
+        double r, rdot;
+        r = x_leg(0);
+        rdot = x_leg(2);
+
+        // foot sates
+        Vector_2d p_foot = p_feet[leg_idx];
+
+        // compute the relevant vectors
+        Vector_2d r_vec, r_hat, rdot_vec;
+        r_vec = p_foot - p_com;
+        r_hat = r_vec / r;
+
+        // leg commands 
+        double l0_command, l0dot_command;
+        l0_command = x_sys(4 + 2*leg_idx);
+        l0dot_command = u_[leg_idx](0); // TODO: add this in damping term
+
+        // compute the leg force
+        double k = this->params.k;
+        double b = this->params.b;
+        lambd = -r_hat * (k * (l0_command - r) - b * rdot); // TODO: add this in damping term
+    }
+
+    return lambd;
+}
+
+
 // Touch-Down (TD) Switching Surface -- checks individual legs
 bool Dynamics::S_TD(Vector_4d x_foot) 
 {   
@@ -469,20 +520,24 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     Vector_4d_Traj x_leg_t(N);  // leg state trajectory
     Vector_4d_Traj x_foot_t(N); // foot state trajectory
     Vector_2d_Traj u_t(N);      // interpolated control input trajectory
+    Vector_2d_Traj lambd_t(N);   // leg force trajectory
     Domain_List domain_t(N);    // domain trajectory
 
     // initial condition
     Vector_4d_List x0_leg(this->n_leg);
     Vector_4d_List x0_foot(this->n_leg);
+    Vector_2d_List lambd0(this->n_leg);
     for (int i = 0; i < this->n_leg; i++) {
         x0_leg[i] = this->compute_leg_state(x0_sys, p0_feet, U[0], d0, i);
         x0_foot[i] = this->compute_foot_state(x0_sys, x0_leg, p0_feet, d0, i);
+        lambd0[i] = this->compute_leg_force(x0_sys, x0_leg, p0_feet, U[0], d0, i);
     }
 
     x_sys_t[0] = x0_sys;
     x_leg_t[0] = x0_leg;
     x_foot_t[0] = x0_foot;
     u_t[0] = U[0];
+    lambd_t[0] = lambd0;
     domain_t[0] = d0;
 
     // current state variables
@@ -491,6 +546,7 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     Vector_4d_List xk_foot = x0_foot;
     Vector_2d_List p_feet = p0_feet;
     Vector_2d_List uk = U[0];
+    Vector_2d_List lambdk = lambd0;
     Domain dk = d0;
     Domain dk_next;
 
@@ -551,11 +607,17 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
             dk = dk_next;
         }
 
+        // compute the leg forces
+        for (int i = 0; i < this->n_leg; i++) {
+            lambdk[i] = this->compute_leg_force(xk_sys, xk_leg, p_feet, u3, dk, i);
+        }
+
         // store the states
         x_sys_t[k] = xk_sys;
         x_leg_t[k] = xk_leg;
         x_foot_t[k] = xk_foot;
         u_t[k] = u3;
+        lambd_t[k] = lambdk;
         domain_t[k] = dk_next;
     }
 
@@ -566,6 +628,7 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     sol.x_leg_t = x_leg_t;
     sol.x_foot_t = x_foot_t;
     sol.u_t = u_t;
+    sol.lambd_t = lambd_t;
     sol.domain_t = domain_t;
     sol.viability = viability;
 

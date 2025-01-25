@@ -104,6 +104,7 @@ int main()
     std::string x_leg_file = "../data/state_leg.csv";
     std::string x_foot_file = "../data/state_foot.csv";
     std::string u_file = "../data/input.csv";
+    std::string lambda_file = "../data/lambda.csv";
     std::string domain_file = "../data/domain.csv";
 
     // save the solution to a file
@@ -160,6 +161,18 @@ int main()
     file.close();
 
     std::cout << "Saved input trajectory." << std::endl;
+
+    Vector_4d lambda_;
+    Vector_2d_List lambda_k;
+    file.open(lambda_file);
+    for (int i = 0; i < controller.params.N; i++) {
+        lambda_k = sol.lambd_t[i];
+        lambda_ << lambda_k[0], lambda_k[1];
+        file << lambda_.transpose() << std::endl;
+    }
+    file.close();
+
+    std::cout << "Saved leg force trajectory." << std::endl;
 
     Domain domain_t_(2);
     Vector_2i domain_;

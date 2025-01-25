@@ -3,7 +3,7 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.7, 2.0, 0.5,    # COM: px, pz, vx, vz  (center of mass state)
+    x0: [0.0, 0.7, 0.5, 1.0,    # COM: px, pz, vx, vz  (center of mass state)
          0.6, 0.1, 0.6, -0.2]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 DES_COM_STATE:
@@ -39,9 +39,9 @@ CTRL_PARAMS:
     N: 80                              # number of time steps
     dt: 0.02                            # time step, [s]
     K: 2500                             # number of rollouts
-    Nu: 25                               # number of control points
+    Nu: 20                               # number of control points
     N_elite: 250                        # number of elite samples
-    CEM_iters: 100                       # number of CEM iterations
+    CEM_iters: 30                       # number of CEM iterations
 
 
 ####################################################################

@@ -39,6 +39,14 @@ class Dynamics
                                      Domain d, 
                                      Leg_Idx leg_idx);
         
+        // compute the leg force
+        Vector_2d compute_leg_force(Vector_8d x_sys, 
+                                    Vector_4d_List x_leg_, 
+                                    Vector_2d_List p_feet, 
+                                    Vector_2d_List u_, 
+                                    Domain d, 
+                                    Leg_Idx leg_idx);
+        
         // Switching Surfaces
         bool S_TD(Vector_4d x_foot);
         bool S_TO(Vector_8d x_sys, Vector_4d x_leg, Leg_Idx leg_idx);

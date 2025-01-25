@@ -9,6 +9,7 @@ x_sys = load('../data/state_sys.csv');
 x_leg = load('../data/state_leg.csv');
 x_foot = load('../data/state_foot.csv');
 u = load('../data/input.csv');
+lambd = load('../data/lambda.csv');
 d = load('../data/domain.csv');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -46,6 +47,7 @@ x_sys = x_sys(idx,:);
 x_leg = x_leg(idx,:);
 x_foot = x_foot(idx,:);
 u = u(idx,:);
+lambd = lambd(idx,:);
 d = d(idx,:);
 
 % system state
@@ -65,6 +67,16 @@ x_foot_R = x_foot(:,5:8);
 % inputs
 u_L = u(:,1:2);
 u_R = u(:,3:4);
+
+% lambda leg forces
+lambd_L = lambd(:,1:2);
+lambd_R = lambd(:,3:4);
+lambd_L_norm = zeros(length(t), 1);
+lambd_R_norm = zeros(length(t), 1);
+for i = 1:length(t)
+    lambd_L_norm(i) = norm(lambd_L(i,:));
+    lambd_R_norm(i) = norm(lambd_R(i,:));
+end
 
 % domain
 d_L = d(:,1);
@@ -192,7 +204,7 @@ if animate == 0
     legend('L', 'R');
 
     % INPUT
-    subplot(3,6,[13,14]); 
+    subplot(3,6,13); 
     hold on; grid on;
     plot(t, u_L(:,1), 'LineWidth', 2);
     plot(t, u_R(:,1), 'LineWidth', 2);
@@ -201,13 +213,23 @@ if animate == 0
     title('leg rate input');
     legend('L', 'R');
 
-    subplot(3,6,[15,16]); 
+    subplot(3,6,14); 
     hold on; grid on;
     plot(t, u_L(:,2), 'LineWidth', 2);
     plot(t, u_R(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$\hat{\dot{\theta}}$', 'interpreter', 'latex');
     title('angle rate input');
+    legend('L', 'R');
+
+    % LAMBDA LEG FORCES
+    subplot(3,6,[15:16]);
+    hold on; grid on;
+    plot(t, lambd_L_norm, 'LineWidth', 2);
+    plot(t, lambd_R_norm, 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\|\lambda\|$', 'interpreter', 'latex');
+    title('Leg Force');
     legend('L', 'R');
 
     % DOMAIN
