@@ -26,12 +26,12 @@ theta_des = config.COST.theta_des;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
-% t_interval = [t(1) t(end)];
-t_interval = [0 0.75];
+t_interval = [t(1) t(end)];
+% t_interval = [0 0.75];
 
 % plotting / animation
 animate = 1;   % animatio = 1; plot states = 0
-rt = 0.25;      % realtime rate
+rt = 1.0;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
@@ -214,7 +214,7 @@ if animate == 0
     subplot(3,6,[17:18]);
     hold on; grid on;
     stairs(t, d_L, 'LineWidth', 2);
-    stairs(t, d_R, 'LineWidth', 2);
+    stairs(t, d_R, 'LineWidth', 1.5);
     xlabel('Time [sec]');
     title('Domain');
     ylim([-0.5, 1.5]);

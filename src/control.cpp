@@ -442,9 +442,8 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Doma
 
 
 // select solutions based on cost
-void Controller::sort_trajectories(Solution_Bundle  S,       Vector_2d_Traj_Bundle U,
-                                   Solution_Bundle& S_elite, Vector_2d_Traj_Bundle& U_elite,
-                                   Vector_1d_Traj J)
+void Controller::sort_trajectories(Solution_Bundle  S,       Vector_2d_Traj_Bundle U, Vector_1d_Traj J,
+                                   Solution_Bundle& S_elite, Vector_2d_Traj_Bundle& U_elite, Vector_1d_Traj& J_elite)
 {
     // sort the cost vector in ascending order
     std::vector<int> idx(J.size());
@@ -464,6 +463,13 @@ void Controller::sort_trajectories(Solution_Bundle  S,       Vector_2d_Traj_Bund
         U_elite_[i] = U[idx[i]];
     }
     U_elite = U_elite_;
+
+    // select the best costs
+    Vector_1d_Traj J_elite_(this->params.N_elite);
+    for (int i = 0; i < this->params.N_elite; i++) {
+        J_elite_[i] = J[idx[i]];
+    }
+    J_elite = J_elite_;
 }
 
 
@@ -479,8 +485,9 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_Lis
     S_elite.resize(this->params.N_elite);
     U_elite.resize(this->params.N_elite);
     
-    Vector_1d_List J;
+    Vector_1d_List J, J_elite;
     J.resize(this->params.K);
+    J_elite.resize(this->params.N_elite);
 
     // perform the CEM iterations
     auto t0_total = std::chrono::high_resolution_clock::now();
@@ -496,7 +503,7 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_Lis
         J = mc.J;
 
         // sort the cost vector in ascending order
-        this->sort_trajectories(S, U, S_elite, U_elite, J);
+        this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
 
         // update the distribution parameters
         this->update_distribution_params(U_elite);
@@ -507,8 +514,7 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_Lis
         std::cout << "CEM Iteration: " << i+1 << std::endl;
         std::cout << "-----------------------------------" << std::endl;
         std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
-
-        // print the norm of the covaraince matrix
+        std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
         std::cout << "Norm of covariance: " << this->dist.cov.norm() << std::endl;
         std::cout << std::endl;
     }

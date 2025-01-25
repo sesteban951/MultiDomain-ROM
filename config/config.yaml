@@ -3,7 +3,7 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.7, 0.2, 0.5,    # COM: px, pz, vx, vz  (center of mass state)
+    x0: [0.0, 0.7, 2.0, 0.5,    # COM: px, pz, vx, vz  (center of mass state)
          0.6, 0.1, 0.6, -0.2]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 DES_COM_STATE:
@@ -18,17 +18,30 @@ DES_COM_STATE:
 
 COST:
     # Quadratic cost weights
-    Q_com_diags:  [2.0, 3.0, 3.0, 1.0] # COM: px, pz, vx, vz
-    Qf_com_diags: [2.0, 3.0, 3.0, 1.0] # COM: px, pz, vx, vz
-    Q_leg_diags:  [5.0, 0.05, 0.1, 0.1] # LEG: r, theta, rdot, thetadot
-    Qf_leg_diags: [5.0, 0.05, 0.1, 0.1] # LEG: r, theta, rdot, thetadot
+    Q_com_diags:  [0.0, 3.0, 3.0, 1.0] # COM: px, pz, vx, vz
+    Qf_com_diags: [0.0, 3.0, 3.0, 1.0] # COM: px, pz, vx, vz
+    Q_leg_diags:  [0.0, 0.0, 0.5, 0.5] # LEG: r, theta, rdot, thetadot
+    Qf_leg_diags: [0.0, 0.0, 0.5, 0.5] # LEG: r, theta, rdot, thetadot
     R_diags: [1.0, 1.0]                 # diagonal elements of the control cost matrix
 
     # Desired states
-    pz_des: 0.6              # desired z-position [m]
-    vx_des: 2.0              # desired velocity [m/s]
+    pz_des: 0.5              # desired z-position [m]
+    vx_des: 0.0              # desired velocity [m/s]
     r_des: 0.6               # desired leg length [m]
-    theta_des: 0.2          # desired leg angle [m]
+    theta_des: 0.1          # desired leg angle [m]
+
+
+####################################################################
+# CONTROL PARAMETERS
+####################################################################
+
+CTRL_PARAMS:
+    N: 150                              # number of time steps
+    dt: 0.01                            # time step, [s]
+    K: 5000                             # number of rollouts
+    Nu: 10                               # number of control points
+    N_elite: 750                        # number of elite samples
+    CEM_iters: 25                       # number of CEM iterations
 
 
 ####################################################################
@@ -47,24 +60,11 @@ SYS_PARAMS:
     theta_max: 1.0          # max leg angle, [rad]
     rdot_lim: 1.0           # max leg velocity [m/s]
     thetadot_lim: 3.14      # max angle velocity [rad/s]
-    torque_ankle: False      # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
-    torque_ankle_lim: 1   # ankle torque limit, [Nm]
+    torque_ankle: True      # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
+    torque_ankle_lim: 10   # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
     interp: 'L'             # control interpolation method
-
-
-####################################################################
-# CONTROL PARAMETERS
-####################################################################
-
-CTRL_PARAMS:
-    N: 150                              # number of time steps
-    dt: 0.01                            # time step, [s]
-    K: 1000                             # number of rollouts
-    Nu: 40                               # number of control points
-    N_elite: 50                        # number of elite samples
-    CEM_iters: 300                       # number of CEM iterations
 
 
 ####################################################################
@@ -75,7 +75,7 @@ DIST_PARAMS:
     mu: [0.1, 0.2]              # initial means [l0dot_vel, thetadot_vel]
     sigma: [1.0, 3.14]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
-    epsilon: 0.0001             # small value to add to ill posed covariance matrix eigs
+    epsilon: 0.0001             # minimum eigenvalue for covariance matrix
     seed_enabled: False         # enable random seed
     seed: 1                     # random seed
 
