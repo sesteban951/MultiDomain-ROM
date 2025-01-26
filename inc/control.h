@@ -1,5 +1,4 @@
-#ifndef CONTROL_H
-#define CONTROL_H
+#pragma once
 
 // standard includes
 #include <iostream>
@@ -32,21 +31,21 @@ class Controller
         // update the distribution parameters from a bundle of control inputs
         void update_distribution_params(Vector_4d_Traj_Bundle U_bundle);
 
-        // // generate a reference trajectory for the predictive control to track
+        // generate a reference trajectory for the predictive control to track
         Vector_12d_Traj generate_reference_trajectory(Vector_4d x0_com);
 
-        // // evaluate the cost function given a solution
+        // evaluate the cost function given a solution
         double cost_function(Vector_12d_Traj X_ref, Solution Sol, Vector_4d_Traj U);
 
-        // // perform open loop rollouts
-        // MC_Result monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0);
+        // perform open loop rollouts
+        MC_Result monte_carlo(Vector_12d x0_sys, Vector_4d p0_feet, Domain d0, int K);
 
-        // // select solutions based on cost
-        // void sort_trajectories(Solution_Bundle  S,       Vector_2d_Traj_Bundle U, Vector_1d_List J,
-        //                        Solution_Bundle& S_elite, Vector_2d_Traj_Bundle& U_elite, Vector_1d_List& J_elite);
+        // select solutions based on cost
+        void sort_trajectories(Solution_Bundle  S,       Vector_4d_Traj_Bundle U,        Vector_1d_List J,
+                               Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_List& J_elite);
 
-        // // perform sampling predictive control
-        // Solution sampling_predictive_control(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0);
+        // perform sampling predictive control
+        Solution sampling_predictive_control(Vector_12d x0_sys, Vector_4d p0_feet, Domain d0);
 
         // internal dynamics object
         Dynamics dynamics;
@@ -70,5 +69,3 @@ class Controller
         // minimum covariance norm (theoretical)
         double min_cov_norm;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef DYNAMICS_H
-#define DYNAMICS_H
+#pragma once
 
 // standard includes
 #include <iostream>
@@ -84,5 +83,3 @@ class Dynamics
         Matrix_8x4d B;
     
 };
-
-#endif

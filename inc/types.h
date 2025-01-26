@@ -1,5 +1,4 @@
-#ifndef TYPES_H
-#define TYPES_H
+#pragma once
 
 // standard libraries
 #include <Eigen/Dense>
@@ -52,6 +51,7 @@ using Vector_12d_Traj = std::vector<Vector_12d>;
 using Domain_Traj = std::vector<Domain>;
 
 // List types
+using Vector_1i_List = std::vector<int>;
 using Vector_1d_List = std::vector<double>;
 
 // ***********************************************************************************
@@ -130,15 +130,14 @@ using Vector_12d_Traj_Bundle = std::vector<Vector_12d_Traj>;
 // Bundle of Solutions
 using Solution_Bundle = std::vector<Solution>;
 
-// // ***********************************************************************************
-// // Monte Carlo Result
-// // ***********************************************************************************
+// ***********************************************************************************
+// Monte Carlo Result
+// ***********************************************************************************
 
 struct MC_Result
 {
-    Solution_Bundle S;  // Solutions
-    Vector_2d_Traj_Bundle U; // Control Inputs  
-    Vector_1d_List J; // Costs
+    Solution_Bundle S;       // Solutions
+    Vector_4d_Traj_Bundle U; // Control Inputs  
+    Vector_1d_List J;        // Costs
 };
 
-#endif

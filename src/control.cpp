@@ -1,5 +1,6 @@
 #include "../inc/control.h"
 
+
 // Constructor
 Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 {
@@ -51,10 +52,17 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->initialize_distribution(config_file);
 
     // set the number of parallel threads to use
-    int num_threads = config_file["THREADING"]["num_threads"].as<int>();
-    int nested = config_file["THREADING"]["nested"].as<int>();
-    omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
-    omp_set_nested(nested);           // Enable nested parallelism
+    bool threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
+    if (threading_enabled == true) {
+
+        // set the number of threads
+        int num_threads = config_file["THREADING"]["num_threads"].as<int>();
+        omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
+        
+        // enable nested parallelism
+        bool nested = config_file["THREADING"]["nested"].as<bool>();
+        if (nested == true) { omp_set_nested(1); }
+    }
 }
 
 
@@ -355,158 +363,146 @@ double Controller::cost_function(Vector_12d_Traj X_ref, Solution Sol, Vector_4d_
 }
 
 
-// // perform open loop rollouts
-// MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0)
-// {
-//     // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
-//     double T = (this->params.N-1) * this->params.dt;
-//     double dt_u = T / (this->params.Nu-1);
+// perform open loop rollouts
+MC_Result Controller::monte_carlo(Vector_12d x0_sys, Vector_4d p0_feet, Domain d0, int K)
+{
+    // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
+    double T = (this->params.N-1) * this->params.dt;
+    double dt_u = T / (this->params.Nu-1);
 
-//     // generate the time arrays
-//     Vector_1d_Traj T_x;
-//     Vector_1d_Traj T_u;
-//     T_x.resize(this->params.N);
-//     T_u.resize(this->params.Nu);
-//     for (int i = 0; i < this->params.N; i++) {
-//         T_x[i] = i * this->params.dt;
-//     }
-//     for (int i = 0; i < this->params.Nu; i++) {
-//         T_u[i] = i * dt_u;
-//     }
+    // generate the time arrays
+    Vector_1d_Traj T_x;
+    Vector_1d_Traj T_u;
+    T_x.resize(this->params.N);
+    T_u.resize(this->params.Nu);
+    for (int i = 0; i < this->params.N; i++) {
+        T_x[i] = i * this->params.dt;
+    }
+    for (int i = 0; i < this->params.Nu; i++) {
+        T_u[i] = i * dt_u;
+    }
 
-//     // generate bundle of input trajectories
-//     Vector_2d_Traj_Bundle U_bundle;
-//     U_bundle = this->sample_input_trajectory(this->params.K);
+    // generate bundle of input trajectories
+    Vector_4d_Traj_Bundle U_bundle(K);
+    U_bundle = this->sample_input_trajectory(K);
 
-//     // initialize the containers for the solutions
-//     Solution_Bundle Sol_bundle;
-//     Vector_1d_List J;
-//     J.resize(this->params.K);
-//     Sol_bundle.resize(this->params.K);
+    // initialize the containers for the solutions
+    Solution_Bundle Sol_bundle(K);
+    Vector_1d_List J(K);
 
-//     // generate the reference trajectory
-//     Vector_12d_List X_ref;
-//     X_ref = this->generate_reference_trajectory(x0_sys.head<4>());
+    // generate the reference trajectory
+    Vector_12d_Traj X_ref;
+    X_ref = this->generate_reference_trajectory(x0_sys.head<4>());
 
-//     // loop over the input trajectories
-//     Solution sol;
-//     double cost = 0.0;
-//     #pragma omp parallel for private(sol, cost)
-//     for (int k = 0; k < U_bundle.size(); k++) {
+    // loop over the input trajectories
+    Solution sol;
+    double cost = 0.0;
+    #pragma omp parallel for private(sol, cost)
+    for (int k = 0; k < K; k++) {
         
-//         // initialize the solution and cost
-//         sol = Solution();
-//         cost = 0.0;
+        // initialize the solution and cost
+        sol = Solution();
+        cost = 0.0;
 
-//         // perform the rollout
-//         sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[k]);
+        // perform the rollout
+        sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[k]);
 
-//         // compute the cost
-//         cost = this->cost_function(X_ref, sol, U_bundle[k]);
+        // compute the cost
+        cost = this->cost_function(X_ref, sol, U_bundle[k]);
 
-//         // store the results (use critical sections to avoid race conditions if necessary)
-//         #pragma omp critical
-//         {
-//             Sol_bundle[k] = sol;
-//             J[k] = cost;
-//         }
-//     }
+        // store the results (use critical sections to avoid race conditions if necessary)
+        #pragma omp critical
+        {
+            Sol_bundle[k] = sol;
+            J[k] = cost;
+        }
+    }
 
-//     // pack solutions into a tuple
-//     MC_Result mc;
-//     mc.S = Sol_bundle;
-//     mc.U = U_bundle;
-//     mc.J = J;
+    // pack solutions into a tuple
+    MC_Result mc;
+    mc.S = Sol_bundle;
+    mc.U = U_bundle;
+    mc.J = J;
 
-//     // return the solutions
-//     return mc;
-// }
-
-
-// // select solutions based on cost
-// void Controller::sort_trajectories(Solution_Bundle  S,       Vector_2d_Traj_Bundle U, Vector_1d_Traj J,
-//                                    Solution_Bundle& S_elite, Vector_2d_Traj_Bundle& U_elite, Vector_1d_Traj& J_elite)
-// {
-//     // sort the cost vector in ascending order
-//     std::vector<int> idx(J.size());
-//     std::iota(idx.begin(), idx.end(), 0);
-//     std::sort(idx.begin(), idx.end(), [&J](int i1, int i2) {return J[i1] < J[i2];});
-
-//     // select the best solutions
-//     Solution_Bundle S_elite_(this->params.N_elite);
-//     for (int i = 0; i < this->params.N_elite; i++) {
-//         S_elite_[i] = S[idx[i]];
-//     }
-//     S_elite = S_elite_;
-
-//     // select the best inputs
-//     Vector_2d_Traj_Bundle U_elite_(this->params.N_elite);
-//     for (int i = 0; i < this->params.N_elite; i++) {
-//         U_elite_[i] = U[idx[i]];
-//     }
-//     U_elite = U_elite_;
-
-//     // select the best costs
-//     Vector_1d_Traj J_elite_(this->params.N_elite);
-//     for (int i = 0; i < this->params.N_elite; i++) {
-//         J_elite_[i] = J[idx[i]];
-//     }
-//     J_elite = J_elite_;
-// }
+    // return the solutions
+    return mc;
+}
 
 
-// // perform sampling predictive control of your choice here
-// Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_2d_List p0_foot, Domain d0)
-// {
-//     // Monte Carlo Result to return
-//     MC_Result mc;
+// select solutions based on cost
+void Controller::sort_trajectories(Solution_Bundle  S,       Vector_4d_Traj_Bundle U,        Vector_1d_Traj J,
+                                   Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_Traj& J_elite)
+{
+    // sort the cost vector in ascending order
+    Vector_1i_List idx(this->params.K);
+    std::iota(idx.begin(), idx.end(), 0);
+    std::sort(idx.begin(), idx.end(), [&J](int i1, int i2) {return J[i1] < J[i2];});
 
-//     // variables for unpacked variables
-//     Solution_Bundle S, S_elite;
-//     Vector_2d_Traj_Bundle U, U_elite;
-//     S_elite.resize(this->params.N_elite);
-//     U_elite.resize(this->params.N_elite);
+    // elite solution containers
+    Solution_Bundle S_elite_(this->params.N_elite);
+    Vector_4d_Traj_Bundle U_elite_(this->params.N_elite);
+    Vector_1d_Traj J_elite_(this->params.N_elite);
+
+    // populate the elite solutions
+    for (int i = 0; i < this->params.N_elite; i++) {
+        S_elite_[i] = S[idx[i]];  // top solutions
+        U_elite_[i] = U[idx[i]];  // top control inputs
+        J_elite_[i] = J[idx[i]];  // top costs
+    }
+
+    // update the elite solutions
+    S_elite = S_elite_;
+    U_elite = U_elite_;
+    J_elite = J_elite_;
+}
+
+
+// perform sampling predictive control of your choice here
+Solution Controller::sampling_predictive_control(Vector_12d x0_sys, Vector_4d p0_foot, Domain d0)
+{
+    // Monte Carlo Result to return
+    MC_Result mc;
+
+    // monte carlo variables
+    Solution_Bundle S, S_elite(this->params.N_elite);
+    Vector_4d_Traj_Bundle U, U_elite(this->params.N_elite);
+    Vector_1d_List J, J_elite(this->params.N_elite);
+
+    // perform the CEM iterations
+    auto t0_total = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < this->params.CEM_iters; i++) {
+
+        // perform monte carlo simulation
+        auto t0 = std::chrono::high_resolution_clock::now();
+        mc = this->monte_carlo(x0_sys, p0_foot, d0, this->params.K);
+
+        // store monte carlo results
+        S = mc.S;
+        U = mc.U;
+        J = mc.J;
+
+        // sort the cost vector in ascending order
+        this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
+
+        // update the distribution parameters
+        this->update_distribution_params(U_elite);
+        auto tf = std::chrono::high_resolution_clock::now();
+
+        // print some info
+        std::cout << "-----------------------------------" << std::endl;
+        std::cout << "CEM Iteration: " << i+1 << std::endl;
+        std::cout << "-----------------------------------" << std::endl;
+        std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+        std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
+        std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
+        std::cout << std::endl;
+    }
+    auto tf_total = std::chrono::high_resolution_clock::now();
     
-//     Vector_1d_List J, J_elite;
-//     J.resize(this->params.K);
-//     J_elite.resize(this->params.N_elite);
-
-//     // perform the CEM iterations
-//     auto t0_total = std::chrono::high_resolution_clock::now();
-//     for (int i = 0; i < this->params.CEM_iters; i++) {
-
-//         // perform monte carlo simulation
-//         auto t0 = std::chrono::high_resolution_clock::now();
-//         mc = this->monte_carlo(x0_sys, p0_foot, d0);
-
-//         // monte carlo results
-//         S = mc.S;
-//         U = mc.U;
-//         J = mc.J;
-
-//         // sort the cost vector in ascending order
-//         this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
-
-//         // update the distribution parameters
-//         this->update_distribution_params(U_elite);
-//         auto tf = std::chrono::high_resolution_clock::now();
-
-//         // print some info
-//         std::cout << "-----------------------------------" << std::endl;
-//         std::cout << "CEM Iteration: " << i+1 << std::endl;
-//         std::cout << "-----------------------------------" << std::endl;
-//         std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
-//         std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
-//         std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
-//         std::cout << std::endl;
-//     }
-//     auto tf_total = std::chrono::high_resolution_clock::now();
+    std::cout << "CEM complete" << std::endl;
+    std::cout << "Total time: " << std::chrono::duration<double>(tf_total - t0_total).count() << " sec" << std::endl << std::endl;
     
-//     std::cout << "CEM complete" << std::endl;
-//     std::cout << "Total time: " << std::chrono::duration<double>(tf_total - t0_total).count() << " s" << std::endl;
-    
-//     // return the best solution
-//     return S_elite[0];
-// }
-
+    // return the best solution
+    return S_elite[0];
+}
 

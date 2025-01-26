@@ -27,12 +27,12 @@ theta_des = config.REFERENCE.theta_des;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
-% t_interval = [t(1) t(end)];
-t_interval = [0 1];
+t_interval = [t(1) t(end)];
+% t_interval = [0 1];
 
 % plotting / animation
-animate = 0;   % animatio = 1; plot states = 0
-rt = 0.1;      % realtime rate
+animate = 1;   % animatio = 1; plot states = 0
+rt = 0.5;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory

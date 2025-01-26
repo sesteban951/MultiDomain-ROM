@@ -86,7 +86,7 @@ int main()
     // std::cout << "lambda: " << lambda.transpose() << std::endl;
 
     // Do a rollout of the dynamics
-    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
 
     // // generate inputs
     // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(10000);
@@ -97,106 +97,123 @@ int main()
     // std::cout << "cov: \n" << controller.dist.cov << std::endl;
 
     // generate a reference trajectory
-    Vector_12d_Traj X_ref = controller.generate_reference_trajectory(x0_sys.head<4>());
+    // Vector_12d_Traj X_ref = controller.generate_reference_trajectory(x0_sys.head<4>());
 
     // test cost function
-    double J = controller.cost_function(X_ref, sol, U);
-    std::cout << "cost: " << J << std::endl;
+    // double J = controller.cost_function(X_ref, sol, U);
+    // std::cout << "cost: " << J << std::endl;
+
+    // test the monte carlo simulation
+    // MC_Result mc = controller.monte_carlo(x0_sys, p0_feet, d0, 10);
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
-    // Solution sol = controller.sampling_predictive_control(x0, p0_feet, d0);
+    Solution sol = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
 
     ////////////////////////////////// Logging //////////////////////////////////
 
-    // // unpack the solution
-    // Vector_1d_Traj t = sol.t;
-    // Vector_12d_Traj x_sys_t = sol.x_sys_t;
-    // Vector_8d_Traj x_leg_t = sol.x_leg_t;
-    // Vector_8d_Traj x_foot_t = sol.x_foot_t;
-    // Vector_4d_Traj u_t = sol.u_t;
-    // Vector_4d_Traj lambda_t = sol.lambda_t;
-    // Domain_Traj domain_t = sol.domain_t;
-    // bool viability = sol.viability;
+    // unpack the solution
+    Vector_1d_Traj t = sol.t;
+    Vector_12d_Traj x_sys_t = sol.x_sys_t;
+    Vector_8d_Traj x_leg_t = sol.x_leg_t;
+    Vector_8d_Traj x_foot_t = sol.x_foot_t;
+    Vector_4d_Traj u_t = sol.u_t;
+    Vector_4d_Traj lambda_t = sol.lambda_t;
+    Domain_Traj domain_t = sol.domain_t;
+    bool viability = sol.viability;
 
-    // // save the solution to a file
-    // std::string time_file = "../data/time.csv";
-    // std::string x_sys_file = "../data/state_sys.csv";
-    // std::string x_leg_file = "../data/state_leg.csv";
-    // std::string x_foot_file = "../data/state_foot.csv";
-    // std::string u_file = "../data/input.csv";
-    // std::string lambda_file = "../data/lambda.csv";
-    // std::string domain_file = "../data/domain.csv";
+    // save the solution to a file
+    std::string time_file = "../data/time.csv";
+    std::string x_sys_file = "../data/state_sys.csv";
+    std::string x_leg_file = "../data/state_leg.csv";
+    std::string x_foot_file = "../data/state_foot.csv";
+    std::string u_file = "../data/input.csv";
+    std::string lambda_file = "../data/lambda.csv";
+    std::string domain_file = "../data/domain.csv";
 
-    // // save the solution to a file
-    // std::ofstream file;
+    // size of data
+    std::cout << "Size of time trajectory: " << t.size() << std::endl;
+    std::cout << "Size of system state trajectory: " << x_sys_t.size() << std::endl;
+    std::cout << "Size of leg state trajectory: " << x_leg_t.size() << std::endl;
+    std::cout << "Size of foot state trajectory: " << x_foot_t.size() << std::endl;
+    std::cout << "Size of control input trajectory: " << u_t.size() << std::endl;
+    std::cout << "Size of leg force trajectory: " << lambda_t.size() << std::endl;
+    std::cout << "Size of domain trajectory: " << domain_t.size() << std::endl;
 
-    // file.open(time_file);
-    // for (int i = 0; i < N; i++) {
-    //     file << t[i] << std::endl;
-    // }
-    // file.close();
-    // std::cout << "Saved time trajectory." << std::endl;
+    int N_ = t.size();
 
-    // file.open(x_sys_file);
-    // for (int i = 0; i < N; i++) {
-    //     file << x_sys_t[i].transpose() << std::endl;
-    // }
-    // file.close();
-    // std::cout << "Saved system state trajectory." << std::endl;
+    // save the solution to a file
+    std::ofstream file;
 
-    // file.open(x_leg_file);
-    // for (int i = 0; i < N; i++) {
-    //     file << x_leg_t[i].transpose() << std::endl;
-    // }
-    // file.close();
-    // std::cout << "Saved leg state trajectory." << std::endl;
+    file.open(time_file);
+    for (int i = 0; i < N_; i++) {
+        file << t[i] << std::endl;
+    }
+    file.close();
+    std::cout << "Saved time trajectory." << std::endl;
 
-    // file.open(x_foot_file);
-    // for (int i = 0; i < N; i++) {
-    //     file << x_foot_t[i].transpose() << std::endl;
-    // }
-    // file.close();
-    // std::cout << "Saved foot state trajectory." << std::endl;
+    file.open(x_sys_file);
+    for (int i = 0; i < N_; i++) {
+        file << x_sys_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved system state trajectory." << std::endl;
 
-    // file.open(u_file);
-    // for (int i = 0; i < N; i++) {
-    //     file << u_t[i].transpose() << std::endl;
-    // }
-    // file.close();
-    // std::cout << "Saved control input trajectory." << std::endl;
+    file.open(x_leg_file);
+    for (int i = 0; i < N_; i++) {
+        file << x_leg_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved leg state trajectory." << std::endl;
 
-    // file.open(lambda_file);
-    // for (int i = 0; i < N; i++) {
-    //     file << lambda_t[i].transpose() << std::endl;
-    // }
-    // file.close();
-    // std::cout << "Saved leg force trajectory." << std::endl;
+    file.open(x_foot_file);
+    for (int i = 0; i < N_; i++) {
+        file << x_foot_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved foot state trajectory." << std::endl;
 
-    // Domain domain_t_(2);
-    // Vector_2i domain_;
-    // file.open(domain_file);
-    // for (int i = 0; i < N; i++) {
+    file.open(u_file);
+    for (int i = 0; i < N_; i++) {
+        file << u_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved control input trajectory." << std::endl;
+
+    file.open(lambda_file);
+    for (int i = 0; i < N_; i++) {
+        file << lambda_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved leg force trajectory." << std::endl;
+
+    Domain domain_t_(2);
+    Vector_2i domain_;
+    file.open(domain_file);
+    for (int i = 0; i < N_; i++) {
         
-    //     domain_t_ = domain_t[i];
+        domain_t_ = domain_t[i];
 
-    //     if (domain_t_[0] == Contact::STANCE) {
-    //         domain_[0] = 1;
-    //     }
-    //     else {
-    //         domain_[0] = 0;
-    //     }
+        if (domain_t_[0] == Contact::STANCE) {
+            domain_[0] = 1;
+        }
+        else {
+            domain_[0] = 0;
+        }
 
-    //     if (domain_t_[1] == Contact::STANCE) {
-    //         domain_[1] = 1;
-    //     }
-    //     else {
-    //         domain_[1] = 0;
-    //     }
+        if (domain_t_[1] == Contact::STANCE) {
+            domain_[1] = 1;
+        }
+        else {
+            domain_[1] = 0;
+        }
 
-    //     file << domain_.transpose() << std::endl;
-    // }
-    // file.close();
+        file << domain_.transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved domain trajectory." << std::endl;
+
+    std::cout << "Final boss defeated." << std::endl;
 
     return 0;
 }

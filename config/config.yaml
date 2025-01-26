@@ -3,7 +3,7 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.65, 0.0, 0.0,   # COM: px, pz, vx, vz  (center of mass state)
+    x0: [0.0,  0.65, 0.0, 0.0,   # COM: px, pz, vx, vz  (center of mass state)
          0.6,  0.05, 0.0, 0.0,   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
          0.6, -0.05, 0.0, 0.0]   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
 
@@ -40,7 +40,7 @@ CTRL_PARAMS:
     N: 80                              # number of time steps
     dt: 0.02                           # time step, [s]
     K: 2500                            # number of rollouts
-    Nu: 2                             # number of control points
+    Nu: 25                             # number of control points
     N_elite: 250                       # number of elite samples
     CEM_iters: 30                      # number of CEM iterations
 
@@ -87,5 +87,6 @@ DIST_PARAMS:
 THREADING:
 
     # number of threads to use
-    num_threads: 16  # number of thread to use in parallel
-    nested: 0        # nested parallelism
+    enabled: True      # enable threading
+    num_threads: 16    # number of thread to use in parallel
+    nested: False      # nested parallelism
