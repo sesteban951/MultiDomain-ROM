@@ -131,15 +131,6 @@ int main()
     std::string lambda_file = "../data/lambda.csv";
     std::string domain_file = "../data/domain.csv";
 
-    // size of data
-    std::cout << "Size of time trajectory: " << t.size() << std::endl;
-    std::cout << "Size of system state trajectory: " << x_sys_t.size() << std::endl;
-    std::cout << "Size of leg state trajectory: " << x_leg_t.size() << std::endl;
-    std::cout << "Size of foot state trajectory: " << x_foot_t.size() << std::endl;
-    std::cout << "Size of control input trajectory: " << u_t.size() << std::endl;
-    std::cout << "Size of leg force trajectory: " << lambda_t.size() << std::endl;
-    std::cout << "Size of domain trajectory: " << domain_t.size() << std::endl;
-
     int N_ = t.size();
 
     // save the solution to a file

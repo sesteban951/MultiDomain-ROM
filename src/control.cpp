@@ -496,12 +496,17 @@ Solution Controller::sampling_predictive_control(Vector_12d x0_sys, Vector_4d p0
         std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
         std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
         std::cout << std::endl;
+
     }
     auto tf_total = std::chrono::high_resolution_clock::now();
     
+    double T_tot = std::chrono::duration<double>(tf_total - t0_total).count();
+
     std::cout << "CEM complete" << std::endl;
-    std::cout << "Total time: " << std::chrono::duration<double>(tf_total - t0_total).count() << " sec" << std::endl << std::endl;
-    
+    std::cout << "Total time: " << T_tot << " sec" << std::endl;
+    std::cout << "Average time per iteration: " << T_tot / this->params.CEM_iters << " [sec], " << this->params.CEM_iters/T_tot << " [Hz]" << std::endl;
+    std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
+
     // return the best solution
     return S_elite[0];
 }
