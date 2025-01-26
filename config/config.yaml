@@ -39,10 +39,10 @@ COST:
 CTRL_PARAMS:
     N: 80                              # number of time steps
     dt: 0.02                           # time step, [s]
-    K: 5000                            # number of rollouts
-    Nu: 25                             # number of control points
-    N_elite: 500                       # number of elite samples
-    CEM_iters: 35                      # number of CEM iterations
+    K: 10000                            # number of rollouts
+    Nu: 80                             # number of control points
+    N_elite: 1000                       # number of elite samples
+    CEM_iters: 100                      # number of CEM iterations
 
 
 ####################################################################
@@ -53,7 +53,7 @@ SYS_PARAMS:
     m: 35.0                 # COM mass,[kg] 
     g: 9.81                 # gravity, [m/s^2] 
     k: 7500.0               # spring stiffness, [N/m]
-    b: 75.0                 # damping coeff, [Ns/m]
+    b: 100.0                 # damping coeff, [Ns/m]
     l0: 0.65                # nominal rest length, [m]
     r_min: 0.4              # min leg length, [m]
     r_max: 0.8              # max leg length, [m]
@@ -74,7 +74,7 @@ SYS_PARAMS:
 
 DIST_PARAMS:
     mu: [0.0, 0.0]              # initial means [l0dot_vel, thetadot_vel]
-    sigma: [0.25, 0.5]          # initial standard deviations
+    sigma: [0.2, 0.3]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
     epsilon: 0.0001             # minimum eigenvalue for covariance matrix
     seed_enabled: False         # enable random seed

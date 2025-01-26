@@ -117,7 +117,8 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
             // compute the force along the leg
             l0_command = x_leg_command(0);
             l0dot_command = x_leg_command(2);
-            lambd_leg = -r_hat * (k * (l0_command - r_norm) - b * (l0dot_command - rdot_norm)); // TODO: add acceleration feed forward?
+            lambd_leg = -r_hat * (k * (l0_command - r_norm) + b * (l0dot_command - rdot_norm)); // TODO: add acceleration feed forward?
+            // TODO: something is borken here!
                                                    
 
             // TODO: think about how having torque on both legs when both are in stance -- overactuated
@@ -360,7 +361,7 @@ Vector_4d Dynamics::compute_leg_force(Vector_12d x_sys, Vector_8d x_legs, Vector
             // compute the leg force
             double k = this->params.k;
             double b = this->params.b;
-            lambd = -r_hat * (k * (l0_command - r) - b * (l0dot_command - rdot)); 
+            lambd = -r_hat * (k * (l0_command - r) + b * (l0dot_command - rdot)); 
         }
 
         // insert into the leg force vector
