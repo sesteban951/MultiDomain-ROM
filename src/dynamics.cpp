@@ -411,7 +411,7 @@ bool Dynamics::S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx)
     l0_command = x_leg_command(0);
     l0dot_command = x_leg_command(2);
 
-    // check the switching surface condition (zero force in leg) TODO: do I wan to add acceleration feed forward? Would need the input
+    // check the switching surface condition (zero force in leg) TODO: do I want to add acceleration feed forward? Would need the input
     bool nom_length, pos_vel, takeoff;
     nom_length = r >= l0_command;     // leg is at or above the commanded length
     pos_vel = rdot >= l0dot_command;  // leg is moving upward 
@@ -508,9 +508,8 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
                 x_legs_post.segment<4>(4*i) = x_leg_i_post;
 
                 // update the system state
-                // x_sys_post(4 + 4*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
-                // x_sys_post(5 + 4*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
-                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post;
+                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post; // TODO: decide if I want to reset the whole command
+                                                               // set veloicty to zero and keep position?
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
@@ -522,14 +521,11 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
             else if (d_prev[i] == Contact::STANCE && d_next[i] == Contact::SWING) {
 
                 // update the leg state
-                // x_leg_post[i](2) = u[i](0); // leg velocity is the commanded velocity
-                // x_leg_post[i](3) = u[i](1); // leg angular velocity is the commanded angular velocity
                 x_leg_i_post = x_legs_post.segment<4>(4*i);
                 
                 // update the system state
-                // x_sys_post(4 + 2*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
-                // x_sys_post(5 + 2*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
-                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post;
+                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post; // TODO: decide if I want to reset the whole command
+                                                               // set veloicty to zero and keep position?
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);

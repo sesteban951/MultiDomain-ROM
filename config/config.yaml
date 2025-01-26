@@ -4,8 +4,8 @@
 
 STATE:
     x0: [0.0, 0.65, 0.0, 0.0,   # COM: px, pz, vx, vz  (center of mass state)
-         0.6,  0.1, 0.0, 0.0,   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
-         0.6, -0.1, 0.0, 0.0]   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
+         0.6,  0.05, 0.0, 0.0,   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
+         0.6, -0.05, 0.0, 0.0]   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
 
 ####################################################################
 # REFERENCE TRAJECTORY

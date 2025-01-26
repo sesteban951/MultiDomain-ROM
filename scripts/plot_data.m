@@ -28,11 +28,11 @@ theta_des = config.REFERENCE.theta_des;
 
 % segment the time
 % t_interval = [t(1) t(end)];
-t_interval = [0 0.5];
+t_interval = [0 1];
 
 % plotting / animation
 animate = 0;   % animatio = 1; plot states = 0
-rt = 0.25;      % realtime rate
+rt = 1;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
@@ -53,8 +53,8 @@ d = d(idx,:);
 % system state
 p_com = x_sys(:,1:2);
 v_com = x_sys(:,3:4);
-leg_pos_commands_L = x_sys(:,5:6);
-leg_pos_commands_R = x_sys(:,7:8);
+x_leg_commands_L = x_sys(:,5:8);
+x_leg_commands_R = x_sys(:,9:12);
 
 % leg states
 x_leg_L = x_leg(:,1:4);
@@ -121,9 +121,9 @@ if animate == 0
     subplot(3,6,3);
     hold on; grid on;
     plot(t, x_leg_L(:,1), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, leg_pos_commands_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_commands_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,1), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, leg_pos_commands_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    plot(t, x_leg_commands_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     yline(r_des, '--', 'LineWidth', 1.0);
     xlabel('Time [sec]');
     ylabel('$r$ [m]', 'Interpreter', 'latex');
@@ -134,9 +134,9 @@ if animate == 0
     subplot(3,6,4);
     hold on; grid on;
     plot(t, x_leg_L(:,2), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, leg_pos_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,2), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, leg_pos_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    plot(t, x_leg_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     yline( theta_des, '--', 'LineWidth', 1.0, 'DisplayName', 'L');
     yline(-theta_des, '--', 'LineWidth', 1.0, 'DisplayName', 'R');
     xlabel('Time [sec]');
@@ -147,23 +147,23 @@ if animate == 0
     subplot(3,6,9);
     hold on; grid on;
     plot(t, x_leg_L(:,3), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, u_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_commands_L(:,3), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,3), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, u_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    plot(t, x_leg_commands_R(:,3), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\dot{r}$ [m/s]', 'Interpreter', 'latex');
-    title('LEG Length Rate');
+    title('LEG Length Vel');
     legend('$\dot{r}_L$', '$\dot{\hat{r}}_L$', '$\dot{r}_R$', '$\dot{\hat{r}}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,10);
     hold on; grid on;
     plot(t, x_leg_L(:,4), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, u_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_commands_L(:,4), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,4), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, u_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    plot(t, x_leg_commands_R(:,4), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\dot{\theta}$ [rad/s]', 'Interpreter', 'latex');
-    title('LEG Angle Rate');
+    title('LEG Angle Vel');
     legend('$\dot{\theta_L}$', '$\dot{\hat{\theta}}_L$', '$\dot{\theta}_R$', '$\dot{\hat{\theta}}_R$', 'Interpreter', 'latex');
 
     % FOOT STATES
@@ -209,7 +209,7 @@ if animate == 0
     plot(t, u_L(:,1), 'LineWidth', 2);
     plot(t, u_R(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
-    ylabel('$\hat{\dot{l_0}}$', 'interpreter', 'latex');
+    ylabel('$\hat{\ddot{l_0}}$', 'interpreter', 'latex');
     title('leg rate input');
     legend('L', 'R');
 
@@ -218,7 +218,7 @@ if animate == 0
     plot(t, u_L(:,2), 'LineWidth', 2);
     plot(t, u_R(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
-    ylabel('$\hat{\dot{\theta}}$', 'interpreter', 'latex');
+    ylabel('$\hat{\ddot{\theta}}$', 'interpreter', 'latex');
     title('angle rate input');
     legend('L', 'R');
 
