@@ -42,6 +42,7 @@ using Vector_d = Eigen::Vector<double, Eigen::Dynamic>;
 using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 
 // Trajectory types
+using Vector_1i_Traj = std::vector<int>;
 using Vector_1d_Traj = std::vector<double>;
 using Vector_2d_Traj = std::vector<Vector_2d>;
 using Vector_4d_Traj = std::vector<Vector_4d>;
@@ -49,6 +50,9 @@ using Vector_8d_Traj = std::vector<Vector_8d>;
 using Vector_12d_Traj = std::vector<Vector_12d>;
 
 using Domain_Traj = std::vector<Domain>;
+
+// List types
+using Vector_1d_List = std::vector<double>;
 
 // ***********************************************************************************
 // STRUCTS
@@ -113,27 +117,28 @@ struct Solution
     bool viability;          // viability of the trajectory
 };
 
-// // ***********************************************************************************
-// // Bundles
-// // ***********************************************************************************
+// ***********************************************************************************
+// Bundles
+// ***********************************************************************************
 
 // // Bundle of Trajectories
-// using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
-// using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
-// using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
+using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
+using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
+using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
+using Vector_12d_Traj_Bundle = std::vector<Vector_12d_Traj>;
 
-// // Bundle of Solutions
-// using Solution_Bundle = std::vector<Solution>;
+// Bundle of Solutions
+using Solution_Bundle = std::vector<Solution>;
 
 // // ***********************************************************************************
 // // Monte Carlo Result
 // // ***********************************************************************************
 
-// struct MC_Result
-// {
-//     Solution_Bundle S;  // Solutions
-//     Vector_2d_Traj_Bundle U; // Control Inputs  
-//     Vector_1d_List J; // Costs
-// };
+struct MC_Result
+{
+    Solution_Bundle S;  // Solutions
+    Vector_2d_Traj_Bundle U; // Control Inputs  
+    Vector_1d_List J; // Costs
+};
 
 #endif

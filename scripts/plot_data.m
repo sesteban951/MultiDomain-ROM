@@ -32,7 +32,7 @@ t_interval = [0 1];
 
 % plotting / animation
 animate = 0;   % animatio = 1; plot states = 0
-rt = 1;      % realtime rate
+rt = 0.1;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
@@ -210,7 +210,7 @@ if animate == 0
     plot(t, u_R(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$\hat{\ddot{l_0}}$', 'interpreter', 'latex');
-    title('leg rate input');
+    title('leg accel input');
     legend('L', 'R');
 
     subplot(3,6,14); 
@@ -219,7 +219,7 @@ if animate == 0
     plot(t, u_R(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$\hat{\ddot{\theta}}$', 'interpreter', 'latex');
-    title('angle rate input');
+    title('angle accel input');
     legend('L', 'R');
 
     % LAMBDA LEG FORCES

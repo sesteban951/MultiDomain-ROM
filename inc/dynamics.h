@@ -60,10 +60,10 @@ class Dynamics
                        Domain d_prev, 
                        Domain d_next);
 
-        // // interpolate the input signal
-        // Vector_2d_List interpolate_control_input(double t, 
-        //                                         Vector_1d_Traj T_u, 
-        //                                         Vector_2d_Traj U);
+        // interpolate the input signal
+        Vector_4d interpolate_control_input(double t, 
+                                            Vector_1d_Traj T_u, 
+                                            Vector_4d_Traj U);
         
         // RK forwaqrd propagation
         Solution RK3_rollout(Vector_1d_Traj T_x, 

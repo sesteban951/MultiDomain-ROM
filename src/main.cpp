@@ -21,7 +21,7 @@ int main()
     // create dynamics object
     Dynamics dynamics(config_file);
 
-    // Controller controller(config_file);
+    Controller controller(config_file);
 
     // initial conditions
     Vector_12d x0_sys;
@@ -86,7 +86,15 @@ int main()
     // std::cout << "lambda: " << lambda.transpose() << std::endl;
 
     // Do a rollout of the dynamics
-    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+
+    // generate inputs
+    Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(10000);
+
+    // update the distribution parameters
+    controller.update_distribution_params(U_bundle);
+    std::cout << "mean: \n" << controller.dist.mean.transpose() << std::endl;
+    std::cout << "cov: \n" << controller.dist.cov << std::endl;
 
     // // generate a reference trajectory
     // Vector_12d_List X_ref = controller.generate_reference_trajectory(x0.head<4>());
@@ -101,94 +109,94 @@ int main()
 
     ////////////////////////////////// Logging //////////////////////////////////
 
-    // unpack the solution
-    Vector_1d_Traj t = sol.t;
-    Vector_12d_Traj x_sys_t = sol.x_sys_t;
-    Vector_8d_Traj x_leg_t = sol.x_leg_t;
-    Vector_8d_Traj x_foot_t = sol.x_foot_t;
-    Vector_4d_Traj u_t = sol.u_t;
-    Vector_4d_Traj lambda_t = sol.lambda_t;
-    Domain_Traj domain_t = sol.domain_t;
-    bool viability = sol.viability;
+    // // unpack the solution
+    // Vector_1d_Traj t = sol.t;
+    // Vector_12d_Traj x_sys_t = sol.x_sys_t;
+    // Vector_8d_Traj x_leg_t = sol.x_leg_t;
+    // Vector_8d_Traj x_foot_t = sol.x_foot_t;
+    // Vector_4d_Traj u_t = sol.u_t;
+    // Vector_4d_Traj lambda_t = sol.lambda_t;
+    // Domain_Traj domain_t = sol.domain_t;
+    // bool viability = sol.viability;
 
-    // save the solution to a file
-    std::string time_file = "../data/time.csv";
-    std::string x_sys_file = "../data/state_sys.csv";
-    std::string x_leg_file = "../data/state_leg.csv";
-    std::string x_foot_file = "../data/state_foot.csv";
-    std::string u_file = "../data/input.csv";
-    std::string lambda_file = "../data/lambda.csv";
-    std::string domain_file = "../data/domain.csv";
+    // // save the solution to a file
+    // std::string time_file = "../data/time.csv";
+    // std::string x_sys_file = "../data/state_sys.csv";
+    // std::string x_leg_file = "../data/state_leg.csv";
+    // std::string x_foot_file = "../data/state_foot.csv";
+    // std::string u_file = "../data/input.csv";
+    // std::string lambda_file = "../data/lambda.csv";
+    // std::string domain_file = "../data/domain.csv";
 
-    // save the solution to a file
-    std::ofstream file;
+    // // save the solution to a file
+    // std::ofstream file;
 
-    file.open(time_file);
-    for (int i = 0; i < N; i++) {
-        file << t[i] << std::endl;
-    }
-    file.close();
-    std::cout << "Saved time trajectory." << std::endl;
+    // file.open(time_file);
+    // for (int i = 0; i < N; i++) {
+    //     file << t[i] << std::endl;
+    // }
+    // file.close();
+    // std::cout << "Saved time trajectory." << std::endl;
 
-    file.open(x_sys_file);
-    for (int i = 0; i < N; i++) {
-        file << x_sys_t[i].transpose() << std::endl;
-    }
-    file.close();
-    std::cout << "Saved system state trajectory." << std::endl;
+    // file.open(x_sys_file);
+    // for (int i = 0; i < N; i++) {
+    //     file << x_sys_t[i].transpose() << std::endl;
+    // }
+    // file.close();
+    // std::cout << "Saved system state trajectory." << std::endl;
 
-    file.open(x_leg_file);
-    for (int i = 0; i < N; i++) {
-        file << x_leg_t[i].transpose() << std::endl;
-    }
-    file.close();
-    std::cout << "Saved leg state trajectory." << std::endl;
+    // file.open(x_leg_file);
+    // for (int i = 0; i < N; i++) {
+    //     file << x_leg_t[i].transpose() << std::endl;
+    // }
+    // file.close();
+    // std::cout << "Saved leg state trajectory." << std::endl;
 
-    file.open(x_foot_file);
-    for (int i = 0; i < N; i++) {
-        file << x_foot_t[i].transpose() << std::endl;
-    }
-    file.close();
-    std::cout << "Saved foot state trajectory." << std::endl;
+    // file.open(x_foot_file);
+    // for (int i = 0; i < N; i++) {
+    //     file << x_foot_t[i].transpose() << std::endl;
+    // }
+    // file.close();
+    // std::cout << "Saved foot state trajectory." << std::endl;
 
-    file.open(u_file);
-    for (int i = 0; i < N; i++) {
-        file << u_t[i].transpose() << std::endl;
-    }
-    file.close();
-    std::cout << "Saved control input trajectory." << std::endl;
+    // file.open(u_file);
+    // for (int i = 0; i < N; i++) {
+    //     file << u_t[i].transpose() << std::endl;
+    // }
+    // file.close();
+    // std::cout << "Saved control input trajectory." << std::endl;
 
-    file.open(lambda_file);
-    for (int i = 0; i < N; i++) {
-        file << lambda_t[i].transpose() << std::endl;
-    }
-    file.close();
-    std::cout << "Saved leg force trajectory." << std::endl;
+    // file.open(lambda_file);
+    // for (int i = 0; i < N; i++) {
+    //     file << lambda_t[i].transpose() << std::endl;
+    // }
+    // file.close();
+    // std::cout << "Saved leg force trajectory." << std::endl;
 
-    Domain domain_t_(2);
-    Vector_2i domain_;
-    file.open(domain_file);
-    for (int i = 0; i < N; i++) {
+    // Domain domain_t_(2);
+    // Vector_2i domain_;
+    // file.open(domain_file);
+    // for (int i = 0; i < N; i++) {
         
-        domain_t_ = domain_t[i];
+    //     domain_t_ = domain_t[i];
 
-        if (domain_t_[0] == Contact::STANCE) {
-            domain_[0] = 1;
-        }
-        else {
-            domain_[0] = 0;
-        }
+    //     if (domain_t_[0] == Contact::STANCE) {
+    //         domain_[0] = 1;
+    //     }
+    //     else {
+    //         domain_[0] = 0;
+    //     }
 
-        if (domain_t_[1] == Contact::STANCE) {
-            domain_[1] = 1;
-        }
-        else {
-            domain_[1] = 0;
-        }
+    //     if (domain_t_[1] == Contact::STANCE) {
+    //         domain_[1] = 1;
+    //     }
+    //     else {
+    //         domain_[1] = 0;
+    //     }
 
-        file << domain_.transpose() << std::endl;
-    }
-    file.close();
+    //     file << domain_.transpose() << std::endl;
+    // }
+    // file.close();
 
     return 0;
 }

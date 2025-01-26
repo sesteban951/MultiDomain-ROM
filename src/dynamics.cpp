@@ -508,8 +508,10 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
                 x_legs_post.segment<4>(4*i) = x_leg_i_post;
 
                 // update the system state
+                // x_leg_i_post(2) = 0.0; // reset the length rate to zero
+                // x_leg_i_post(3) = 0.0; // reset the angle rate to zero
                 x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post; // TODO: decide if I want to reset the whole command
-                                                               // set veloicty to zero and keep position?
+                                                               // set veloicty to zero and keep position? If so, do unit tests
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
@@ -524,8 +526,10 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
                 x_leg_i_post = x_legs_post.segment<4>(4*i);
                 
                 // update the system state
+                // x_leg_i_post(2) = 0.0; // reset the length rate to zero
+                // x_leg_i_post(3) = 0.0; // reset the angle rate to zero
                 x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post; // TODO: decide if I want to reset the whole command
-                                                               // set veloicty to zero and keep position?
+                                                               // set veloicty to zero and keep position? If so, do unit tests
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
@@ -541,50 +545,48 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
 }
 
 
-// // interpolate an input signal
-// Vector_2d_List Dynamics::interpolate_control_input(double t, Vector_1d_Traj T_u, Vector_2d_Traj U) 
-// {
-//     // we want to find the interpolated control input
-//     Vector_2d_List u(this->n_leg);
+// interpolate an input signal
+Vector_4d Dynamics::interpolate_control_input(double t, Vector_1d_Traj T_u, Vector_4d_Traj U) 
+{
+    // we want to find the interpolated control input
+    Vector_4d u;
 
-//     // find the first element in the time vector that is greater than the current time
-//     auto it = std::upper_bound(T_u.begin(), T_u.end(), t);
-//     int idx = std::distance(T_u.begin(), it) - 1; // returns -1 if before the first element,
-//                                                   // returns N - 1 if after the last element
+    // find the first element in the time vector that is greater than the current time
+    auto it = std::upper_bound(T_u.begin(), T_u.end(), t);
+    int idx = std::distance(T_u.begin(), it) - 1; // returns -1 if before the first element,
+                                                  // returns N - 1 if after the last element
 
-//     // Zero-order hold (Z)
-//     if (this->params.interp == 'Z') {
-//         // contant control input
-//         u = U[idx];
-//     }
+    // Zero-order hold (Z)
+    if (this->params.interp == 'Z') {
+        // contant control input
+        u = U[idx];
+    }
 
-//     // Linear Interpolation (L)
-//     else if (this->params.interp == 'L') {
-//         // beyond the last element
-//         if (idx == T_u.size() - 1) {
-//             u = U[idx];
-//         }
-//         // before the last element (shouldn't happen)
-//         else if (idx == -1) {
-//             u = U[0];
-//         }
-//         // within a time interval
-//         else {
-//             // find the time interval
-//             double t0 = T_u[idx];
-//             double tf = T_u[idx + 1];
-//             Vector_2d_List u0 = U[idx];
-//             Vector_2d_List uf = U[idx + 1];
+    // Linear Interpolation (L)
+    else if (this->params.interp == 'L') {
+        // beyond the last element
+        if (idx == T_u.size() - 1) {
+            u = U[idx];
+        }
+        // before the last element (shouldn't happen)
+        else if (idx == -1) {
+            u = U[0];
+        }
+        // within a time interval
+        else {
+            // find the time interval
+            double t0 = T_u[idx];
+            double tf = T_u[idx + 1];
+            Vector_4d u0 = U[idx];
+            Vector_4d uf = U[idx + 1];
 
-//             // linear interpolation
-//             for (int i = 0; i < this->n_leg; i++) {
-//                 u[i] = u0[i] + (uf[i] - u0[i]) * (t - t0) / (tf - t0);
-//             }
-//         }
-//     }
+            // linear interpolation
+            u = u0 + (uf - u0) * (t - t0) / (tf - t0);
+        }
+    }
 
-//     return u;
-// }
+    return u;
+}
 
 
 // RK3 Integration of the system dynamics
@@ -648,12 +650,9 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
         t3 = tk + dt;
 
         // interpolate the control input
-        // u1 = this->interpolate_control_input(t1, T_u, U);
-        // u2 = this->interpolate_control_input(t2, T_u, U);
-        // u3 = this->interpolate_control_input(t3, T_u, U);
-        u1 = U[0];
-        u2 = U[0];
-        u3 = U[0];
+        u1 = this->interpolate_control_input(t1, T_u, U);
+        u2 = this->interpolate_control_input(t2, T_u, U);
+        u3 = this->interpolate_control_input(t3, T_u, U);
 
         // vector fields for RK3 integration
         f1 = this->dynamics(xk_sys, 

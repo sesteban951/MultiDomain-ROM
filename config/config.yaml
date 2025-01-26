@@ -40,7 +40,7 @@ CTRL_PARAMS:
     N: 80                              # number of time steps
     dt: 0.02                           # time step, [s]
     K: 2500                            # number of rollouts
-    Nu: 20                             # number of control points
+    Nu: 2                             # number of control points
     N_elite: 250                       # number of elite samples
     CEM_iters: 30                      # number of CEM iterations
 
@@ -73,8 +73,8 @@ SYS_PARAMS:
 ####################################################################
 
 DIST_PARAMS:
-    mu: [0.1, 0.2]              # initial means [l0dot_vel, thetadot_vel]
-    sigma: [2.0, 7.0]          # initial standard deviations
+    mu: [0.0, 0.0]              # initial means [l0dot_vel, thetadot_vel]
+    sigma: [1.0, 3.14]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
     epsilon: 0.0001             # minimum eigenvalue for covariance matrix
     seed_enabled: False         # enable random seed
