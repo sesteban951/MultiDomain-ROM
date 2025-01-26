@@ -108,7 +108,7 @@ struct Solution
     Vector_8d_Traj x_leg_t;  // leg state trajectory
     Vector_8d_Traj x_foot_t; // foot state trajectory
     Vector_4d_Traj u_t;      // interpolated control input trajectory
-    Vector_4d_Traj lambd_t;  // leg force trajectory
+    Vector_4d_Traj lambda_t; // leg force trajectory
     Domain_Traj domain_t;    // domain trajectory
     bool viability;          // viability of the trajectory
 };

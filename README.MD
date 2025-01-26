@@ -12,7 +12,7 @@ See the ```CMakeLists.txt``` and modify it if necessary.
 ## Running
 Build the executables:
 ```bash
-cd <path_to_Spring-LoadedInvertedPendulum>/performance/
+cd <path_to_MultiDomain-ROM>/performance/
 mkdir build
 cmake ..
 make

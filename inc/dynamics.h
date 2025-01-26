@@ -43,9 +43,9 @@ class Dynamics
                                    Vector_4d u, 
                                    Domain d);
         
-        // // Switching Surfaces
-        // bool S_TD(Vector_4d x_foot);
-        // bool S_TO(Vector_8d x_sys, Vector_4d x_leg, Leg_Idx leg_idx);
+        // Switching Surfaces
+        bool S_TD(Vector_8d x_feet, Leg_Idx leg_idx);
+        bool S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx);
 
         // // check if a switching event has occurred
         // Domain check_switching_event(Vector_8d x_sys, 
@@ -66,13 +66,13 @@ class Dynamics
         //                                         Vector_1d_Traj T_u, 
         //                                         Vector_2d_Traj U);
         
-        // // RK forwaqrd propagation
-        // Solution RK3_rollout(Vector_1d_Traj T_x, 
-        //                     Vector_1d_Traj T_u, 
-        //                     Vector_8d x0_sys, 
-        //                     Vector_2d_List p0_feet, 
-        //                     Domain d0, 
-        //                     Vector_2d_Traj U);
+        // RK forwaqrd propagation
+        Solution RK3_rollout(Vector_1d_Traj T_x, 
+                             Vector_1d_Traj T_u, 
+                             Vector_12d x0_sys,
+                             Vector_4d p0_feet,
+                             Domain d0,
+                             Vector_4d_Traj U);
 
         // System parameters
         SystemParams params;

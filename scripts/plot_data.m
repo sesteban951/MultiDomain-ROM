@@ -27,8 +27,8 @@ theta_des = config.REFERENCE.theta_des;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
-t_interval = [t(1) t(end)];
-% t_interval = [0 0.75];
+% t_interval = [t(1) t(end)];
+t_interval = [0 0.25];
 
 % plotting / animation
 animate = 1;   % animatio = 1; plot states = 0

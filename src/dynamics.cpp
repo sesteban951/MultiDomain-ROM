@@ -371,42 +371,54 @@ Vector_4d Dynamics::compute_leg_force(Vector_12d x_sys, Vector_8d x_legs, Vector
 }
 
 
-// // Touch-Down (TD) Switching Surface -- checks individual legs
-// bool Dynamics::S_TD(Vector_4d x_foot) 
-// {   
-//     // unpack the state variables
-//     double pz_foot, vz_foot;
-//     pz_foot = x_foot(1);
-//     vz_foot = x_foot(3);
+// Touch-Down (TD) Switching Surface -- checks individual legs
+bool Dynamics::S_TD(Vector_8d x_feet, Leg_Idx leg_idx) 
+{   
+    // foot variable
+    Vector_4d x_foot = x_feet.segment<4>(4*leg_idx);
 
-//     // check the switching surface conditions
-//     bool gnd_pos, neg_vel, touchdown;
-//     gnd_pos = pz_foot <= 0.0;       // foot penetrated the ground
-//     neg_vel = vz_foot <= 0.0;       // foot is moving downward
-//     touchdown = gnd_pos && neg_vel; // if true, the foot touched down 
+    // unpack the state variables
+    double pz_foot, vz_foot;
+    pz_foot = x_foot(1);
+    vz_foot = x_foot(3);
 
-//     return touchdown;
-// }
+    // check the switching surface conditions
+    bool gnd_pos, neg_vel, touchdown;
+    gnd_pos = pz_foot <= 0.0;       // foot penetrated the ground
+    neg_vel = vz_foot <= 0.0;       // foot is moving downward
+    touchdown = gnd_pos && neg_vel; // if true, the foot touched down 
+
+    return touchdown;
+}
 
 
-// // Take-Off (TO) Switching Surface -- checks individual legs
-// bool Dynamics::S_TO(Vector_8d x_sys, Vector_4d x_leg, Leg_Idx leg_idx) 
-// {    
-//     // unpack the state variables
-//     double r, rdot, l0_command, l0dot_command;
-//     r = x_leg(0);
-//     rdot = x_leg(2);
-//     l0_command = x_sys(4 + 2*leg_idx);
-//     l0dot_command = x_sys(5 + 2*leg_idx); 
+// Take-Off (TO) Switching Surface -- checks individual legs
+bool Dynamics::S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx) 
+{    
+    // leg state
+    Vector_4d x_leg = x_legs.segment<4>(4*leg_idx);
 
-//     // check the switching surface condition (zero force in leg)
-//     bool nom_length, pos_vel, takeoff;
-//     nom_length = r >= l0_command;     // leg is at or above the commanded length
-//     pos_vel = rdot >= l0dot_command;  // leg is moving upward 
-//     takeoff = nom_length && pos_vel;  // if true, the leg took off
+    // commanded leg state
+    Vector_4d x_leg_command = x_sys.segment<4>(4 + 4*leg_idx);
 
-//     return takeoff;
-// }
+    // actual leg state variables
+    double r, rdot;
+    r = x_leg(0);
+    rdot = x_leg(2);
+
+    // commanded leg state variables
+    double l0_command, l0dot_command;
+    l0_command = x_leg_command(0);
+    l0dot_command = x_leg_command(2);
+
+    // check the switching surface condition (zero force in leg) TODO: do I wan to add acceleration feed forward?
+    bool nom_length, pos_vel, takeoff;
+    nom_length = r >= l0_command;     // leg is at or above the commanded length
+    pos_vel = rdot >= l0dot_command;  // leg is moving upward 
+    takeoff = nom_length && pos_vel;  // if true, the leg took off
+
+    return takeoff;
+}
 
 
 // // Check if a switching event has occurred
@@ -578,131 +590,128 @@ Vector_4d Dynamics::compute_leg_force(Vector_12d x_sys, Vector_8d x_legs, Vector
 // }
 
 
-// // RK3 Integration of the system dynamics
-// Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u, 
-//                               Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0, 
-//                               Vector_2d_Traj U)
-// {
-//     // time integration parameters
-//     double dt = T_x[1] - T_x[0];
-//     int N = T_x.size();
+// RK3 Integration of the system dynamics
+Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u, 
+                               Vector_12d x0_sys, Vector_4d p0_feet, Domain d0, 
+                               Vector_4d_Traj U) 
+{
+    // time integration parameters
+    double dt = T_x[1] - T_x[0];
+    int N = T_x.size();
 
-//     // make the solutiuon trajectory containers
-//     Vector_8d_List x_sys_t(N);  // system state trajectory
-//     Vector_4d_Traj x_leg_t(N);  // leg state trajectory
-//     Vector_4d_Traj x_foot_t(N); // foot state trajectory
-//     Vector_2d_Traj u_t(N);      // interpolated control input trajectory
-//     Vector_2d_Traj lambd_t(N);   // leg force trajectory
-//     Domain_List domain_t(N);    // domain trajectory
+    // make the solutiuon trajectory containers
+    Vector_12d_Traj x_sys_t(N);  // system state trajectory
+    Vector_8d_Traj x_leg_t(N);   // leg state trajectory
+    Vector_8d_Traj x_foot_t(N);  // foot state trajectory
+    Vector_4d_Traj u_t(N);       // interpolated control input trajectory
+    Vector_4d_Traj lambda_t(N);  // leg force trajectory
+    Domain_Traj domain_t(N);     // domain trajectory
 
-//     // initial condition
-//     Vector_4d_List x0_leg(this->n_leg);
-//     Vector_4d_List x0_foot(this->n_leg);
-//     Vector_2d_List lambd0(this->n_leg);
-//     for (int i = 0; i < this->n_leg; i++) {
-//         x0_leg[i] = this->compute_leg_state(x0_sys, p0_feet, U[0], d0, i);
-//         x0_foot[i] = this->compute_foot_state(x0_sys, x0_leg, p0_feet, d0, i);
-//         lambd0[i] = this->compute_leg_force(x0_sys, x0_leg, p0_feet, U[0], d0, i);
-//     }
+    // initial condition
+    Vector_8d x0_legs;
+    Vector_8d x0_feet;
+    Vector_4d lambda0;
+    x0_legs = this->compute_leg_state(x0_sys, p0_feet, d0);
+    x0_feet = this->compute_foot_state(x0_sys, x0_legs, p0_feet, d0);
+    lambda0 = this->compute_leg_force(x0_sys, x0_legs, p0_feet, U[0], d0);
 
-//     x_sys_t[0] = x0_sys;
-//     x_leg_t[0] = x0_leg;
-//     x_foot_t[0] = x0_foot;
-//     u_t[0] = U[0];
-//     lambd_t[0] = lambd0;
-//     domain_t[0] = d0;
+    // populate the initial conditions
+    x_sys_t[0] = x0_sys;
+    x_leg_t[0] = x0_legs;
+    x_foot_t[0] = x0_feet;
+    u_t[0] = U[0];
+    lambda_t[0] = lambda0;
+    domain_t[0] = d0;
 
-//     // current state variables
-//     Vector_8d xk_sys = x0_sys;
-//     Vector_4d_List xk_leg = x0_leg;
-//     Vector_4d_List xk_foot = x0_foot;
-//     Vector_2d_List p_feet = p0_feet;
-//     Vector_2d_List uk = U[0];
-//     Vector_2d_List lambdk = lambd0;
-//     Domain dk = d0;
-//     Domain dk_next;
+    // current state variables
+    Vector_12d xk_sys = x0_sys;
+    Vector_8d xk_legs = x0_legs;
+    Vector_8d xk_feet = x0_feet;
+    Vector_4d p_feet = p0_feet;
+    Vector_4d lambdak = lambda0;
+    Domain dk = d0;
+    Domain dk_next;
 
-//     // ************************************* RK Integration *************************************
-//     // viability variable (for viability kernel)
-//     bool viability = true;
+    // ************************************* RK Integration *************************************
+    // viability variable (for viability kernel)
+    bool viability = true;
 
-//     // intermmediate times, inputs, and vector fields
-//     double tk, t1, t2, t3;
-//     Vector_2d_List u1, u2, u3;
-//     Vector_8d f1, f2, f3;
+    // intermmediate times, inputs, and vector fields
+    double tk, t1, t2, t3;
+    Vector_4d u1, u2, u3;
+    Vector_12d f1, f2, f3;
 
-//     // forward propagate the system dynamics
-//     for (int k = 1; k < N; k++) {
+    // forward propagate the system dynamics
+    for (int k = 1; k < N; k++) {
 
-//         // interpolation times
-//         tk = k * dt;
-//         t1 = tk;
-//         t2 = tk + 0.5 * dt;
-//         t3 = tk + dt;
+        // interpolation times
+        tk = k * dt;
+        t1 = tk;
+        t2 = tk + 0.5 * dt;
+        t3 = tk + dt;
 
-//         // interpolate the control input
-//         u1 = this->interpolate_control_input(t1, T_u, U);
-//         u2 = this->interpolate_control_input(t2, T_u, U);
-//         u3 = this->interpolate_control_input(t3, T_u, U);
+        // interpolate the control input
+        // u1 = this->interpolate_control_input(t1, T_u, U);
+        // u2 = this->interpolate_control_input(t2, T_u, U);
+        // u3 = this->interpolate_control_input(t3, T_u, U);
+        u1 = U[0];
+        u2 = U[0];
+        u3 = U[0];
 
-//         // vector fields for RK3 integration
-//         f1 = this->dynamics(xk_sys, 
-//                             u1, p_feet, dk);
-//         f2 = this->dynamics(xk_sys + 0.5 * dt * f1,
-//                             u2, p_feet, dk);
-//         f3 = this->dynamics(xk_sys - dt * f1 + 2 * dt * f2,
-//                             u3, p_feet, dk);
+        // vector fields for RK3 integration
+        f1 = this->dynamics(xk_sys, 
+                            u1, p_feet, dk);
+        f2 = this->dynamics(xk_sys + 0.5 * dt * f1,
+                            u2, p_feet, dk);
+        f3 = this->dynamics(xk_sys - dt * f1 + 2 * dt * f2,
+                            u3, p_feet, dk);
 
-//         // take the RK3 step
-//         xk_sys = xk_sys + (dt / 6) * (f1 + 4 * f2 + f3);
-//         for (int i = 0; i < this->n_leg; i++) {
-//             xk_leg[i] = this->compute_leg_state(xk_sys, p_feet, u3, dk, i);
-//             xk_foot[i] = this->compute_foot_state(xk_sys, xk_leg, p_feet, dk, i);
-//         }
+        // take the RK3 step
+        xk_sys = xk_sys + (dt / 6) * (f1 + 4 * f2 + f3);
+        xk_legs = this->compute_leg_state(xk_sys, p_feet, dk);
+        xk_feet = this->compute_foot_state(xk_sys, xk_legs, p_feet, dk);
 
-//         // check for switching events
-//         dk_next = this->check_switching_event(xk_sys, xk_leg, xk_foot, dk);
+        // check for switching events
+        // dk_next = this->check_switching_event(xk_sys, xk_leg, xk_foot, dk);
 
-//         // if there was a switching event, apply the reset map
-//         if (dk_next != dk) {
+        // // if there was a switching event, apply the reset map
+        // if (dk_next != dk) {
             
-//             // update all the states
-//             this->reset_map(xk_sys, xk_leg, xk_foot, u3, dk, dk_next);
+        //     // update all the states
+        //     this->reset_map(xk_sys, xk_leg, xk_foot, u3, dk, dk_next);
 
-//             // update the foot positions
-//             for (int i = 0; i < this->n_leg; i++) {
-//                 p_feet[i] << xk_foot[i](0), 
-//                              xk_foot[i](1);
-//             }
+        //     // update the foot positions
+        //     for (int i = 0; i < this->n_leg; i++) {
+        //         p_feet[i] << xk_foot[i](0), 
+        //                      xk_foot[i](1);
+        //     }
 
-//             // update the domain
-//             dk = dk_next;
-//         }
+        //     // update the domain
+        //     dk = dk_next;
+        // }
 
-//         // compute the leg forces
-//         for (int i = 0; i < this->n_leg; i++) {
-//             lambdk[i] = this->compute_leg_force(xk_sys, xk_leg, p_feet, u3, dk, i);
-//         }
+        // compute the leg forces
+        lambdak = this->compute_leg_force(xk_sys, xk_legs, p_feet, u3, dk);
 
-//         // store the states
-//         x_sys_t[k] = xk_sys;
-//         x_leg_t[k] = xk_leg;
-//         x_foot_t[k] = xk_foot;
-//         u_t[k] = u3;
-//         lambd_t[k] = lambdk;
-//         domain_t[k] = dk_next;
-//     }
+        // store the states
+        x_sys_t[k] = xk_sys;
+        x_leg_t[k] = xk_legs;
+        x_foot_t[k] = xk_feet;
+        u_t[k] = u3;
+        lambda_t[k] = lambdak;
+        domain_t[k] = dk_next;
+    }
 
-//     // pack the solution into the solution struct
-//     Solution sol;
-//     sol.t = T_x;
-//     sol.x_sys_t = x_sys_t;
-//     sol.x_leg_t = x_leg_t;
-//     sol.x_foot_t = x_foot_t;
-//     sol.u_t = u_t;
-//     sol.lambd_t = lambd_t;
-//     sol.domain_t = domain_t;
-//     sol.viability = viability;
+    // pack the solution into the solution struct
+    Solution sol;
+    sol.t = T_x;
+    sol.x_sys_t = x_sys_t;
+    sol.x_leg_t = x_leg_t;
+    sol.x_foot_t = x_foot_t;
+    sol.u_t = u_t;
+    sol.lambda_t = lambda_t;
+    sol.domain_t = domain_t;
+    sol.viability = viability;
 
-//     return sol;
-// }
+    return sol;
+}

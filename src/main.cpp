@@ -70,26 +70,23 @@ int main()
     }
 
     // query the dynamics
-    Vector_12d xdot = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
-    std::cout << "xdot: " << xdot.transpose() << std::endl;
+    // Vector_12d xdot = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
+    // std::cout << "xdot: " << xdot.transpose() << std::endl;
 
-    // leg state
-    Vector_8d x_leg = dynamics.compute_leg_state(x0_sys, p0_feet, d0);
-    std::cout << "x_leg: " << x_leg.transpose() << std::endl;
+    // // leg state
+    // Vector_8d x_leg = dynamics.compute_leg_state(x0_sys, p0_feet, d0);
+    // std::cout << "x_leg: " << x_leg.transpose() << std::endl;
 
-    // foot state
-    Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
-    std::cout << "x_foot: " << x_foot.transpose() << std::endl;
+    // // foot state
+    // Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
+    // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
 
-    // leg force
-    Vector_4d lambda = dynamics.compute_leg_force(x0_sys, x_leg, p0_feet, u_const, d0);
-    std::cout << "lambda: " << lambda.transpose() << std::endl;
-
-    // Vector_2d_Traj_Bundle U_ = controller.sample_input_trajectory(1);
-    // Vector_2d_Traj U_test = U_[0];
+    // // leg force
+    // Vector_4d lambda = dynamics.compute_leg_force(x0_sys, x_leg, p0_feet, u_const, d0);
+    // std::cout << "lambda: " << lambda.transpose() << std::endl;
 
     // Do a rollout of the dynamics
-    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0, p0_feet, d0, U_[0]);
+    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
 
     // // generate a reference trajectory
     // Vector_12d_List X_ref = controller.generate_reference_trajectory(x0.head<4>());
@@ -104,117 +101,94 @@ int main()
 
     ////////////////////////////////// Logging //////////////////////////////////
 
-    // // unpack the solution
-    // Vector_1d_List t = sol.t;
-    // Vector_8d_List x_sys_t = sol.x_sys_t;
-    // Vector_4d_Traj x_leg_t = sol.x_leg_t;
-    // Vector_4d_Traj x_foot_t = sol.x_foot_t;
-    // Vector_2d_Traj u_t = sol.u_t;
-    // Domain_List domain_t = sol.domain_t;
-    // bool viability = sol.viability;
+    // unpack the solution
+    Vector_1d_Traj t = sol.t;
+    Vector_12d_Traj x_sys_t = sol.x_sys_t;
+    Vector_8d_Traj x_leg_t = sol.x_leg_t;
+    Vector_8d_Traj x_foot_t = sol.x_foot_t;
+    Vector_4d_Traj u_t = sol.u_t;
+    Vector_4d_Traj lambda_t = sol.lambda_t;
+    Domain_Traj domain_t = sol.domain_t;
+    bool viability = sol.viability;
 
-    // // save the solution to a file
-    // std::string time_file = "../data/time.csv";
-    // std::string x_sys_file = "../data/state_sys.csv";
-    // std::string x_leg_file = "../data/state_leg.csv";
-    // std::string x_foot_file = "../data/state_foot.csv";
-    // std::string u_file = "../data/input.csv";
-    // std::string lambda_file = "../data/lambda.csv";
-    // std::string domain_file = "../data/domain.csv";
+    // save the solution to a file
+    std::string time_file = "../data/time.csv";
+    std::string x_sys_file = "../data/state_sys.csv";
+    std::string x_leg_file = "../data/state_leg.csv";
+    std::string x_foot_file = "../data/state_foot.csv";
+    std::string u_file = "../data/input.csv";
+    std::string lambda_file = "../data/lambda.csv";
+    std::string domain_file = "../data/domain.csv";
 
-    // // save the solution to a file
-    // std::ofstream file;
+    // save the solution to a file
+    std::ofstream file;
 
-    // file.open(time_file);
-    // for (int i = 0; i < controller.params.N; i++) {
-    //     file << t[i] << std::endl;
-    // }
-    // file.close();
+    file.open(time_file);
+    for (int i = 0; i < N; i++) {
+        file << t[i] << std::endl;
+    }
+    file.close();
+    std::cout << "Saved time trajectory." << std::endl;
 
-    // std::cout << "\nSaved time trajectory." << std::endl;
+    file.open(x_sys_file);
+    for (int i = 0; i < N; i++) {
+        file << x_sys_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved system state trajectory." << std::endl;
 
-    // file.open(x_sys_file);
-    // for (int i = 0; i < controller.params.N; i++) {
-    //     file << x_sys_t[i].transpose() << std::endl;
-    // }
-    // file.close();
+    file.open(x_leg_file);
+    for (int i = 0; i < N; i++) {
+        file << x_leg_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved leg state trajectory." << std::endl;
 
-    // std::cout << "Saved system state trajectory." << std::endl;
+    file.open(x_foot_file);
+    for (int i = 0; i < N; i++) {
+        file << x_foot_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved foot state trajectory." << std::endl;
 
-    // Vector_8d x_leg_;
-    // Vector_4d_List x_leg_k;
-    // file.open(x_leg_file);
-    // for (int i = 0; i < controller.params.N; i++) {
-    //     x_leg_k = x_leg_t[i];
-    //     x_leg_ << x_leg_k[0], x_leg_k[1];
-    //     file << x_leg_.transpose() << std::endl;
-    // }
-    // file.close();
+    file.open(u_file);
+    for (int i = 0; i < N; i++) {
+        file << u_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved control input trajectory." << std::endl;
 
-    // std::cout << "Saved leg state trajectory." << std::endl;
+    file.open(lambda_file);
+    for (int i = 0; i < N; i++) {
+        file << lambda_t[i].transpose() << std::endl;
+    }
+    file.close();
+    std::cout << "Saved leg force trajectory." << std::endl;
 
-    // Vector_8d x_foot_;
-    // Vector_4d_List x_foot_k;
-    // file.open(x_foot_file);
-    // for (int i = 0; i < controller.params.N; i++) {
-    //     x_foot_k = x_foot_t[i];
-    //     x_foot_ << x_foot_k[0], x_foot_k[1];
-    //     file << x_foot_.transpose() << std::endl;
-    // }
-    // file.close();
-
-    // std::cout << "Saved foot state trajectory." << std::endl;
-
-    // Vector_4d u_;
-    // Vector_2d_List u_k;
-    // file.open(u_file);
-    // for (int i = 0; i < controller.params.N; i++) {
-    //     u_k = u_t[i];
-    //     u_ << u_k[0], u_k[1];
-    //     file << u_.transpose() << std::endl;
-    // }
-    // file.close();
-
-    // std::cout << "Saved input trajectory." << std::endl;
-
-    // Vector_4d lambda_;
-    // Vector_2d_List lambda_k;
-    // file.open(lambda_file);
-    // for (int i = 0; i < controller.params.N; i++) {
-    //     lambda_k = sol.lambd_t[i];
-    //     lambda_ << lambda_k[0], lambda_k[1];
-    //     file << lambda_.transpose() << std::endl;
-    // }
-    // file.close();
-
-    // std::cout << "Saved leg force trajectory." << std::endl;
-
-    // Domain domain_t_(2);
-    // Vector_2i domain_;
-    // file.open(domain_file);
-    // for (int i = 0; i < controller.params.N; i++) {
+    Domain domain_t_(2);
+    Vector_2i domain_;
+    file.open(domain_file);
+    for (int i = 0; i < N; i++) {
         
-    //     domain_t_ = domain_t[i];
+        domain_t_ = domain_t[i];
 
-    //     if (domain_t_[0] == Contact::STANCE) {
-    //         domain_[0] = 1;
-    //     }
-    //     else {
-    //         domain_[0] = 0;
-    //     }
+        if (domain_t_[0] == Contact::STANCE) {
+            domain_[0] = 1;
+        }
+        else {
+            domain_[0] = 0;
+        }
 
-    //     if (domain_t_[1] == Contact::STANCE) {
-    //         domain_[1] = 1;
-    //     }
-    //     else {
-    //         domain_[1] = 0;
-    //     }
+        if (domain_t_[1] == Contact::STANCE) {
+            domain_[1] = 1;
+        }
+        else {
+            domain_[1] = 0;
+        }
 
-    //     file << domain_.transpose() << std::endl;
-    // }
-    // file.close();
-
-    // std::cout << "Saved domain trajectory." << std::endl;
+        file << domain_.transpose() << std::endl;
+    }
+    file.close();
 
     return 0;
 }
