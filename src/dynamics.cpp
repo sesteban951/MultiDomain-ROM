@@ -534,6 +534,7 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
                 x_foot_i_post = x_feet_.segment<4>(4*i);
+                x_feet_post.segment<4>(4*i) = x_foot_i_post; // NOTE: Forgot to add this
             }
         }
     }

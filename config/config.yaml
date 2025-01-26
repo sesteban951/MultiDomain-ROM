@@ -37,11 +37,11 @@ COST:
 ####################################################################
 
 CTRL_PARAMS:
-    N: 50                              # number of time steps
-    dt: 0.04                           # time step, [s]
-    K: 500                            # number of rollouts
+    N: 80                              # number of time steps
+    dt: 0.02                           # time step, [s]
+    K: 5000                            # number of rollouts
     Nu: 25                             # number of control points
-    N_elite: 50                       # number of elite samples
+    N_elite: 500                       # number of elite samples
     CEM_iters: 35                      # number of CEM iterations
 
 
