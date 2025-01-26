@@ -33,10 +33,10 @@ class Controller
         void update_distribution_params(Vector_4d_Traj_Bundle U_bundle);
 
         // // generate a reference trajectory for the predictive control to track
-        // Vector_12d_List generate_reference_trajectory(Vector_4d x0_com);
+        Vector_12d_Traj generate_reference_trajectory(Vector_4d x0_com);
 
         // // evaluate the cost function given a solution
-        // double cost_function(Vector_12d_List X_ref, Solution Sol, Vector_2d_Traj U);
+        double cost_function(Vector_12d_Traj X_ref, Solution Sol, Vector_4d_Traj U);
 
         // // perform open loop rollouts
         // MC_Result monte_carlo(Vector_8d x0_sys, Vector_2d_List p0_feet, Domain d0);

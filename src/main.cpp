@@ -86,22 +86,22 @@ int main()
     // std::cout << "lambda: " << lambda.transpose() << std::endl;
 
     // Do a rollout of the dynamics
-    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
 
-    // generate inputs
-    Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(10000);
+    // // generate inputs
+    // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(10000);
 
-    // update the distribution parameters
-    controller.update_distribution_params(U_bundle);
-    std::cout << "mean: \n" << controller.dist.mean.transpose() << std::endl;
-    std::cout << "cov: \n" << controller.dist.cov << std::endl;
+    // // update the distribution parameters
+    // controller.update_distribution_params(U_bundle);
+    // std::cout << "mean: \n" << controller.dist.mean.transpose() << std::endl;
+    // std::cout << "cov: \n" << controller.dist.cov << std::endl;
 
-    // // generate a reference trajectory
-    // Vector_12d_List X_ref = controller.generate_reference_trajectory(x0.head<4>());
+    // generate a reference trajectory
+    Vector_12d_Traj X_ref = controller.generate_reference_trajectory(x0_sys.head<4>());
 
-    // double J = controller.cost_function(X_ref, sol, U);
-
-    // std::cout << "cost: " << J << std::endl;
+    // test cost function
+    double J = controller.cost_function(X_ref, sol, U);
+    std::cout << "cost: " << J << std::endl;
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
