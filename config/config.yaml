@@ -3,7 +3,7 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.65, 0.5, 1.0,   # COM: px, pz, vx, vz  (center of mass state)
+    x0: [0.0, 0.65, 0.0, 0.0,   # COM: px, pz, vx, vz  (center of mass state)
          0.6,  0.1, 0.0, 0.0,   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
          0.6, -0.1, 0.0, 0.0]   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
 
@@ -65,7 +65,7 @@ SYS_PARAMS:
     torque_ankle_lim: 10    # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
-    interp: 'L'             # control interpolation method
+    interp: 'Z'             # control interpolation method
 
 
 ####################################################################

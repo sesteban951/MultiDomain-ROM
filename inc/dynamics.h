@@ -47,19 +47,18 @@ class Dynamics
         bool S_TD(Vector_8d x_feet, Leg_Idx leg_idx);
         bool S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx);
 
-        // // check if a switching event has occurred
-        // Domain check_switching_event(Vector_8d x_sys, 
-        //                              Vector_4d_List x_leg, 
-        //                              Vector_4d_List x_foot, 
-        //                              Domain d);
+        // check if a switching event has occurred
+        Domain check_switching_event(Vector_12d x_sys, 
+                                     Vector_8d x_legs, 
+                                     Vector_8d x_feet, 
+                                     Domain d);
 
-        // // apply the reset map
-        // void reset_map(Vector_8d& x_sys, 
-        //               Vector_4d_List& x_leg, 
-        //               Vector_4d_List& x_foot, 
-        //               Vector_2d_List u, 
-        //               Domain d_prev, 
-        //               Domain d_next);
+        // apply the reset map
+        void reset_map(Vector_12d& x_sys, 
+                       Vector_8d& x_legs, 
+                       Vector_8d& x_feet, 
+                       Domain d_prev, 
+                       Domain d_next);
 
         // // interpolate the input signal
         // Vector_2d_List interpolate_control_input(double t, 

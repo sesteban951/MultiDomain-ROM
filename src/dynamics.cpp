@@ -58,7 +58,7 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
 
     // vectors to use in the calculations
     Vector_2d v_com, a_com, g_vec, f_com; // vectors that affect COM dynamics 
-    Vector_8d x_legs, xdot_legs;   // state, state derivative leg
+    Vector_8d x_legs_command, xdot_legs_command;   // state, state derivative leg
     double tau_ankle;              // ankle torque  
     f_com.setZero();
     tau_ankle = 0.0;
@@ -88,9 +88,9 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
             Vector_2d p_com;
             p_com = x_com.segment<2>(0);
 
-            // LEG State
-            Vector_4d x_leg;
-            x_leg = x_sys.segment<4>(4 + 4*i);
+            // LEG Command State
+            Vector_4d x_leg_command;
+            x_leg_command = x_sys.segment<4>(4 + 4*i);
 
             // foot position
             Vector_2d p_foot;
@@ -115,8 +115,8 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
             rdot_norm = -v_com.dot(r_hat);
 
             // compute the force along the leg
-            l0_command = x_leg(0);
-            l0dot_command = x_leg(2);
+            l0_command = x_leg_command(0);
+            l0dot_command = x_leg_command(2);
             lambd_leg = -r_hat * (k * (l0_command - r_norm) - b * (l0dot_command - rdot_norm)); // TODO: add acceleration feed forward?
                                                    
 
@@ -128,8 +128,8 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
                 double theta, theta_command, thetadot, thetadot_command;
                 theta = -std::atan2(r_x, -r_z);
                 thetadot = (r_z * rdot_x - r_x * rdot_z) / (r_norm * r_norm);
-                theta_command = x_leg(1);
-                thetadot_command = x_leg(3);
+                theta_command = x_leg_command(1);
+                thetadot_command = x_leg_command(3);
 
                 // compute the ankle torque
                 double kp = this->params.torque_ankle_kp;
@@ -160,11 +160,11 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
     a_com << (1/m) * f_com + g_vec;
 
     // compute the leg vlocities
-    x_legs = x_sys.segment<8>(4);
-    xdot_legs = A * x_legs + B * u;
+    x_legs_command = x_sys.segment<8>(4);
+    xdot_legs_command = A * x_legs_command + B * u;
 
     // final form of the state derivative
-    xdot << v_com, a_com, xdot_legs;
+    xdot << v_com, a_com, xdot_legs_command;
 
     // return the state derivative
     return xdot;
@@ -411,7 +411,7 @@ bool Dynamics::S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx)
     l0_command = x_leg_command(0);
     l0dot_command = x_leg_command(2);
 
-    // check the switching surface condition (zero force in leg) TODO: do I wan to add acceleration feed forward?
+    // check the switching surface condition (zero force in leg) TODO: do I wan to add acceleration feed forward? Would need the input
     bool nom_length, pos_vel, takeoff;
     nom_length = r >= l0_command;     // leg is at or above the commanded length
     pos_vel = rdot >= l0dot_command;  // leg is moving upward 
@@ -421,127 +421,128 @@ bool Dynamics::S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx)
 }
 
 
-// // Check if a switching event has occurred
-// Domain Dynamics::check_switching_event(Vector_8d x_sys, Vector_4d_List x_leg, Vector_4d_List x_foot, Domain d_current)
-// {
-//     // return the next domain after checking the switching surfaces
-//     Domain d_next(this->n_leg);
+// Check if a switching event has occurred
+Domain Dynamics::check_switching_event(Vector_12d x_sys, Vector_8d x_legs, Vector_8d x_feet, Domain d_current)
+{
+    // return the next domain after checking the switching surfaces
+    Domain d_next(this->n_leg);
 
-//     // loop through the legs
-//     for (int i = 0; i < this->n_leg; i++)
-//     {
-//         // unpack the state variables
-//         Vector_4d x_foot_i = x_foot[i];
-//         Vector_4d x_leg_i = x_leg[i];
-//         Contact d_i = d_current[i];
+    // loop through the legs
+    for (int i = 0; i < this->n_leg; i++)
+    {
+        // contact state
+        Contact c = d_current[i];
 
-//         // the i-th leg is in CONTACT
-//         if (d_i == Contact::SWING) {
-//             // check for a touchdown event
-//             bool touchdown = this->S_TD(x_foot_i);
+        // the i-th leg is in CONTACT
+        if (c == Contact::SWING) {
+            // check for a touchdown event
+            bool touchdown = this->S_TD(x_feet, i);
 
-//             // if a touchdown event is detected, switch the leg to SWING
-//             d_next[i] = touchdown ? Contact::STANCE : Contact::SWING;
-//         }
+            // if a touchdown event is detected, switch the leg to SWING
+            d_next[i] = touchdown ? Contact::STANCE : Contact::SWING;
+        }
 
-//         // the i-th leg is in STANCE
-//         else if (d_i == Contact::STANCE) {
-//             // check for a takeoff event
-//             bool takeoff = this->S_TO(x_sys, x_leg_i, i);
+        // the i-th leg is in STANCE
+        else if (c == Contact::STANCE) {
+            // check for a takeoff event
+            bool takeoff = this->S_TO(x_sys, x_legs, i);
 
-//             // if a takeoff event is detected, switch the leg to STANCE
-//             d_next[i] = takeoff ? Contact::SWING : Contact::STANCE;
-//         }
-//     }
+            // if a takeoff event is detected, switch the leg to STANCE
+            d_next[i] = takeoff ? Contact::SWING : Contact::STANCE;
+        }
+    }
 
-//     return d_next;
-// }
+    return d_next;
+}
 
 
-// // apply the reset map
-// void Dynamics::reset_map(Vector_8d& x_sys, Vector_4d_List& x_leg, Vector_4d_List& x_foot, Vector_2d_List u, Domain d_prev, Domain d_next)
-// {
-//     // states to apply reset map to 
-//     Vector_8d x_sys_post;
-//     Vector_4d_List x_leg_post(this->n_leg);
-//     Vector_4d_List x_foot_post(this->n_leg);
-//     x_sys_post = x_sys;    // we will intialize as prev and modify for post as needed
-//     x_leg_post = x_leg;    // we will intialize as prev and modify for post as needed
-//     x_foot_post = x_foot;  // we will intialize as prev and modify for post as needed
+// apply the reset map
+void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet, Domain d_prev, Domain d_next)
+{
+    // states to apply reset map to 
+    Vector_12d x_sys_post;
+    Vector_8d x_legs_post;
+    Vector_8d x_feet_post;
+    x_sys_post = x_sys;    // we will intialize as prev and modify for post as needed
+    x_legs_post = x_legs;  // we will intialize as prev and modify for post as needed
+    x_feet_post = x_feet;  // we will intialize as prev and modify for post as needed
 
-//     // useful intermmediate variables
-//     Vector_2d_List p_feet_post(this->n_leg);
-//     for (int i = 0; i < this->n_leg; ++i) {
-//         p_feet_post[i] << x_foot[i](0), 
-//                           x_foot[i](1); // we will initialize as prev and modify for post as needed
-//     }
-//     Vector_2d p_foot_i_post;
+    // foot positions post
+    Vector_4d p_feet_post;
+    for (int i = 0; i < this->n_leg; i++) {
+        p_feet_post.segment<2>(2*i) = x_feet.segment<2>(4*i);
+    }
 
-//     // loop through the legs
-//     for (int i = 0; i < this->n_leg; i++)
-//     {
-//         // determine if there was a switch
-//         bool switched = d_prev[i] != d_next[i];
+    // loop through the legs
+    for (int i = 0; i < this->n_leg; i++)
+    {
+        // determine if there was a switch
+        bool switched = d_prev[i] != d_next[i];
 
-//         // this leg did not switch
-//         if (switched == false) {
-//             // skip this tieration of the for lop
-//             continue;
-//         }
+        // this leg did not switch
+        if (switched == false) {
+            // skip this tieration of the for loop
+            continue;
+        }
 
-//         // this leg went through a switch
-//         else if (switched == true) {
-//             // unpack the state variables
-//             Vector_4d x_foot_i = x_foot[i];
-//             Vector_4d x_leg_i = x_leg[i];
-//             Vector_2d p_foot_i = p_feet_post[i];
-//             Contact d_i_prev = d_prev[i];
-//             Contact d_i_next = d_next[i];
+        // this leg went through a switch
+        else if (switched == true) {
+            // unpack the state variables
+            Vector_2d p_foot = p_feet_post.segment<2>(2*i);
 
-//             // the i-th leg is now in CONTACT
-//             if (d_i_prev == Contact::SWING && d_i_next == Contact::STANCE) {
+            // temporary variables
+            Vector_4d x_leg_i_post;
+            Vector_4d x_foot_i_post;
+            Vector_2d p_foot_i_post;
+
+            // the i-th leg is now in CONTACT
+            if (d_prev[i] == Contact::SWING && d_next[i] == Contact::STANCE) {
                 
-//                 // update the foot location (based on hueristic)
-//                 p_foot_i_post << p_foot_i(0), 0.0;
-//                 p_feet_post[i] = p_foot_i_post;
+                // update the foot location (based on hueristic)
+                p_foot_i_post << p_foot(0), 0.0;
+                p_feet_post.segment<2>(2*i) = p_foot_i_post;
 
-//                 // update the leg state
-//                 x_leg_post[i] = this->compute_leg_state(x_sys_post, p_feet_post, u, d_next, i);
+                // update the leg state
+                Vector_8d x_legs_ = this->compute_leg_state(x_sys_post, p_feet_post, d_next);
+                x_leg_i_post = x_legs_.segment<4>(4*i);
+                x_legs_post.segment<4>(4*i) = x_leg_i_post;
 
-//                 // update the system state
-//                 x_sys_post(4 + 2*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
-//                 x_sys_post(5 + 2*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
+                // update the system state
+                // x_sys_post(4 + 4*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
+                // x_sys_post(5 + 4*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
+                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post;
 
-//                 // update the foot state
-//                 x_foot_post[i] << this->compute_foot_state(x_sys_post, x_leg_post, p_feet_post, d_next, i);
-//             }
+                // update the foot state
+                Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
+                x_foot_i_post = x_feet_.segment<4>(4*i);
+                x_feet_post.segment<4>(4*i) = x_foot_i_post;
+            }
 
-//             // the i-th leg is now in STANCE
-//             else if (d_i_prev == Contact::STANCE && d_i_next == Contact::SWING) {
+            // the i-th leg is now in STANCE
+            else if (d_prev[i] == Contact::STANCE && d_next[i] == Contact::SWING) {
+
+                // update the leg state
+                // x_leg_post[i](2) = u[i](0); // leg velocity is the commanded velocity
+                // x_leg_post[i](3) = u[i](1); // leg angular velocity is the commanded angular velocity
+                x_leg_i_post = x_legs_post.segment<4>(4*i);
                 
-//                 // update the foot location (based on hueristic) FIXME: probably dont need to update pos foot here
-//                 // p_foot_i_post << p_foot_i(0), p_foot_i(1);
-//                 // p_feet_post[i] = p_foot_i_post;
+                // update the system state
+                // x_sys_post(4 + 2*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
+                // x_sys_post(5 + 2*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
+                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post;
 
-//                 // update the leg state
-//                 x_leg_post[i](2) = u[i](0); // leg velocity is the commanded velocity
-//                 x_leg_post[i](3) = u[i](1); // leg angular velocity is the commanded angular velocity
+                // update the foot state
+                Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
+                x_foot_i_post = x_feet_.segment<4>(4*i);
+            }
+        }
+    }
 
-//                 // update the system state
-//                 x_sys_post(4 + 2*i) = x_leg_post[i](0); // reset leg length command to the actual leg length at TD
-//                 x_sys_post(5 + 2*i) = x_leg_post[i](1); // reset leg angle command to the actual leg angle at TD
-
-//                 // update the foot state
-//                 x_foot_post[i] = this->compute_foot_state(x_sys_post, x_leg_post, p_feet_post, d_next, i);
-//             }
-//         }
-//     }
-
-//     // update the states
-//     x_sys = x_sys_post;
-//     x_leg = x_leg_post;
-//     x_foot = x_foot_post;
-// }
+    // update the states
+    x_sys = x_sys_post;
+    x_legs = x_legs_post;
+    x_feet = x_feet_post;
+}
 
 
 // // interpolate an input signal
@@ -596,7 +597,7 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
                                Vector_4d_Traj U) 
 {
     // time integration parameters
-    double dt = T_x[1] - T_x[0];
+    double dt = T_x[1] - T_x[0]; // CAUTION: assumes uniform time steps
     int N = T_x.size();
 
     // make the solutiuon trajectory containers
@@ -672,23 +673,22 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
         xk_feet = this->compute_foot_state(xk_sys, xk_legs, p_feet, dk);
 
         // check for switching events
-        // dk_next = this->check_switching_event(xk_sys, xk_leg, xk_foot, dk);
+        dk_next = this->check_switching_event(xk_sys, xk_legs, xk_feet, dk);
 
-        // // if there was a switching event, apply the reset map
-        // if (dk_next != dk) {
+        // if there was a switching event, apply the reset map
+        if (dk_next != dk) {
             
-        //     // update all the states
-        //     this->reset_map(xk_sys, xk_leg, xk_foot, u3, dk, dk_next);
+            // update all the states
+            this->reset_map(xk_sys, xk_legs, xk_feet, dk, dk_next);
 
-        //     // update the foot positions
-        //     for (int i = 0; i < this->n_leg; i++) {
-        //         p_feet[i] << xk_foot[i](0), 
-        //                      xk_foot[i](1);
-        //     }
+            // update the foot positions
+            for (int i = 0; i < this->n_leg; i++) {
+                p_feet.segment<2>(2*i) = xk_feet.segment<2>(4*i);
+            }
 
-        //     // update the domain
-        //     dk = dk_next;
-        // }
+            // update the domain
+            dk = dk_next;
+        }
 
         // compute the leg forces
         lambdak = this->compute_leg_force(xk_sys, xk_legs, p_feet, u3, dk);
