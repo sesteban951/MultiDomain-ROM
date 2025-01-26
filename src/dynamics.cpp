@@ -21,26 +21,19 @@ Dynamics::Dynamics(YAML::Node config_file)
     this->params.torque_ankle_kp = config_file["SYS_PARAMS"]["torque_ankle_kp"].as<double>();
     this->params.torque_ankle_kd = config_file["SYS_PARAMS"]["torque_ankle_kd"].as<double>();
     this->params.interp = config_file["SYS_PARAMS"]["interp"].as<char>();
-
-    // build the linear dynamics matrices for leg command dynamics
-    Matrix_8d A;
-    Matrix_8x4d B;
-    A.setZero();
-    B.setZero();
-    A.block<2,2>(0,2) = Eigen::Matrix2d::Identity();
-    A.block<2,2>(4,6) = Eigen::Matrix2d::Identity();
-    B.block<2,2>(2,0) = Eigen::Matrix2d::Identity();
-    B.block<2,2>(6,2) = Eigen::Matrix2d::Identity();
-    this->A = A;
-    this->B = B;
 }
 
 
 // NonLinear Dynamics function, xdot = f(x, u, d)
-Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, Domain d) 
+DynamicsResult Dynamics::dynamics(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet, Domain d) 
 {
     // want to compute the state derivative
-    Vector_12d xdot;       // state derivative, [xdot_com, xdot_legs]
+    Vector_8d xdot;      // state derivative, [xdot_com, xdot_legs]
+    Vector_4d lambdas;   // leg force vectors
+    Vector_2d taus;      // ankle torques
+
+    Vector_2d leg_force;
+    double ankle_torque;
 
     // access some system parameters
     double m = this->params.m;
@@ -48,21 +41,18 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
     double k = this->params.k;
     double b = this->params.b;
 
-    // linear dynamics matrices for the leg commands
-    Matrix_8d A = this->A;
-    Matrix_8x4d B = this->B;
-
     // unpack the state vector
     Vector_4d x_com;
     x_com = x_sys.segment<4>(0);
 
     // vectors to use in the calculations
-    Vector_2d v_com, a_com, g_vec, f_com; // vectors that affect COM dynamics 
-    Vector_8d x_legs_command, xdot_legs_command;   // state, state derivative leg
-    double tau_ankle;              // ankle torque  
+    Vector_2d v_com, a_com, g_vec, f_com;
+    Vector_4d v_legs;
+    double tau_ankle;
     f_com.setZero();
     tau_ankle = 0.0;
     v_com = x_com.segment<2>(2);
+    v_legs = u;
 
     // contact state
     Contact c;
@@ -76,21 +66,31 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
         // The i'th leg is in NOT in contact, no forces or torques
         if (c == Contact::SWING) {
             // in swing, no forces or torques on the COM
+            leg_force << 0.0, 0.0;
+            ankle_torque = 0.0;
+
+            // save the leg force and ankle torque
+            lambdas.segment<2>(2*i) = leg_force;
+            taus(i) = ankle_torque;
         }
 
         // The i'th leg is in contact, there are forces and torques
         else if (c == Contact::STANCE) {
 
             // in stance, compute the forces and torques on the COM
-            Vector_2d lambd_leg, f_com_ankle;
+            Vector_2d f_com_ankle;
 
             // COM state
             Vector_2d p_com;
             p_com = x_com.segment<2>(0);
 
             // LEG Command State
-            Vector_4d x_leg_command;
-            x_leg_command = x_sys.segment<4>(4 + 4*i);
+            Vector_2d x_leg_command;
+            x_leg_command = x_sys.segment<2>(4 + 2*i);
+
+            // LEG input
+            Vector_2d u_leg;
+            u_leg = u.segment<2>(2*i);
 
             // foot position
             Vector_2d p_foot;
@@ -109,16 +109,15 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
             r_z = r_vec(1);
 
             // leg rdot_vec
-            rdot_vec = -v_com;    // assumes no sliding feet
+            rdot_vec = -v_com;     // assumes no sliding feet
             rdot_x = rdot_vec(0);
             rdot_z = rdot_vec(1);
             rdot_norm = -v_com.dot(r_hat);
 
             // compute the force along the leg
             l0_command = x_leg_command(0);
-            l0dot_command = x_leg_command(2);
-            lambd_leg = -r_hat * (k * (l0_command - r_norm) - b * (l0dot_command - rdot_norm)); // TODO: add acceleration feed forward?
-                                                   
+            l0dot_command = u_leg(0);
+            leg_force = -r_hat * (k * (l0_command - r_norm) + b * (l0dot_command - rdot_norm)); 
 
             // TODO: think about how having torque on both legs when both are in stance -- overactuated
             // compute the ankle torque
@@ -129,12 +128,12 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
                 theta = -std::atan2(r_x, -r_z);
                 thetadot = (r_z * rdot_x - r_x * rdot_z) / (r_norm * r_norm);
                 theta_command = x_leg_command(1);
-                thetadot_command = x_leg_command(3);
+                thetadot_command = u_leg(1);
 
                 // compute the ankle torque
                 double kp = this->params.torque_ankle_kp;
                 double kd = this->params.torque_ankle_kd;
-                tau_ankle = kp * (theta_command - theta) + kd * (thetadot_command - thetadot); // TODO: add acceleration feed forward?
+                tau_ankle = kp * (theta_command - theta) + kd * (thetadot_command - thetadot);
 
                 // convert leg torque into COM force perpendicular to the leg
                 Vector_2d f_unit;
@@ -148,8 +147,12 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
                 f_com_ankle << 0.0, 0.0;
             }
 
+            // save the leg force and ankle torque
+            lambdas.segment<2>(2*i) = leg_force;
+            taus(i) = tau_ankle;
+
             // add the leg force and torque to the COM dynamics
-            f_com += lambd_leg + f_com_ankle;
+            f_com += leg_force + f_com_ankle;
         }
     }
 
@@ -159,20 +162,22 @@ Vector_12d Dynamics::dynamics(Vector_12d x_sys, Vector_4d u, Vector_4d p_feet, D
     // compute acceleration of the center of mass
     a_com << (1/m) * f_com + g_vec;
 
-    // compute the leg vlocities
-    x_legs_command = x_sys.segment<8>(4);
-    xdot_legs_command = A * x_legs_command + B * u;
-
     // final form of the state derivative
-    xdot << v_com, a_com, xdot_legs_command;
+    xdot << v_com, a_com, v_legs;
+
+    // pack into the struct
+    DynamicsResult res;
+    res.xdot = xdot;
+    res.lambdas = lambdas;
+    res.taus = taus;
 
     // return the state derivative
-    return xdot;
+    return res;
 }
 
 
 // compute the leg state
-Vector_8d Dynamics::compute_leg_state(Vector_12d x_sys, Vector_4d p_feet, Domain d)
+Vector_8d Dynamics::compute_leg_state(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet, Domain d)
 {
     // want to compute the leg states
     Vector_8d x_legs;
@@ -190,17 +195,20 @@ Vector_8d Dynamics::compute_leg_state(Vector_12d x_sys, Vector_4d p_feet, Domain
         // contact state
         c = d[i];
 
-        // in swing (double integrator dynamics)
+        // in swing (single integrator dynamics)
         if (c == Contact::SWING) {
         
             // leg command vector
-            Vector_4d x_leg_command = x_sys.segment<4>(4 + 4*i);
+            Vector_2d x_leg_command = x_sys.segment<2>(4 + 2*i);
 
-            // double integrator state
+            // leg input vector
+            Vector_2d u_leg = u.segment<2>(2*i);
+
+            // single integrator state
             r = x_leg_command(0);
             theta = x_leg_command(1);
-            rdot = x_leg_command(2);
-            thetadot = x_leg_command(3);
+            rdot = u_leg(0);
+            thetadot = u_leg(1);
 
             // populate the polar state vector
             x_leg << r, theta, rdot, thetadot;
@@ -249,7 +257,7 @@ Vector_8d Dynamics::compute_leg_state(Vector_12d x_sys, Vector_4d p_feet, Domain
 
 
 // compute foot state in world frame
-Vector_8d Dynamics::compute_foot_state(Vector_12d x_sys, Vector_8d x_legs, Vector_4d p_feet, Domain d)
+Vector_8d Dynamics::compute_foot_state(Vector_8d x_sys, Vector_8d x_legs, Vector_4d p_feet, Domain d)
 {
     // want to compute the foot states
     Vector_8d x_feet;
@@ -308,69 +316,6 @@ Vector_8d Dynamics::compute_foot_state(Vector_12d x_sys, Vector_8d x_legs, Vecto
 }
 
 
-// compute the leg force
-Vector_4d Dynamics::compute_leg_force(Vector_12d x_sys, Vector_8d x_legs, Vector_4d p_feet, Vector_4d u, Domain d)
-{
-    // want to compute the leg force
-    Vector_4d lambdas;
-    Vector_2d lambd;
-
-    // contact state
-    Contact c;
-
-    // loop through the legs
-    for (int i = 0; i < this->n_leg; i++)
-    {
-        // contact state
-        c = d[i];
-
-        // In SWING, no force
-        if (c == Contact::SWING) {
-            lambd << 0.0, 0.0;
-        }
-
-        // In STANCE, compute the leg force
-        else if (c == Contact::STANCE) {
-            
-            // com states
-            Vector_2d p_com, v_com;
-            p_com << x_sys.segment<2>(0);
-            v_com << x_sys.segment<2>(2);
-
-            // leg sates 
-            Vector_4d x_leg = x_legs.segment<4>(4*i);
-            double r, rdot;
-            r = x_leg(0);
-            rdot = x_leg(2);
-
-            // foot sates
-            Vector_2d p_foot = p_feet.segment<2>(2*i);
-
-            // compute the relevant vectors
-            Vector_2d r_vec, r_hat, rdot_vec;
-            r_vec = p_foot - p_com;
-            r_hat = r_vec / r;
-
-            // leg commands 
-            Vector_4d x_leg_command = x_sys.segment<4>(4 + 4*i);
-            double l0_command, l0dot_command;
-            l0_command = x_leg_command(0);
-            l0dot_command = x_leg_command(2);
-            
-            // compute the leg force
-            double k = this->params.k;
-            double b = this->params.b;
-            lambd = -r_hat * (k * (l0_command - r) - b * (l0dot_command - rdot)); 
-        }
-
-        // insert into the leg force vector
-        lambdas.segment<2>(2*i) = lambd;
-    }
-
-    return lambdas;
-}
-
-
 // Touch-Down (TD) Switching Surface -- checks individual legs
 bool Dynamics::S_TD(Vector_8d x_feet, Leg_Idx leg_idx) 
 {   
@@ -393,13 +338,16 @@ bool Dynamics::S_TD(Vector_8d x_feet, Leg_Idx leg_idx)
 
 
 // Take-Off (TO) Switching Surface -- checks individual legs
-bool Dynamics::S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx) 
+bool Dynamics::S_TO(Vector_8d x_sys, Vector_8d x_legs, Vector_4d u, Leg_Idx leg_idx) 
 {    
     // leg state
     Vector_4d x_leg = x_legs.segment<4>(4*leg_idx);
 
     // commanded leg state
-    Vector_4d x_leg_command = x_sys.segment<4>(4 + 4*leg_idx);
+    Vector_2d x_leg_command = x_sys.segment<2>(4 + 2*leg_idx);
+
+    // leg input
+    Vector_2d u_leg = u.segment<2>(2*leg_idx);
 
     // actual leg state variables
     double r, rdot;
@@ -409,9 +357,9 @@ bool Dynamics::S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx)
     // commanded leg state variables
     double l0_command, l0dot_command;
     l0_command = x_leg_command(0);
-    l0dot_command = x_leg_command(2);
+    l0dot_command = u_leg(0);
 
-    // check the switching surface condition (zero force in leg) TODO: do I want to add acceleration feed forward? Would need the input
+    // check the switching surface condition (zero force in leg) 
     bool nom_length, pos_vel, takeoff;
     nom_length = r >= l0_command;     // leg is at or above the commanded length
     pos_vel = rdot >= l0dot_command;  // leg is moving upward 
@@ -422,7 +370,7 @@ bool Dynamics::S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx)
 
 
 // Check if a switching event has occurred
-Domain Dynamics::check_switching_event(Vector_12d x_sys, Vector_8d x_legs, Vector_8d x_feet, Domain d_current)
+Domain Dynamics::check_switching_event(Vector_8d x_sys, Vector_8d x_legs, Vector_8d x_feet, Vector_4d u, Domain d_current)
 {
     // return the next domain after checking the switching surfaces
     Domain d_next(this->n_leg);
@@ -445,7 +393,7 @@ Domain Dynamics::check_switching_event(Vector_12d x_sys, Vector_8d x_legs, Vecto
         // the i-th leg is in STANCE
         else if (c == Contact::STANCE) {
             // check for a takeoff event
-            bool takeoff = this->S_TO(x_sys, x_legs, i);
+            bool takeoff = this->S_TO(x_sys, x_legs, u, i);
 
             // if a takeoff event is detected, switch the leg to STANCE
             d_next[i] = takeoff ? Contact::SWING : Contact::STANCE;
@@ -457,10 +405,10 @@ Domain Dynamics::check_switching_event(Vector_12d x_sys, Vector_8d x_legs, Vecto
 
 
 // apply the reset map
-void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet, Domain d_prev, Domain d_next)
+void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet, Vector_4d u, Domain d_prev, Domain d_next)
 {
     // states to apply reset map to 
-    Vector_12d x_sys_post;
+    Vector_8d x_sys_post;
     Vector_8d x_legs_post;
     Vector_8d x_feet_post;
     x_sys_post = x_sys;    // we will intialize as prev and modify for post as needed
@@ -481,37 +429,36 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
 
         // this leg did not switch
         if (switched == false) {
-            // skip this tieration of the for loop
+            // skip this leg, nothing to modify
             continue;
         }
 
         // this leg went through a switch
         else if (switched == true) {
-            // unpack the state variables
-            Vector_2d p_foot = p_feet_post.segment<2>(2*i);
 
             // temporary variables
             Vector_4d x_leg_i_post;
             Vector_4d x_foot_i_post;
-            Vector_2d p_foot_i_post;
 
             // the i-th leg is now in CONTACT
             if (d_prev[i] == Contact::SWING && d_next[i] == Contact::STANCE) {
+
+                // unpack the state variables
+                Vector_2d p_foot = p_feet_post.segment<2>(2*i);
+                Vector_2d p_foot_i_post;
                 
                 // update the foot location (based on hueristic)
                 p_foot_i_post << p_foot(0), 0.0;
                 p_feet_post.segment<2>(2*i) = p_foot_i_post;
 
                 // update the leg state
-                Vector_8d x_legs_ = this->compute_leg_state(x_sys_post, p_feet_post, d_next);
+                Vector_8d x_legs_ = this->compute_leg_state(x_sys_post, u, p_feet_post, d_next);
                 x_leg_i_post = x_legs_.segment<4>(4*i);
                 x_legs_post.segment<4>(4*i) = x_leg_i_post;
 
                 // update the system state
-                // x_leg_i_post(2) = 0.0; // reset the length rate to zero
-                // x_leg_i_post(3) = 0.0; // reset the angle rate to zero
-                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post; // TODO: decide if I want to reset the whole command
-                                                               // set veloicty to zero and keep position? If so, do unit tests
+                x_sys_post(4 + 2*i) = x_leg_i_post(0); // reset leg length command to the actual leg length at TD
+                x_sys_post(5 + 2*i) = x_leg_i_post(1); // reset leg angle command to the actual leg angle at TD
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
@@ -522,18 +469,22 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet
             // the i-th leg is now in STANCE
             else if (d_prev[i] == Contact::STANCE && d_next[i] == Contact::SWING) {
 
+                // leg input
+                Vector_2d u_leg = u.segment<2>(2*i);
+
                 // update the leg state
                 x_leg_i_post = x_legs_post.segment<4>(4*i);
+                x_leg_i_post(2) = u(0); // leg velocity is commanded velocity
+                x_leg_i_post(3) = u(1); // leg angular velocity is commanded angular velocity
                 
                 // update the system state
-                // x_leg_i_post(2) = 0.0; // reset the length rate to zero
-                // x_leg_i_post(3) = 0.0; // reset the angle rate to zero
-                x_sys_post.segment<4>(4 + 4*i) = x_leg_i_post; // TODO: decide if I want to reset the whole command
-                                                               // set veloicty to zero and keep position? If so, do unit tests
+                x_sys_post(4 + 2*i) = x_leg_i_post(0); // reset leg length command to the actual leg length at TD
+                x_sys_post(5 + 2*i) = x_leg_i_post(1); // reset leg angle command to the actual leg angle at TD
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
                 x_foot_i_post = x_feet_.segment<4>(4*i);
+                x_feet_post.segment<4>(4*i) = x_foot_i_post;
             }
         }
     }
@@ -591,7 +542,7 @@ Vector_4d Dynamics::interpolate_control_input(double t, Vector_1d_Traj T_u, Vect
 
 // RK3 Integration of the system dynamics
 Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u, 
-                               Vector_12d x0_sys, Vector_4d p0_feet, Domain d0, 
+                               Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, 
                                Vector_4d_Traj U) 
 {
     // time integration parameters
@@ -599,20 +550,26 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     int N = T_x.size();
 
     // make the solutiuon trajectory containers
-    Vector_12d_Traj x_sys_t(N);  // system state trajectory
-    Vector_8d_Traj x_leg_t(N);   // leg state trajectory
-    Vector_8d_Traj x_foot_t(N);  // foot state trajectory
-    Vector_4d_Traj u_t(N);       // interpolated control input trajectory
-    Vector_4d_Traj lambda_t(N);  // leg force trajectory
-    Domain_Traj domain_t(N);     // domain trajectory
+    Vector_8d_Traj x_sys_t(N);  // system state trajectory
+    Vector_8d_Traj x_leg_t(N);  // leg state trajectory
+    Vector_8d_Traj x_foot_t(N); // foot state trajectory
+    Vector_4d_Traj u_t(N);      // interpolated control input trajectory
+    Vector_4d_Traj lambda_t(N); // leg force trajectory
+    Vector_2d_Traj tau_t(N);    // ankle torque trajectory
+    Domain_Traj domain_t(N);    // domain trajectory
 
     // initial condition
     Vector_8d x0_legs;
     Vector_8d x0_feet;
-    Vector_4d lambda0;
-    x0_legs = this->compute_leg_state(x0_sys, p0_feet, d0);
+    x0_legs = this->compute_leg_state(x0_sys, U[0], p0_feet, d0);
     x0_feet = this->compute_foot_state(x0_sys, x0_legs, p0_feet, d0);
-    lambda0 = this->compute_leg_force(x0_sys, x0_legs, p0_feet, U[0], d0);
+
+    // first iteration just to get the initial leg forces and torques
+    Vector_4d lambda0;
+    Vector_2d tau0;
+    DynamicsResult res = this->dynamics(x0_sys, U[0], p0_feet, d0);
+    lambda0 = res.lambdas;
+    tau0 = res.taus;
 
     // populate the initial conditions
     x_sys_t[0] = x0_sys;
@@ -620,14 +577,16 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     x_foot_t[0] = x0_feet;
     u_t[0] = U[0];
     lambda_t[0] = lambda0;
+    tau_t[0] = tau0;
     domain_t[0] = d0;
 
     // current state variables
-    Vector_12d xk_sys = x0_sys;
+    Vector_8d xk_sys = x0_sys;
     Vector_8d xk_legs = x0_legs;
     Vector_8d xk_feet = x0_feet;
     Vector_4d p_feet = p0_feet;
     Vector_4d lambdak = lambda0;
+    Vector_2d tauk = tau0;
     Domain dk = d0;
     Domain dk_next;
 
@@ -638,7 +597,8 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     // intermmediate times, inputs, and vector fields
     double tk, t1, t2, t3;
     Vector_4d u1, u2, u3;
-    Vector_12d f1, f2, f3;
+    Vector_8d f1, f2, f3;
+    DynamicsResult res1, res2, res3;
 
     // forward propagate the system dynamics
     for (int k = 1; k < N; k++) {
@@ -655,26 +615,29 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
         u3 = this->interpolate_control_input(t3, T_u, U);
 
         // vector fields for RK3 integration
-        f1 = this->dynamics(xk_sys, 
-                            u1, p_feet, dk);
-        f2 = this->dynamics(xk_sys + 0.5 * dt * f1,
-                            u2, p_feet, dk);
-        f3 = this->dynamics(xk_sys - dt * f1 + 2 * dt * f2,
-                            u3, p_feet, dk);
+        res1 = this->dynamics(xk_sys, 
+                              u1, p_feet, dk);
+        res2 = this->dynamics(xk_sys + 0.5 * dt * f1,
+                              u2, p_feet, dk);
+        res3 = this->dynamics(xk_sys - dt * f1 + 2 * dt * f2,
+                              u3, p_feet, dk);
+        f1 = res1.xdot;
+        f2 = res2.xdot;
+        f3 = res3.xdot;
 
         // take the RK3 step
         xk_sys = xk_sys + (dt / 6) * (f1 + 4 * f2 + f3);
-        xk_legs = this->compute_leg_state(xk_sys, p_feet, dk);
+        xk_legs = this->compute_leg_state(xk_sys, u3, p_feet, dk);
         xk_feet = this->compute_foot_state(xk_sys, xk_legs, p_feet, dk);
 
         // check for switching events
-        dk_next = this->check_switching_event(xk_sys, xk_legs, xk_feet, dk);
+        dk_next = this->check_switching_event(xk_sys, xk_legs, xk_feet, u3, dk);
 
         // if there was a switching event, apply the reset map
         if (dk_next != dk) {
             
             // update all the states
-            this->reset_map(xk_sys, xk_legs, xk_feet, dk, dk_next);
+            this->reset_map(xk_sys, xk_legs, xk_feet, u3, dk, dk_next);
 
             // update the foot positions
             for (int i = 0; i < this->n_leg; i++) {
@@ -685,8 +648,10 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
             dk = dk_next;
         }
 
-        // compute the leg forces
-        lambdak = this->compute_leg_force(xk_sys, xk_legs, p_feet, u3, dk);
+        // do a dynamics query to get the leg forces and torques
+        res = this->dynamics(xk_sys, u3, p_feet, dk);
+        lambdak = res.lambdas;
+        tauk = res.taus;
 
         // store the states
         x_sys_t[k] = xk_sys;
@@ -694,6 +659,7 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
         x_foot_t[k] = xk_feet;
         u_t[k] = u3;
         lambda_t[k] = lambdak;
+        tau_t[k] = tauk;
         domain_t[k] = dk_next;
     }
 
@@ -705,6 +671,7 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     sol.x_foot_t = x_foot_t;
     sol.u_t = u_t;
     sol.lambda_t = lambda_t;
+    sol.tau_t = tau_t;
     sol.domain_t = domain_t;
     sol.viability = viability;
 

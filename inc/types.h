@@ -34,8 +34,6 @@ using Matrix_4d = Eigen::Matrix<double, 4, 4>;
 using Matrix_8d = Eigen::Matrix<double, 8, 8>;
 using Matrix_12d = Eigen::Matrix<double, 12, 12>;
 
-using Matrix_8x4d = Eigen::Matrix<double, 8, 4>;
-
 // Dynamic arrays
 using Vector_d = Eigen::Vector<double, Eigen::Dynamic>;
 using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
@@ -104,15 +102,24 @@ struct GaussianDistribution
     int seed;           // random number generator seed
 };
 
-// dynamics solution struct
+// dynamics integration step result
+struct DynamicsResult
+{
+    Vector_8d xdot;    // state derivative
+    Vector_4d lambdas; // leg force
+    Vector_2d taus;    // ankle torque
+};
+
+// dynamics solution struct (flow result)
 struct Solution
 {
     Vector_1d_Traj t;        // time trajectory
-    Vector_12d_Traj x_sys_t;  // system state trajectory
+    Vector_8d_Traj x_sys_t;  // system state trajectory
     Vector_8d_Traj x_leg_t;  // leg state trajectory
     Vector_8d_Traj x_foot_t; // foot state trajectory
     Vector_4d_Traj u_t;      // interpolated control input trajectory
     Vector_4d_Traj lambda_t; // leg force trajectory
+    Vector_2d_Traj tau_t;         // ankle torque trajectory
     Domain_Traj domain_t;    // domain trajectory
     bool viability;          // viability of the trajectory
 };
@@ -121,7 +128,7 @@ struct Solution
 // Bundles
 // ***********************************************************************************
 
-// // Bundle of Trajectories
+// Bundle of Trajectories
 using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
 using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
 using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;

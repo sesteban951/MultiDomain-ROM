@@ -19,43 +19,39 @@ class Dynamics
         ~Dynamics(){};
 
         // NonLinear System dynamics, xdot = f(x, u, d)
-        Vector_12d dynamics(Vector_12d x, 
-                           Vector_4d u, 
-                           Vector_4d p_feet,
-                           Domain d);
+        DynamicsResult dynamics(Vector_8d x_sys, 
+                                Vector_4d u, 
+                                Vector_4d p_feet,
+                                Domain d);
 
         // compute the leg state
-        Vector_8d compute_leg_state(Vector_12d x_sys, 
+        Vector_8d compute_leg_state(Vector_8d x_sys, 
+                                    Vector_4d u,
                                     Vector_4d p_feet, 
                                     Domain d);
 
         // compute foot state in world frame
-        Vector_8d compute_foot_state(Vector_12d x_sys, 
+        Vector_8d compute_foot_state(Vector_8d x_sys, 
                                      Vector_8d x_legs,
                                      Vector_4d p_feet,
                                      Domain d);
-        
-        // compute the leg force
-        Vector_4d compute_leg_force(Vector_12d x_sys, 
-                                   Vector_8d x_legs, 
-                                   Vector_4d p_feet, 
-                                   Vector_4d u, 
-                                   Domain d);
-        
+
         // Switching Surfaces
         bool S_TD(Vector_8d x_feet, Leg_Idx leg_idx);
-        bool S_TO(Vector_12d x_sys, Vector_8d x_legs, Leg_Idx leg_idx);
+        bool S_TO(Vector_8d x_sys, Vector_8d x_legs, Vector_4d u, Leg_Idx leg_idx);
 
         // check if a switching event has occurred
-        Domain check_switching_event(Vector_12d x_sys, 
+        Domain check_switching_event(Vector_8d x_sys, 
                                      Vector_8d x_legs, 
                                      Vector_8d x_feet, 
+                                     Vector_4d u,
                                      Domain d);
 
         // apply the reset map
-        void reset_map(Vector_12d& x_sys, 
+        void reset_map(Vector_8d& x_sys, 
                        Vector_8d& x_legs, 
                        Vector_8d& x_feet, 
+                       Vector_4d u,
                        Domain d_prev, 
                        Domain d_next);
 
@@ -67,7 +63,7 @@ class Dynamics
         // RK forwaqrd propagation
         Solution RK3_rollout(Vector_1d_Traj T_x, 
                              Vector_1d_Traj T_u, 
-                             Vector_12d x0_sys,
+                             Vector_8d x0_sys,
                              Vector_4d p0_feet,
                              Domain d0,
                              Vector_4d_Traj U);
@@ -76,10 +72,6 @@ class Dynamics
         SystemParams params;
 
         // fixed parameters
-        const int n_leg = 2;      // vector size of legs
+        const int n_leg = 2;   // numberof legs
 
-        // linear dynamics matrices
-        Matrix_8d A;
-        Matrix_8x4d B;
-    
 };

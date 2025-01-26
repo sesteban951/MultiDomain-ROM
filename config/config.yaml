@@ -3,9 +3,9 @@
 ####################################################################
 
 STATE:
-    x0: [0.0,  0.65, 0.0, 0.0,   # COM: px, pz, vx, vz  (center of mass state)
-         0.6,  0.05, 0.0, 0.0,   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
-         0.6, -0.05, 0.0, 0.0]   # LEG COMMANDS: l0, theta, l0dot, thetadot (double integrator state)
+    x0: [0.0, 0.65, 0.0, 0.0,  # COM: px, pz, vx, vz  (center of mass state)
+         0.6, 0.2, 0.6, -0.2]  # COMMANDS: l0_command, thetadot_command (single integrator state)
+
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -37,8 +37,8 @@ COST:
 ####################################################################
 
 CTRL_PARAMS:
-    N: 50                              # number of time steps
-    dt: 0.04                           # time step, [s]
+    N: 5000                             # number of time steps
+    dt: 0.0005                           # time step, [s]
     K: 500                            # number of rollouts
     Nu: 25                             # number of control points
     N_elite: 50                       # number of elite samples
@@ -74,7 +74,7 @@ SYS_PARAMS:
 
 DIST_PARAMS:
     mu: [0.0, 0.0]              # initial means [l0dot_vel, thetadot_vel]
-    sigma: [0.25, 0.5]          # initial standard deviations
+    sigma: [1.0, 3.14]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
     epsilon: 0.0001             # minimum eigenvalue for covariance matrix
     seed_enabled: False         # enable random seed

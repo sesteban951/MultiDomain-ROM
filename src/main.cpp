@@ -21,10 +21,10 @@ int main()
     // create dynamics object
     Dynamics dynamics(config_file);
 
-    Controller controller(config_file);
+    // // Controller controller(config_file);
 
     // initial conditions
-    Vector_12d x0_sys;
+    Vector_8d x0_sys;
     Vector_2d p0_left, p0_right;
     Vector_4d p0_feet;
 
@@ -36,11 +36,7 @@ int main()
               x0_temp[4],    // l0_command (left)
               x0_temp[5],    // theta_command (left)
               x0_temp[6],    // l0dot_command (left)
-              x0_temp[7],    // thetadot_command (left)
-              x0_temp[8],    // l0_command (right)
-              x0_temp[9],    // theta_command (right)
-              x0_temp[10],    // l0dot_command (right)
-              x0_temp[11];    // thetadot_command (right)
+              x0_temp[7];    // thetadot_command (left)
     p0_left << -0.1, 0.0;
     p0_right << 0.1, 0.0;
     p0_feet << p0_left, p0_right;
@@ -51,7 +47,7 @@ int main()
     Vector_4d u_const;
     Vector_2d u_L, u_R;
     u_L << 0.0, 0.0;
-    u_R << -0.0, -0.0;
+    u_R << 0.0, -0.0;
     u_const << u_L, u_R;
 
     // example rollout of the dynamics
@@ -69,24 +65,23 @@ int main()
         U[i] = u_const;
     }
 
-    // query the dynamics
-    // Vector_12d xdot = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
+    // // query the dynamics
+    // DynamicsResult res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
+    // Vector_8d xdot = res.xdot;
     // std::cout << "xdot: " << xdot.transpose() << std::endl;
 
     // // leg state
-    // Vector_8d x_leg = dynamics.compute_leg_state(x0_sys, p0_feet, d0);
+    // Vector_8d x_leg = dynamics.compute_leg_state(x0_sys, u_const, p0_feet, d0);
     // std::cout << "x_leg: " << x_leg.transpose() << std::endl;
 
     // // foot state
     // Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
     // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
 
-    // // leg force
-    // Vector_4d lambda = dynamics.compute_leg_force(x0_sys, x_leg, p0_feet, u_const, d0);
-    // std::cout << "lambda: " << lambda.transpose() << std::endl;
-
     // Do a rollout of the dynamics
-    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+
+    std::cout << "Rollout complete." << std::endl;
 
     // // generate inputs
     // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(10000);
@@ -108,17 +103,18 @@ int main()
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
-    Solution sol = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
+    // Solution sol = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
 
     ////////////////////////////////// Logging //////////////////////////////////
 
     // unpack the solution
     Vector_1d_Traj t = sol.t;
-    Vector_12d_Traj x_sys_t = sol.x_sys_t;
+    Vector_8d_Traj x_sys_t = sol.x_sys_t;
     Vector_8d_Traj x_leg_t = sol.x_leg_t;
     Vector_8d_Traj x_foot_t = sol.x_foot_t;
     Vector_4d_Traj u_t = sol.u_t;
     Vector_4d_Traj lambda_t = sol.lambda_t;
+    Vector_2d_Traj tau_t = sol.tau_t;
     Domain_Traj domain_t = sol.domain_t;
     bool viability = sol.viability;
 
@@ -129,6 +125,7 @@ int main()
     std::string x_foot_file = "../data/state_foot.csv";
     std::string u_file = "../data/input.csv";
     std::string lambda_file = "../data/lambda.csv";
+    std::string tau_file = "../data/tau.csv";
     std::string domain_file = "../data/domain.csv";
 
     int N_ = t.size();
@@ -177,6 +174,12 @@ int main()
     }
     file.close();
     std::cout << "Saved leg force trajectory." << std::endl;
+
+    file.open(tau_file);
+    for (int i = 0; i < N_; i++) {
+        file << tau_t[i].transpose() << std::endl;
+    }
+    file.close();
 
     Domain domain_t_(2);
     Vector_2i domain_;
