@@ -13,11 +13,11 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.CEM_iters = config_file["CTRL_PARAMS"]["CEM_iters"].as<int>();
     
     // build the cost matrices from the diagonal elements
-    std::vector<double> Q_com_diags_temp = config_file["COST"]["Q_com_diags"].as<std::vector<double>>();
-    std::vector<double> Q_leg_diags_temp = config_file["COST"]["Q_leg_diags"].as<std::vector<double>>();
-    std::vector<double> Qf_com_diags_temp = config_file["COST"]["Qf_com_diags"].as<std::vector<double>>();
-    std::vector<double> Qf_leg_diags_temp = config_file["COST"]["Qf_leg_diags"].as<std::vector<double>>();
-    std::vector<double> R_diags_temp = config_file["COST"]["R_diags"].as<std::vector<double>>();
+    Vector_1d_List Q_com_diags_temp = config_file["COST"]["Q_com_diags"].as<std::vector<double>>();
+    Vector_1d_List Q_leg_diags_temp = config_file["COST"]["Q_leg_diags"].as<std::vector<double>>();
+    Vector_1d_List Qf_com_diags_temp = config_file["COST"]["Qf_com_diags"].as<std::vector<double>>();
+    Vector_1d_List Qf_leg_diags_temp = config_file["COST"]["Qf_leg_diags"].as<std::vector<double>>();
+    Vector_1d_List R_diags_temp = config_file["COST"]["R_diags"].as<std::vector<double>>();
 
     Vector_4d Q_com_diags, Q_leg_diags, Qf_com_diags, Qf_leg_diags;
     for (int i = 0; i < Q_com_diags_temp.size(); i++) {
@@ -42,11 +42,8 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.Qf = Qf_diags.asDiagonal();
     this->params.R  = R_diags.asDiagonal();
 
-    // cost parameters
-    this->pz_des = config_file["REFERENCE"]["pz_des"].as<double>();
-    this->vx_des = config_file["REFERENCE"]["vx_des"].as<double>();
-    this->r_des = config_file["REFERENCE"]["r_des"].as<double>();
-    this->theta_des = config_file["REFERENCE"]["theta_des"].as<double>();
+    // construct the reference trajectory
+    this->initialize_reference_trajectories(config_file);
 
     // construct the initial distribution
     this->initialize_distribution(config_file);
@@ -62,6 +59,72 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
         // enable nested parallelism
         bool nested = config_file["THREADING"]["nested"].as<bool>();
         if (nested == true) { omp_set_nested(1); }
+    }
+}
+
+
+// construct the reference trajecotry
+void Controller::initialize_reference_trajectories(YAML::Node config_file)
+{
+    // reference parameters
+    this->r_des = config_file["REFERENCE"]["r_des"].as<double>();
+    this->theta_des = config_file["REFERENCE"]["theta_des"].as<double>();
+    this->vx_des = config_file["REFERENCE"]["vx_des_"].as<double>();
+    this->pz_des = config_file["REFERENCE"]["pz_des_"].as<double>();
+
+    // set the desired COM trajectory
+    Vector_1d_List px_des_temp = config_file["REFERENCE"]["px_des"].as<std::vector<double>>();
+    Vector_1d_List pz_des_temp = config_file["REFERENCE"]["pz_des"].as<std::vector<double>>();
+    Vector_1d_Traj time = config_file["REFERENCE"]["time"].as<std::vector<double>>();
+
+    Vector_2d_Traj p_com_traj(time.size());
+    Vector_2d p_com_des_;
+    int N_ref = time.size();
+    for (int i = 0; i < N_ref; i++) {
+        p_com_des_ << px_des_temp[i], pz_des_temp[i];
+        p_com_traj[i] = p_com_des_;
+    }
+
+    // some time stuff for the reference trajectory
+    int N = this->params.N;
+    double dt = this->params.dt;
+    double rhc_time = (N-1) * dt;         // receding horizon total time
+    double t_end = time[N_ref - 1];       // reference traj total time
+    int N_ref_dt = std::ceil(rhc_time / dt); // number of knots in the reference trajectory
+
+    // build the reference trajectory
+    Vector_1d_Traj time_ref(N_ref_dt);
+    Vector_4d_Traj X_com_ref(N_ref_dt);
+    Vector_2d p_com_des, v_com_des;
+    Vector_4d x_com_des;
+    double t, t0, tf;
+    for (int i = 0; i < N_ref_dt; i++) {
+        // build the time array
+        t = i * dt;
+        time_ref[i] = t;
+
+        // find where the time is in the reference trajectory
+        auto it = std::upper_bound(time.begin(), time.end(), t);
+        int idx = std::distance(time.begin(), it) - 1; // return -1 if before the first element
+                                                       // return N_ref - 1 if after the last element
+
+        // beyond last element
+        if (idx == N_ref - 1) {
+            p_com_des = p_com_traj[N_ref - 1]; // position is the last element
+            v_com_des << 0.0, 0.0;            // velocity is zero
+        }
+        else{
+            t0 = time[idx];
+            tf = time[idx + 1];
+            Vector_2d p0 = p_com_traj[idx];
+            Vector_2d pf = p_com_traj[idx + 1];
+            v_com_des = (pf - p0) / (tf - t0);
+            p_com_des = p0 + v_com_des * (t - t0);
+        }
+
+        // populate the desired COM state
+        x_com_des << p_com_des, v_com_des;
+        X_com_ref[i] = x_com_des;
     }
 }
 

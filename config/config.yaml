@@ -12,11 +12,18 @@ STATE:
 ####################################################################
 
 REFERENCE:
-    # Desired states
-    pz_des: 0.55              # desired z-position [m]
-    vx_des: 1.0              # desired velocity [m/s]
+    
+    # Desire Leg states
     r_des: 0.5               # desired leg length [m]
     theta_des: 0.05          # desired leg angle [m]
+
+    pz_des_: 0.6             # desired COM height [m]
+    vx_des_: 0.0
+
+    # Desired COM states as knot points
+    px_des: [0.0, 0.75]
+    pz_des: [0.65, 0.65]
+    time: [0.0, 1.0]
 
 
 ####################################################################
@@ -37,8 +44,8 @@ COST:
 ####################################################################
 
 CTRL_PARAMS:
-    N: 2000                             # number of time steps
-    dt: 0.0005                           # time step, [s]
+    N: 80                             # number of time steps
+    dt: 0.02                           # time step, [s]
     K: 2500                            # number of rollouts
     Nu: 20                             # number of control points
     N_elite: 250                       # number of elite samples

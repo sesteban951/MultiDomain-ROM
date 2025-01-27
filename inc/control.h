@@ -22,6 +22,9 @@ class Controller
         Controller(YAML::Node config_file);
         ~Controller(){};
 
+        // construct the long horizon reference trajecotry
+        void initialize_reference_trajectories(YAML::Node config_file);
+
         // to initialize the initial distribution
         void initialize_distribution(YAML::Node config_file);
 
@@ -65,6 +68,7 @@ class Controller
         double vx_des;
         double r_des;
         double theta_des;
+        Vector_2d_Traj X_com_des;
 
         // minimum covariance norm (theoretical)
         double min_cov_norm;
