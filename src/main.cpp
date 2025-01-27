@@ -44,28 +44,28 @@ int main()
 
     ////////////////////////////////// Function testing //////////////////////////////////
 
-    // Vector_4d u_const;
-    // Vector_2d u_L, u_R;
-    // u_L << 0.0, 0.0;
-    // u_R << 0.0, -0.0;
-    // u_const << u_L, u_R;
+    Vector_4d u_const;
+    Vector_2d u_L, u_R;
+    u_L << 0.0, 0.0;
+    u_R << 0.0, -0.0;
+    u_const << u_L, u_R;
 
-    // // example rollout of the dynamics
-    // int N = 140;
-    // Vector_1d_Traj T_x(N);
-    // for (int i = 0; i < N; i++) {
-    //     T_x[i] = i * 0.01;
-    // }
+    // example rollout of the dynamics
+    int N = 140;
+    Vector_1d_Traj T_x(N);
+    for (int i = 0; i < N; i++) {
+        T_x[i] = i * 0.01;
+    }
 
-    // int Nu = 70;
-    // Vector_1d_Traj T_u(Nu);
-    // Vector_4d_Traj U(Nu);
-    // for (int i = 0; i < Nu; i++) {
-    //     T_u[i] = i * 0.02;
-    //     U[i] = u_const;
-    // }
+    int Nu = 70;
+    Vector_1d_Traj T_u(Nu);
+    Vector_4d_Traj U(Nu);
+    for (int i = 0; i < Nu; i++) {
+        T_u[i] = i * 0.02;
+        U[i] = u_const;
+    }
 
-    // // query the dynamics
+    // query the dynamics
     // DynamicsResult res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
     // Vector_8d xdot = res.xdot;
     // std::cout << "xdot: " << xdot.transpose() << std::endl;
@@ -78,6 +78,8 @@ int main()
     // Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
     // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
     
+    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+    // // std::cout << "Rollout compl
     // generate inputs
     // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
 
@@ -88,7 +90,7 @@ int main()
 
     // Do a rollout of the dynamics
     // U = U_bundle[0];
-    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
     // // std::cout << "Rollout complete." << std::endl;
 
     // // generate a reference trajectory
@@ -104,7 +106,7 @@ int main()
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
-    Solution sol = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
+    // Solution sol = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
 
     ////////////////////////////////// Logging //////////////////////////////////
 

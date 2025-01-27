@@ -440,6 +440,7 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
         else if (switched == true) {
 
             // temporary variables
+            Vector_4d x_leg_post_;
             Vector_4d x_leg_i_post;
             Vector_4d x_foot_i_post;
 
@@ -454,14 +455,15 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
                 p_foot_i_post << p_foot(0), 0.0;
                 p_feet_post.segment<2>(2*i) = p_foot_i_post;
 
+                // update the system state
+                x_leg_post_ = x_legs.segment<4>(4*i);
+                x_sys_post(4 + 2*i) = x_leg_post_(0); // reset leg length command to the actual leg length at TD
+                x_sys_post(5 + 2*i) = x_leg_post_(1); // reset leg angle command to the actual leg angle at TD
+
                 // update the leg state
                 Vector_8d x_legs_ = this->compute_leg_state(x_sys_post, u, p_feet_post, d_next);
                 x_leg_i_post = x_legs_.segment<4>(4*i);
                 x_legs_post.segment<4>(4*i) = x_leg_i_post;
-
-                // update the system state
-                x_sys_post(4 + 2*i) = x_leg_i_post(0); // reset leg length command to the actual leg length at TD
-                x_sys_post(5 + 2*i) = x_leg_i_post(1); // reset leg angle command to the actual leg angle at TD
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
@@ -472,6 +474,11 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
             // the i-th leg is now in STANCE
             else if (d_prev[i] == Contact::STANCE && d_next[i] == Contact::SWING) {
 
+                // update the system state
+                x_leg_post_ = x_legs.segment<4>(4*i);
+                x_sys_post(4 + 2*i) = x_leg_post_(0); // reset leg length command to the actual leg length at TD
+                x_sys_post(5 + 2*i) = x_leg_post_(1); // reset leg angle command to the actual leg angle at TD
+
                 // leg input
                 Vector_2d u_leg = u.segment<2>(2*i);
 
@@ -479,10 +486,6 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
                 x_leg_i_post = x_legs_post.segment<4>(4*i);
                 x_leg_i_post(2) = u(0); // leg velocity is commanded velocity
                 x_leg_i_post(3) = u(1); // leg angular velocity is commanded angular velocity
-                
-                // update the system state
-                x_sys_post(4 + 2*i) = x_leg_i_post(0); // reset leg length command to the actual leg length at TD
-                x_sys_post(5 + 2*i) = x_leg_i_post(1); // reset leg angle command to the actual leg angle at TD
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
