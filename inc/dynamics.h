@@ -19,7 +19,7 @@ class Dynamics
         ~Dynamics(){};
 
         // NonLinear System dynamics, xdot = f(x, u, d)
-        DynamicsResult dynamics(Vector_8d x_sys, 
+        Dynamics_Result dynamics(Vector_8d x_sys, 
                                 Vector_4d u, 
                                 Vector_4d p_feet,
                                 Domain d);

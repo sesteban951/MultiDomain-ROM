@@ -521,7 +521,7 @@ void Controller::sort_trajectories(Solution_Bundle  S,       Vector_4d_Traj_Bund
 
 
 // perform sampling predictive control of your choice here
-Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_4d p0_foot, Domain d0)
+RHC_Result Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_4d p0_foot, Domain d0)
 {
     // Monte Carlo Result to return
     MC_Result mc;
@@ -571,6 +571,10 @@ Solution Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_4d p0_
     std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
 
     // return the best solution
-    return S_elite[0];
+    RHC_Result rhc;
+    rhc.S = S_elite[0];
+    rhc.U = U_elite[0];
+
+    return rhc;
 }
 

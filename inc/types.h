@@ -102,14 +102,6 @@ struct GaussianDistribution
     int seed;           // random number generator seed
 };
 
-// dynamics integration step result
-struct DynamicsResult
-{
-    Vector_8d xdot;    // state derivative
-    Vector_4d lambdas; // leg force
-    Vector_2d taus;    // ankle torque
-};
-
 // dynamics solution struct (flow result)
 struct Solution
 {
@@ -138,8 +130,16 @@ using Vector_12d_Traj_Bundle = std::vector<Vector_12d_Traj>;
 using Solution_Bundle = std::vector<Solution>;
 
 // ***********************************************************************************
-// Monte Carlo Result
+// Result Types
 // ***********************************************************************************
+
+// dynamics integration step result
+struct Dynamics_Result
+{
+    Vector_8d xdot;    // state derivative
+    Vector_4d lambdas; // leg force
+    Vector_2d taus;    // ankle torque
+};
 
 struct MC_Result
 {
@@ -148,3 +148,8 @@ struct MC_Result
     Vector_1d_List J;        // Costs
 };
 
+struct RHC_Result
+{
+    Solution S;       // Solution
+    Vector_4d_Traj U; // Optimal Control Inputs  
+};

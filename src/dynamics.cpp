@@ -25,7 +25,7 @@ Dynamics::Dynamics(YAML::Node config_file)
 
 
 // NonLinear Dynamics function, xdot = f(x, u, d)
-DynamicsResult Dynamics::dynamics(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet, Domain d) 
+Dynamics_Result Dynamics::dynamics(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet, Domain d) 
 {
     // want to compute the state derivative
     Vector_8d xdot;      // state derivative, [xdot_com, xdot_legs]
@@ -169,7 +169,7 @@ DynamicsResult Dynamics::dynamics(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet
     xdot << v_com, a_com, v_legs;
 
     // pack into the struct
-    DynamicsResult res;
+    Dynamics_Result res;
     res.xdot = xdot;
     res.lambdas = lambdas;
     res.taus = taus;
@@ -573,7 +573,7 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     // first iteration just to get the initial leg forces and torques
     Vector_4d lambda0;
     Vector_2d tau0;
-    DynamicsResult res = this->dynamics(x0_sys, U[0], p0_feet, d0);
+    Dynamics_Result res = this->dynamics(x0_sys, U[0], p0_feet, d0);
     lambda0 = res.lambdas;
     tau0 = res.taus;
 
@@ -604,7 +604,7 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     double tk, t1, t2, t3;
     Vector_4d u1, u2, u3;
     Vector_8d f1, f2, f3;
-    DynamicsResult res1, res2, res3;
+    Dynamics_Result res1, res2, res3;
 
     // forward propagate the system dynamics
     for (int k = 1; k < N; k++) {

@@ -20,19 +20,19 @@ config_file = '../config/config.yaml';
 config = yaml.loadFile(config_file);
 
 % extract some variables
-pz_des = config.REFERENCE.pz_des;
-vx_des = config.REFERENCE.vx_des;
+pz_des = config.REFERENCE.pz_des_;
+vx_des = config.REFERENCE.vx_des_;
 r_des = config.REFERENCE.r_des;
 theta_des = config.REFERENCE.theta_des;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
-% t_interval = [t(1) t(end)];
-t_interval = [0 1];
+t_interval = [t(1) t(end)];
+% t_interval = [0 1];
 
 % plotting / animation
-animate = 0;   % animatio = 1; plot states = 0
+animate = 1;   % animatio = 1; plot states = 0
 rt = 1;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory

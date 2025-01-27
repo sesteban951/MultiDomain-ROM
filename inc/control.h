@@ -48,7 +48,7 @@ class Controller
                                Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_List& J_elite);
 
         // perform sampling predictive control
-        Solution sampling_predictive_control(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0);
+        RHC_Result sampling_predictive_control(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0);
 
         // internal dynamics object
         Dynamics dynamics;

@@ -1,11 +1,13 @@
 ####################################################################
-# INITIAL STATE and DESIRED STATE
+# SIMULATION PARAMETERS
 ####################################################################
 
 STATE:
     x0: [0.0, 0.65, 0.0, 0.0,  # COM: px, pz, vx, vz  (center of mass state)
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
+SIM:
+    duration: 3.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -36,7 +38,7 @@ COST:
     Qf_com_diags: [1.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
     Q_leg_diags:  [5.0, 0.0, 1.0, 0.5] # LEG: r, theta, rdot, thetadot
     Qf_leg_diags: [5.0, 0.0, 1.0, 0.5] # LEG: r, theta, rdot, thetadot
-    R_diags: [1.0, 1.0]                 # diagonal elements of the control cost matrix    
+    R_diags: [2.0, 2.0]                 # diagonal elements of the control cost matrix    
 
 
 ####################################################################
@@ -46,9 +48,9 @@ COST:
 CTRL_PARAMS:
     N: 80                             # number of time steps
     dt: 0.02                           # time step, [s]
-    K: 2500                            # number of rollouts
+    K: 7500                            # number of rollouts
     Nu: 20                             # number of control points
-    N_elite: 250                       # number of elite samples
+    N_elite: 750                       # number of elite samples
     CEM_iters: 30                      # number of CEM iterations
 
 
