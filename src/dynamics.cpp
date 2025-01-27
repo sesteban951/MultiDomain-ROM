@@ -135,6 +135,9 @@ DynamicsResult Dynamics::dynamics(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet
                 double kd = this->params.torque_ankle_kd;
                 tau_ankle = kp * (theta_command - theta) + kd * (thetadot_command - thetadot);
 
+                // saturate the torque
+                tau_ankle = std::max(-this->params.torque_ankle_lim, std::min(this->params.torque_ankle_lim, tau_ankle));
+
                 // convert leg torque into COM force perpendicular to the leg
                 Vector_2d f_unit;
                 double f_mag = tau_ankle / r_norm;

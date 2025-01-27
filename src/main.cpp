@@ -21,7 +21,7 @@ int main()
     // create dynamics object
     Dynamics dynamics(config_file);
 
-    // // Controller controller(config_file);
+    Controller controller(config_file);
 
     // initial conditions
     Vector_8d x0_sys;
@@ -44,26 +44,26 @@ int main()
 
     ////////////////////////////////// Function testing //////////////////////////////////
 
-    Vector_4d u_const;
-    Vector_2d u_L, u_R;
-    u_L << 0.0, 0.0;
-    u_R << 0.0, -0.0;
-    u_const << u_L, u_R;
+    // Vector_4d u_const;
+    // Vector_2d u_L, u_R;
+    // u_L << 0.0, 0.0;
+    // u_R << 0.0, -0.0;
+    // u_const << u_L, u_R;
 
-    // example rollout of the dynamics
-    int N = 140;
-    Vector_1d_Traj T_x(N);
-    for (int i = 0; i < N; i++) {
-        T_x[i] = i * 0.01;
-    }
+    // // example rollout of the dynamics
+    // int N = 140;
+    // Vector_1d_Traj T_x(N);
+    // for (int i = 0; i < N; i++) {
+    //     T_x[i] = i * 0.01;
+    // }
 
-    int Nu = 70;
-    Vector_1d_Traj T_u(Nu);
-    Vector_4d_Traj U(Nu);
-    for (int i = 0; i < Nu; i++) {
-        T_u[i] = i * 0.02;
-        U[i] = u_const;
-    }
+    // int Nu = 70;
+    // Vector_1d_Traj T_u(Nu);
+    // Vector_4d_Traj U(Nu);
+    // for (int i = 0; i < Nu; i++) {
+    //     T_u[i] = i * 0.02;
+    //     U[i] = u_const;
+    // }
 
     // // query the dynamics
     // DynamicsResult res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
@@ -77,33 +77,34 @@ int main()
     // // foot state
     // Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
     // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
-
-    // Do a rollout of the dynamics
-    Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
-
-    std::cout << "Rollout complete." << std::endl;
-
-    // // generate inputs
-    // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(10000);
+    
+    // generate inputs
+    // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
 
     // // update the distribution parameters
     // controller.update_distribution_params(U_bundle);
     // std::cout << "mean: \n" << controller.dist.mean.transpose() << std::endl;
     // std::cout << "cov: \n" << controller.dist.cov << std::endl;
 
-    // generate a reference trajectory
+    // Do a rollout of the dynamics
+    // U = U_bundle[0];
+    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
+    // // std::cout << "Rollout complete." << std::endl;
+
+    // // generate a reference trajectory
     // Vector_12d_Traj X_ref = controller.generate_reference_trajectory(x0_sys.head<4>());
 
-    // test cost function
+    // // test cost function
     // double J = controller.cost_function(X_ref, sol, U);
     // std::cout << "cost: " << J << std::endl;
 
     // test the monte carlo simulation
     // MC_Result mc = controller.monte_carlo(x0_sys, p0_feet, d0, 10);
+    // std::cout << "Monte Carlo complete." << std::endl;
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
-    // Solution sol = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
+    Solution sol = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
 
     ////////////////////////////////// Logging //////////////////////////////////
 
