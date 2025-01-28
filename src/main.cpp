@@ -107,44 +107,80 @@ int main()
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
     // compute time stuff
-    // double duration = config_file["SIM"]["duration"].as<double>();
-    // int N_sim = std::floor(duration / controller.params.dt);
-    // double dt = controller.params.dt;
+    double duration = config_file["SIM"]["duration"].as<double>();
+    int N_sim = std::floor(duration / controller.params.dt_x);
+    double dt = controller.params.dt_x;
+    int Nu = controller.params.N_u;
+    
+    // solution container to use for logging
+    Solution sol;
+    sol.t.resize(N_sim);
+    sol.x_sys_t.resize(N_sim);
+    sol.x_leg_t.resize(N_sim);
+    sol.x_foot_t.resize(N_sim);
+    sol.u_t.resize(N_sim);
+    sol.lambda_t.resize(N_sim);
+    sol.tau_t.resize(N_sim);
+    sol.domain_t.resize(N_sim);
 
     // run the simulation
-    // RHC_Result rhc_res;
-    // Solution sol;
+    RHC_Result rhc_res;
+    Solution sol_;
+    Vector_4d_Traj U_opt(Nu), U_opt_(Nu);
+    Vector_d U_opt_vec(2 * Nu * controller.dynamics.n_leg);
+    Vector_8d xk_sys = x0_sys;
+    Vector_4d pk_feet = p0_feet;
+    Vector_8d xk_feet;
+    Domain dk = d0;
+    // Vector_d mean_k;
+    // Matrix_d cov_k;
+    for (int k = 0; k < N_sim; k++) {
+        std::cout << "Sim time: " << k * dt << " sec" << std::endl;
 
-    // // run the simulation
-    // Vector_4d_Traj U_opt;
-    // Vector_8d xk_sys = x0_sys;
-    // Vector_4d pk_feet = p0_feet;
-    // Domain dk = d0;
-    // // Vector_d mean_k;
-    // // Matrix_d cov_k;
-    // for (int k = 0; k < N_sim; k++) {
-    //     std::cout << "Sim time: " << k * dt << " sec" << std::endl;
+        // do predictive control 
+        rhc_res = controller.sampling_predictive_control(xk_sys, pk_feet, dk);
 
-    //     // do predictive control 
-    //     rhc_res = controller.sampling_predictive_control(xk_sys, pk_feet, dk);
+        // extract the optimal input sequence
+        U_opt = rhc_res.U;
 
-    //     // extract the optimal input sequence
-    //     U_opt = rhc_res.U;
+        for (int i = 0; i < controller.params.N_u-1; i++) {
+            U_opt_[i] = U_opt[i+1];
+            U_opt_vec.segment<4>(4*i) = U_opt_[i];
+        }
+        U_opt_[controller.params.N_u-1] = U_opt[controller.params.N_u-1];
+        U_opt_vec.segment<4>(4*(controller.params.N_u-1)) = U_opt[controller.params.N_u-1];
+
+        // update the distribution
+        controller.dist.mean = U_opt_vec;
+
+        // integrate the dynamics
+        sol_ = dynamics.RK3_rollout(controller.params.T_x, 
+                                    controller.params.T_u, 
+                                    xk_sys, pk_feet, dk, U_opt_);
         
-    //     // get the distribution parameters
-    //     // mean_k = controller.dist.mean;
-    //     // cov_k = controller.dist.cov;
+        // save into solution bundle
+        sol.t[k] = k * dt;
+        sol.x_sys_t[k] = sol_.x_sys_t[1];
+        sol.x_leg_t[k] = sol_.x_leg_t[1];
+        sol.x_foot_t[k] = sol_.x_foot_t[1];
+        sol.u_t[k] = sol_.u_t[1];
+        sol.lambda_t[k] = sol_.lambda_t[1];
+        sol.tau_t[k] = sol_.tau_t[1];
+        sol.domain_t[k] = sol_.domain_t[1];
 
-    //     // integrate the dynamics
-    //     sol = dynamics.RK3_rollout(controller.params.T_x, 
-    //                                controller.params.T_u, 
-    //                                xk_sys, pk_feet, dk, U_opt);
-
-    // }
+        // update the state
+        xk_sys = sol_.x_sys_t[1];
+        dk = sol_.domain_t[1];        
+        xk_feet = sol_.x_foot_t[1];
+        pk_feet(0) = xk_feet(0);
+        pk_feet(1) = xk_feet(1);
+        pk_feet(2) = xk_feet(4);
+        pk_feet(3) = xk_feet(5);
+    }
     
     // do a simulation
-    RHC_Result rhc_res = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
-    Solution sol = rhc_res.S;
+    // RHC_Result rhc_res = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
+    // Solution sol = rhc_res.S;
 
     ////////////////////////////////// Logging //////////////////////////////////
 
