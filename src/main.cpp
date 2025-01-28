@@ -143,15 +143,16 @@ int main()
         // extract the optimal input sequence
         U_opt = rhc_res.U;
 
-        for (int i = 0; i < controller.params.N_u-1; i++) {
-            U_opt_[i] = U_opt[i+1];
+        for (int i = 0; i < controller.params.N_u; i++) {
+            U_opt_[i] = U_opt[i];
             U_opt_vec.segment<4>(4*i) = U_opt_[i];
         }
-        U_opt_[controller.params.N_u-1] = U_opt[controller.params.N_u-1];
-        U_opt_vec.segment<4>(4*(controller.params.N_u-1)) = U_opt[controller.params.N_u-1];
+        // U_opt_[controller.params.N_u-1] = U_opt[controller.params.N_u-1];
+        // U_opt_vec.segment<4>(4*(controller.params.N_u-1)) = U_opt[controller.params.N_u-1];
 
         // update the distribution
-        controller.dist.mean = U_opt_vec;
+        // controller.initialize_distribution(config_file);
+        // controller.set_distribution(U_opt_vec, controller.dist.cov);
 
         // integrate the dynamics
         sol_ = dynamics.RK3_rollout(controller.params.T_x, 

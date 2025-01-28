@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 0.8         # simulation duration, [s]
+    duration: 4.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -38,10 +38,10 @@ REFERENCE:
 
 COST:
     # Quadratic cost weights
-    Q_com_diags:  [0.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
-    Qf_com_diags: [0.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
-    Q_leg_diags:  [4.0, 1.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
-    Qf_leg_diags: [4.0, 1.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
+    Q_com_diags:  [7.0, 8.0, 0.5, 0.1] # COM: px, pz, vx, vz
+    Qf_com_diags: [7.0, 8.0, 0.5, 0.1] # COM: px, pz, vx, vz
+    Q_leg_diags:  [6.0, 6.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
+    Qf_leg_diags: [6.0, 6.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
     R_diags: [0.1, 0.1]                # diagonal elements of the control cost matrix    
     R_rate_diags: [0.01, 0.01]         # diagonal elements of the control cost matrix    
 
@@ -54,12 +54,12 @@ COST:
 ####################################################################
 
 CTRL_PARAMS:
-    N_x: 50          # number of time steps
-    N_u: 50          # number of control points
+    N_x: 80          # number of time steps
+    N_u: 10          # number of control points
     dt_x: 0.01       # time step, [s]
-    K: 500          # number of rollouts
-    N_elite: 50     # number of elite samples
-    CEM_iters: 25     # number of CEM iterations
+    K: 1500          # number of rollouts
+    N_elite: 150     # number of elite samples
+    CEM_iters: 10     # number of CEM iterations
 
 
 ####################################################################
@@ -78,11 +78,11 @@ SYS_PARAMS:
     theta_max: 1.0          # max leg angle, [rad]
     rdot_lim: 1.0           # max leg velocity [m/s]
     thetadot_lim: 3.14      # max angle velocity [rad/s]
-    torque_ankle: False      # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
+    torque_ankle: True     # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
     torque_ankle_lim: 10    # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
-    interp: 'L'             # control interpolation method
+    interp: 'Z'             # control interpolation method
 
 
 ####################################################################
@@ -93,7 +93,7 @@ DIST_PARAMS:
     mu: [0.0, 0.0]              # initial means [l0dot_vel, thetadot_vel]
     sigma: [1.0, 3.14]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
-    epsilon: 0.0001             # minimum eigenvalue for covariance matrix
+    epsilon: 0.01             # minimum eigenvalue for covariance matrix
     seed_enabled: False         # enable random seed
     seed: 1                     # random seed
 
