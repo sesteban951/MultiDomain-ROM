@@ -23,9 +23,9 @@ REFERENCE:
     vx_des_: 0.0
 
     # Desired COM states as knot points
-    px_des: [0.0, 0.0, 0.0, 0.0]
-    pz_des: [0.55, 1.4, 0.55, 0.55]
-    time: [0.0, 0.4, 0.45, 1.0]
+    px_des: [0.0, 0.0]
+    pz_des: [0.55, 0.55]
+    time: [0.0, 1.0]
 
     # giat cycle params
     gait_enabled: True # whether or not to enable gait cycle tracking

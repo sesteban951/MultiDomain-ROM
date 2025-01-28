@@ -283,7 +283,7 @@ if animate == 1
 
     t  = t * (1/rt);
     for i = 1:replays
-        pause(0.25);
+        pause(0.5);
         tic;
         ind = 1;
         com_pts = [];
