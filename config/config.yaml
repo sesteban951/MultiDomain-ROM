@@ -16,11 +16,11 @@ SIM:
 REFERENCE:
     
     # Desire Leg states
-    r_des: 0.5          # desired leg length [m]
+    r_des: 0.6          # desired leg length [m]
     theta_des: 0.0      # desired leg angle [m]
 
     pz_des_: 0.6       # desired COM height [m]
-    vx_des_: 1.5
+    vx_des_: 0.5
 
     # Desired COM states as knot points
     px_des: [0.0, 0.75]
