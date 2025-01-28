@@ -44,26 +44,26 @@ int main()
 
     ////////////////////////////////// Function testing //////////////////////////////////
 
-    Vector_4d u_const;
-    Vector_2d u_L, u_R;
-    u_L << 0.0, 0.0;
-    u_R << 0.0, -0.0;
-    u_const << u_L, u_R;
+    // Vector_4d u_const;
+    // Vector_2d u_L, u_R;
+    // u_L << 0.0, 0.0;
+    // u_R << 0.0, -0.0;
+    // u_const << u_L, u_R;
 
-    // example rollout of the dynamics
-    int N = 140;
-    Vector_1d_Traj T_x(N);
-    for (int i = 0; i < N; i++) {
-        T_x[i] = i * 0.01;
-    }
+    // // example rollout of the dynamics
+    // int N = 140;
+    // Vector_1d_Traj T_x(N);
+    // for (int i = 0; i < N; i++) {
+    //     T_x[i] = i * 0.01;
+    // }
 
-    int Nu = 70;
-    Vector_1d_Traj T_u(Nu);
-    Vector_4d_Traj U(Nu);
-    for (int i = 0; i < Nu; i++) {
-        T_u[i] = i * 0.02;
-        U[i] = u_const;
-    }
+    // int Nu = 70;
+    // Vector_1d_Traj T_u(Nu);
+    // Vector_4d_Traj U(Nu);
+    // for (int i = 0; i < Nu; i++) {
+    //     T_u[i] = i * 0.02;
+    //     U[i] = u_const;
+    // }
 
     // query the dynamics
     // DynamicsResult res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
@@ -106,26 +106,45 @@ int main()
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
-    // compute time stuff
-    double duration = config_file["SIM"]["duration"].as<double>();
-    int N_sim = std::floor(duration / controller.params.dt);
-    double dt = controller.params.dt;
+    // // compute time stuff
+    // double duration = config_file["SIM"]["duration"].as<double>();
+    // int N_sim = std::floor(duration / controller.params.dt);
+    // double dt = controller.params.dt;
 
-    // run the simulation
-    RHC_Result rhc_res;
-    Solution sol;
+    // // run the simulation
+    // RHC_Result rhc_res;
+    // Solution sol;
 
-    // run the simulation
-    // Vector_8d xk_sys;
-    // Vector_2d pk_feet;
+    // // run the simulation
+    // Vector_4d_Traj U_opt;
+    // Vector_8d xk_sys = x0_sys;
+    // Vector_4d pk_feet = p0_feet;
     // Domain dk = d0;
+    // Vector_d mean_k;
+    // Matrix_d cov_k;
     // for (int k = 0; k < N_sim; k++) {
-    //     std::cout << "Simulation time: " << k * dt << " sec" << std::endl;
+    //     std::cout << "Sim time: " << k * dt << " sec" << std::endl;
+
+    //     // do predictive control 
+    //     rhc_res = controller.sampling_predictive_control(xk_sys, pk_feet, dk);
+
+    //     // extract the optimal input sequence
+    //     U_opt = rhc_res.U;
+        
+    //     // get the distribution parameters
+    //     mean_k = controller.dist.mean;
+    //     cov_k = controller.dist.cov;
+
+    //     // integrate the dynamics
+    //     sol = dynamics.RK3_rollout(controller.params.T_x, 
+    //                                controller.params.T_u, 
+    //                                xk_sys, pk_feet, dk, U_opt);
+
     // }
     
     // do a simulation
-    rhc_res = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
-    sol = rhc_res.S;
+    RHC_Result rhc_res = controller.sampling_predictive_control(x0_sys, p0_feet, d0);
+    Solution sol = rhc_res.S;
 
     ////////////////////////////////// Logging //////////////////////////////////
 

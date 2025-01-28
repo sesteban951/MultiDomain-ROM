@@ -5,10 +5,10 @@
 Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 {
     // set the control parameters
-    this->params.N = config_file["CTRL_PARAMS"]["N"].as<int>();
-    this->params.dt = config_file["CTRL_PARAMS"]["dt"].as<double>();
+    this->params.N_x = config_file["CTRL_PARAMS"]["N_x"].as<int>();
+    this->params.N_u = config_file["CTRL_PARAMS"]["N_u"].as<int>();
+    this->params.dt_x = config_file["CTRL_PARAMS"]["dt_x"].as<double>();
     this->params.K = config_file["CTRL_PARAMS"]["K"].as<int>();
-    this->params.Nu = config_file["CTRL_PARAMS"]["Nu"].as<int>();
     this->params.N_elite = config_file["CTRL_PARAMS"]["N_elite"].as<int>();
     this->params.CEM_iters = config_file["CTRL_PARAMS"]["CEM_iters"].as<int>();
     
@@ -40,9 +40,6 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     Vector_4d R_diags, R_rate_diags;
     R_diags << R_leg_diags, R_leg_diags;
     R_rate_diags << R_rate_leg_diags, R_rate_leg_diags;
-    
-    // gait cycle weight
-    this->params.gait_cycle_weight = config_file["COST"]["gait_cycle_weight"].as<double>();
 
     // initialize the cost matrices
     this->params.Q_com  = Q_com_diags.asDiagonal();
@@ -52,10 +49,32 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.R  = R_diags.asDiagonal();
     this->params.R_rate = R_rate_diags.asDiagonal();
 
-    // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
-    double T = (this->params.N-1) * this->params.dt;
-    this->params.dt_u = T / (this->params.Nu-1);
+    // gait cycle weight
+    this->params.gait_cycle_weight = config_file["COST"]["gait_cycle_weight"].as<double>();
 
+    // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
+    double T = (this->params.N_x-1) * this->params.dt_x;
+    this->params.dt_u = T / (this->params.N_u-1);
+
+    // generate the time arrays
+    Vector_1d_Traj T_x;
+    Vector_1d_Traj T_u;
+    T_x.resize(this->params.N_x);
+    T_u.resize(this->params.N_u);
+    for (int i = 0; i < this->params.N_x; i++) {
+        T_x[i] = i * this->params.dt_x;
+    }
+    for (int i = 0; i < this->params.N_u; i++) {
+        T_u[i] = i * this->params.dt_u;
+    }
+    this->params.T_x = T_x;
+    this->params.T_u = T_u;
+
+    std::cout << this->params.N_x << " steps, " << this->params.N_u << " control points" << std::endl;
+    std::cout << "dt_x: " << this->params.dt_x << " sec, dt_u: " << this->params.dt_u << " sec" << std::endl;
+    std::cout << "N_elite: " << this->params.N_elite << ", CEM_iters: " << this->params.CEM_iters << std::endl;
+    std::cout << this->params.T_x[0] << " to " << this->params.T_x[this->params.N_x-1] << " sec" << std::endl;
+    std::cout << this->params.T_u[0] << " to " << this->params.T_u[this->params.N_u-1] << " sec" << std::endl;
 
     // construct the reference trajectory
     this->initialize_reference_trajectories(config_file);
@@ -74,6 +93,9 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
         // enable nested parallelism
         bool nested = config_file["THREADING"]["nested"].as<bool>();
         if (nested == true) { omp_set_nested(1); }
+    }
+    else {
+        omp_set_num_threads(1);
     }
 }
 
@@ -105,8 +127,8 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     }
 
     // some time stuff for the reference trajectory
-    int N = this->params.N;
-    double dt = this->params.dt;
+    int N = this->params.N_x;
+    double dt = this->params.dt_x;
     double rhc_time = (N-1) * dt;         // receding horizon total time
     double t_end = time[N_ref - 1];       // reference traj total time
     int N_ref_dt = std::ceil(rhc_time / dt); // number of knots in the reference trajectory
@@ -153,7 +175,7 @@ void Controller::initialize_distribution(YAML::Node config_file)
 {
     // some useful ints to use
     int n_leg = this->dynamics.n_leg;
-    int Nu = this->params.Nu;
+    int Nu = this->params.N_u;
 
     // initialize the matrices
     this->dist.mean.resize(2 * Nu * n_leg);
@@ -216,7 +238,7 @@ Vector_4d_Traj_Bundle Controller::sample_input_trajectory(int K)
 {
     // some useful ints to use
     int n_leg = this->dynamics.n_leg;
-    int Nu = this->params.Nu;
+    int Nu = this->params.N_u;
 
     // sample the input trajectories
     Vector_d mu = this->dist.mean;
@@ -254,7 +276,7 @@ Vector_4d_Traj_Bundle Controller::sample_input_trajectory(int K)
         U_vec = L * Z_vec + mu;
 
         // unvectorize U_vec into U_traj
-        for (int k = 0; k < this->params.Nu; k++) {
+        for (int k = 0; k < this->params.N_u; k++) {
             u = U_vec.segment<4>(4 * k);
             U_traj[k] = u;
         }
@@ -272,7 +294,7 @@ void Controller::update_distribution_params(Vector_4d_Traj_Bundle U_bundle)
 {
     // some useful ints to use
     int n_leg = this->dynamics.n_leg;
-    int Nu = this->params.Nu;
+    int Nu = this->params.N_u;
 
     // initialize the mean and covariance
     Vector_d mean;
@@ -339,13 +361,21 @@ void Controller::update_distribution_params(Vector_4d_Traj_Bundle U_bundle)
 }
 
 
+// set the distribution parameters
+void Controller::set_distribution(Vector_d mean, Matrix_d cov)
+{
+    // update the distribution
+    this->dist.mean = mean;
+    this->dist.cov = cov;
+}
+
 // generate a reference trajectory for the predictive control to track
 Reference Controller::generate_reference_trajectory(Vector_4d x0_com)
 {
     // pass reference to the dynamics
-    Vector_4d_Traj X_com_ref(this->params.N);
-    Vector_8d_Traj X_leg_ref(this->params.N);
-    Vector_2i_Traj D_ref(this->params.N);
+    Vector_4d_Traj X_com_ref(this->params.N_x);
+    Vector_8d_Traj X_leg_ref(this->params.N_x);
+    Vector_2i_Traj D_ref(this->params.N_x);
 
     // populate the reference trajectory
     Vector_4d xi_com_ref, xi_leg_left_ref, xi_leg_right_ref;
@@ -356,10 +386,10 @@ Reference Controller::generate_reference_trajectory(Vector_4d x0_com)
 
     // populate the reference trajectory    
     double t;
-    for (int i = 0; i < this->params.N; i++) {
+    for (int i = 0; i < this->params.N_x; i++) {
         
         // build the COM reference    
-        t = i * this->params.dt;
+        t = i * this->params.dt_x;
         xi_com_ref << x0_com(0) + this->vx_des * t, 
                       this->pz_des, 
                       this->vx_des, 
@@ -378,10 +408,10 @@ Reference Controller::generate_reference_trajectory(Vector_4d x0_com)
     double T_cycle = this->T_cycle; // time for SSP
     double T_SSP = this->T_SSP;     // time for SSP
     double T_reset = 0.0;           // time for reset
-    for (int i = 0; i < this->params.N; i++) {
+    for (int i = 0; i < this->params.N_x; i++) {
         
         // global time
-        t = i * this->params.dt;
+        t = i * this->params.dt_x;
 
         // in one domain
         if ((t - T_reset) < T_SSP) {
@@ -409,8 +439,8 @@ Reference Controller::generate_reference_trajectory(Vector_4d x0_com)
 double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 {
     // trajectory length 
-    int N = this->params.N;
-    int Nu = this->params.Nu;
+    int N = this->params.N_x;
+    int Nu = this->params.N_u;
 
     // upack the relevant state trajectories
     Vector_8d_Traj X_sys = Sol.x_sys_t;
@@ -512,18 +542,6 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 // perform open loop rollouts
 MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K)
 {
-    // generate the time arrays
-    Vector_1d_Traj T_x;
-    Vector_1d_Traj T_u;
-    T_x.resize(this->params.N);
-    T_u.resize(this->params.Nu);
-    for (int i = 0; i < this->params.N; i++) {
-        T_x[i] = i * this->params.dt;
-    }
-    for (int i = 0; i < this->params.Nu; i++) {
-        T_u[i] = i * this->params.dt_u;
-    }
-
     // generate bundle of input trajectories
     Vector_4d_Traj_Bundle U_bundle(K);
     U_bundle = this->sample_input_trajectory(K);
@@ -547,7 +565,7 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0
         cost = 0.0;
 
         // perform the rollout
-        sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[k]);
+        sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k]);
 
         // compute the cost
         cost = this->cost_function(ref, sol, U_bundle[k]);

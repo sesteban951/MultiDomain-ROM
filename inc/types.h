@@ -81,12 +81,14 @@ struct SystemParams
 // struct to hold control parameters
 struct ControlParams
 {
-    int N;                    // number of system dynamics integration steps
-    double dt;                // time step [sec]
-    int K;                    // number of parallel 
-    int Nu;                   // number of control points
-    int N_elite;              // number of elite control sequences
+    int N_x;                  // number of system dynamics integration steps
+    int N_u;                  // number of control points
+    double dt_x;              // time step [sec]
     double dt_u;              // time step [sec], for the control inputs
+    Vector_1d_Traj T_x;       // time array for system dynamics
+    Vector_1d_Traj T_u;       // time array for control inputs
+    int K;                    // number of parallel 
+    int N_elite;              // number of elite control sequences
     int CEM_iters;            // number of CEM iterations
     Matrix_4d Q_com;          // diagonal elements of com Q matrix
     Matrix_4d Qf_com;         // diagonal elements of com Qf matrix

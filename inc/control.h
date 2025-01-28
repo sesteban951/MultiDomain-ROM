@@ -28,6 +28,9 @@ class Controller
         // to initialize the initial distribution
         void initialize_distribution(YAML::Node config_file);
 
+        // set the distribution parameters
+        void set_distribution(Vector_d mean, Matrix_d cov);
+
         // sample the input trajectories from the distribution
         Vector_4d_Traj_Bundle sample_input_trajectory(int K);
 

@@ -3,11 +3,11 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.65, 0.0, 0.0,  # COM: px, pz, vx, vz  (center of mass state)
+    x0: [0.0, 0.6, 0.0, 0.0,  # COM: px, pz, vx, vz  (center of mass state)
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 3.0         # simulation duration, [s]
+    duration: 4.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -38,15 +38,15 @@ REFERENCE:
 
 COST:
     # Quadratic cost weights
-    Q_com_diags:  [0.5, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
-    Qf_com_diags: [0.5, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
+    Q_com_diags:  [0.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
+    Qf_com_diags: [0.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
     Q_leg_diags:  [4.0, 1.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
     Qf_leg_diags: [4.0, 1.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
     R_diags: [0.1, 0.1]                # diagonal elements of the control cost matrix    
     R_rate_diags: [0.01, 0.01]         # diagonal elements of the control cost matrix    
 
     # gait cycle weight
-    gait_cycle_weight: 10.0
+    gait_cycle_weight: 0
 
 
 ####################################################################
@@ -54,12 +54,12 @@ COST:
 ####################################################################
 
 CTRL_PARAMS:
-    N: 50                             # number of time steps
-    dt: 0.02                           # time step, [s]
-    K: 5000                            # number of rollouts
-    Nu: 15                             # number of control points
-    N_elite: 500                       # number of elite samples
-    CEM_iters: 30                      # number of CEM iterations
+    N_x: 50          # number of time steps
+    N_u: 15          # number of control points
+    dt_x: 0.02       # time step, [s]
+    K: 2500          # number of rollouts
+    N_elite: 250     # number of elite samples
+    CEM_iters: 20     # number of CEM iterations
 
 
 ####################################################################
