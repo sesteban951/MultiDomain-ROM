@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 1.5         # simulation duration, [s]
+    duration: 6.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -23,14 +23,17 @@ REFERENCE:
     vx_des_: 0.0
 
     # Desired COM states as knot points
-    px_des: [0.0, 0.0]
-    pz_des: [0.55, 0.55]
-    time: [0.0, 1.0]
+    # px_des: [0.0, 0.25, 0.75, 1.5, 2.5, 3.75]
+    # pz_des: [0.55, 0.55, 0.55, 0.55, 0.55, 0.55]
+    # time:   [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+    px_des: [0.0, 0.25, 0.75, 1.5, 2.5, 3.75]
+    pz_des: [0.55, 0.55, 0.55, 0.55, 0.55, 0.55]
+    time:   [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
 
     # giat cycle params
-    gait_enabled: True # whether or not to enable gait cycle tracking
-    T_cycle: 0.8       # gait cycle period total [s]
-    T_SSP: 0.5         # single support phase duration [s]
+    gait_enabled: False # whether or not to enable gait cycle tracking
+    T_cycle: 0.8        # gait cycle period total [s]
+    T_SSP: 0.5          # single support phase duration [s]
 
 
 ####################################################################

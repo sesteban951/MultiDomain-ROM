@@ -133,6 +133,7 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     // build the reference trajectory
     Vector_1d_Traj time_ref(N_ref_dt);
     Vector_4d_Traj X_com_ref(N_ref_dt);
+    Vector_2d_Traj p_com_ref(N_ref_dt);
     Vector_2d p_com_des, v_com_des;
     Vector_4d x_com_des;
     double t, t0, tf;
@@ -150,6 +151,8 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
         if (idx == N_ref - 1) {
             p_com_des = p_com_traj[N_ref - 1]; // position is the last element
             v_com_des << 0.0, 0.0;            // velocity is zero
+
+            p_com_ref[i] = p_com_des;
         }
         else{
             t0 = time[idx];
@@ -158,6 +161,8 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
             Vector_2d pf = p_com_traj[idx + 1];
             v_com_des = (pf - p0) / (tf - t0);
             p_com_des = p0 + v_com_des * (t - t0);
+
+            p_com_ref[i] = p_com_des;
         }
 
         // populate the desired COM state
@@ -167,6 +172,7 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
 
     // set the reference trajectory for use inside the class
     this->X_com_ref = X_com_ref;
+    this->p_com_ref = p_com_ref;
     this->t_ref = time_ref;
 }
 
@@ -372,10 +378,13 @@ Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_c
 
     // get the "global time" reference trajectory
     Vector_1d_Traj t_ref_global = this->t_ref;
+    Vector_2d_Traj p_com_ref_global = this->p_com_ref;
     Vector_4d_Traj X_com_ref_global = this->X_com_ref;
 
     // build the COM reference trajectory
     Vector_4d xi_com_ref;
+    Vector_2d pi_com_ref;
+    Vector_2d vi_com_ref;
     double t;
     for (int i = 0; i < this->params.N_x; i++) {
     
@@ -389,15 +398,10 @@ Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_c
 
         // beyond last element
         if (idx == t_ref_global.size() - 1) {
-            xi_com_ref = X_com_ref_global[t_ref_global.size() - 1]; // state is the last element
+            // fill in 
         }
         else{
-            // linear interpolation
-            double t0 = t_ref_global[idx];
-            double tf = t_ref_global[idx + 1];
-            Vector_4d x0 = X_com_ref_global[idx];
-            Vector_4d xf = X_com_ref_global[idx + 1];
-            xi_com_ref = x0 + (xf - x0) * (t - t0) / (tf - t0);
+            // fill in 
         }
 
         // build the COM reference (only for hardcoded references)
@@ -579,7 +583,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
     // loop over the input trajectories
     Solution sol;
     double cost = 0.0;
-    #pragma omp parallel for private(sol, cost)
+    // #pragma omp parallel for private(sol, cost)
     for (int k = 0; k < K; k++) {
         
         // initialize the solution and cost
@@ -593,11 +597,11 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         cost = this->cost_function(ref, sol, U_bundle[k]);
 
         // store the results (use critical sections to avoid race conditions if necessary)
-        #pragma omp critical
-        {
+        // #pragma omp critical
+        // {
             Sol_bundle[k] = sol;
             J[k] = cost;
-        }
+        // }
     }
 
     // pack solutions into a tuple

@@ -148,6 +148,9 @@ int main()
             U_opt_vec.segment<4>(4*i) = U_opt_[i];
         }
 
+        // controller.initialize_distribution(config_file);
+        // controller.dist.mean = U_opt_vec;
+
         // integrate the dynamics
         sol_ = dynamics.RK3_rollout(controller.params.T_x, 
                                     controller.params.T_u, 
