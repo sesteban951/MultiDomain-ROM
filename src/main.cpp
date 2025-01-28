@@ -93,8 +93,8 @@ int main()
     // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
     // // std::cout << "Rollout complete." << std::endl;
 
-    // // generate a reference trajectory
-    // Vector_12d_Traj X_ref = controller.generate_reference_trajectory(x0_sys.head<4>());
+    // generate a reference trajectory
+    // Reference ref = controller.generate_reference_trajectory(x0_sys.head<4>());
 
     // // test cost function
     // double J = controller.cost_function(X_ref, sol, U);

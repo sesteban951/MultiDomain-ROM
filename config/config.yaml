@@ -16,11 +16,11 @@ SIM:
 REFERENCE:
     
     # Desire Leg states
-    r_des: 0.5               # desired leg length [m]
-    theta_des: 0.05          # desired leg angle [m]
+    r_des: 0.5          # desired leg length [m]
+    theta_des: 0.0      # desired leg angle [m]
 
-    pz_des_: 0.6             # desired COM height [m]
-    vx_des_: 0.0
+    pz_des_: 0.55       # desired COM height [m]
+    vx_des_: 0.5
 
     # Desired COM states as knot points
     px_des: [0.0, 0.75]
@@ -34,11 +34,12 @@ REFERENCE:
 
 COST:
     # Quadratic cost weights
-    Q_com_diags:  [1.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
-    Qf_com_diags: [1.0, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
-    Q_leg_diags:  [5.0, 0.0, 1.0, 0.5] # LEG: r, theta, rdot, thetadot
-    Qf_leg_diags: [5.0, 0.0, 1.0, 0.5] # LEG: r, theta, rdot, thetadot
-    R_diags: [2.0, 2.0]                 # diagonal elements of the control cost matrix    
+    Q_com_diags:  [0.5, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
+    Qf_com_diags: [0.5, 3.0, 1.5, 1.0] # COM: px, pz, vx, vz
+    Q_leg_diags:  [4.0, 1.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
+    Qf_leg_diags: [4.0, 1.0, 0.1, 0.05] # LEG: r, theta, rdot, thetadot
+    R_diags: [0.1, 0.1]                # diagonal elements of the control cost matrix    
+    R_rate_diags: [0.5, 0.5]         # diagonal elements of the control cost matrix    
 
 
 ####################################################################
@@ -48,10 +49,10 @@ COST:
 CTRL_PARAMS:
     N: 80                             # number of time steps
     dt: 0.02                           # time step, [s]
-    K: 7500                            # number of rollouts
+    K: 2500                            # number of rollouts
     Nu: 20                             # number of control points
-    N_elite: 750                       # number of elite samples
-    CEM_iters: 30                      # number of CEM iterations
+    N_elite: 500                       # number of elite samples
+    CEM_iters: 40                      # number of CEM iterations
 
 
 ####################################################################
@@ -62,7 +63,7 @@ SYS_PARAMS:
     m: 35.0                 # COM mass,[kg] 
     g: 9.81                 # gravity, [m/s^2] 
     k: 7500.0               # spring stiffness, [N/m]
-    b: 0.0                 # damping coeff, [Ns/m]
+    b: 100.0                 # damping coeff, [Ns/m]
     l0: 0.65                # nominal rest length, [m]
     r_min: 0.4              # min leg length, [m]
     r_max: 0.8              # max leg length, [m]
@@ -74,7 +75,7 @@ SYS_PARAMS:
     torque_ankle_lim: 5    # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
-    interp: 'L'             # control interpolation method
+    interp: 'Z'             # control interpolation method
 
 
 ####################################################################

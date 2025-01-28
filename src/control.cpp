@@ -18,29 +18,41 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     Vector_1d_List Qf_com_diags_temp = config_file["COST"]["Qf_com_diags"].as<std::vector<double>>();
     Vector_1d_List Qf_leg_diags_temp = config_file["COST"]["Qf_leg_diags"].as<std::vector<double>>();
     Vector_1d_List R_diags_temp = config_file["COST"]["R_diags"].as<std::vector<double>>();
+    Vector_1d_List R_rate_diags_temp = config_file["COST"]["R_rate_diags"].as<std::vector<double>>();
 
-    Vector_4d Q_com_diags, Q_leg_diags, Qf_com_diags, Qf_leg_diags;
+    Vector_4d Q_com_diags, Qf_com_diags;
+    Vector_4d Q_leg_diag, Qf_leg_diag;
     for (int i = 0; i < Q_com_diags_temp.size(); i++) {
         Q_com_diags[i] = Q_com_diags_temp[i];
-        Q_leg_diags[i] = Q_leg_diags_temp[i];
         Qf_com_diags[i] = Qf_com_diags_temp[i];
-        Qf_leg_diags[i] = Qf_leg_diags_temp[i];
+        Q_leg_diag[i] = Q_leg_diags_temp[i];
+        Qf_leg_diag[i] = Qf_leg_diags_temp[i];
     }
-    Vector_12d Q_diags, Qf_diags;
-    Q_diags << Q_com_diags, Q_leg_diags, Q_leg_diags;
-    Qf_diags << Qf_com_diags, Qf_leg_diags, Qf_leg_diags;
+    Vector_8d Q_leg_diags, Qf_leg_diags;
+    Q_leg_diags << Q_leg_diag, Q_leg_diag;
+    Qf_leg_diags << Qf_leg_diag, Qf_leg_diag;
     
-    Vector_2d R_leg_diags;
+    Vector_2d R_leg_diags, R_rate_leg_diags;
     for (int i = 0; i < R_diags_temp.size(); i++) {
         R_leg_diags[i] = R_diags_temp[i];
+        R_rate_leg_diags[i] = R_rate_diags_temp[i];
     }
-    Vector_4d R_diags;
+    Vector_4d R_diags, R_rate_diags;
     R_diags << R_leg_diags, R_leg_diags;
+    R_rate_diags << R_rate_leg_diags, R_rate_leg_diags;
     
     // initialize the cost matrices
-    this->params.Q  = Q_diags.asDiagonal();
-    this->params.Qf = Qf_diags.asDiagonal();
+    this->params.Q_com  = Q_com_diags.asDiagonal();
+    this->params.Q_leg  = Q_leg_diags.asDiagonal();
+    this->params.Qf_com = Qf_com_diags.asDiagonal();
+    this->params.Qf_leg = Qf_leg_diags.asDiagonal();
     this->params.R  = R_diags.asDiagonal();
+    this->params.R_rate = R_rate_diags.asDiagonal();
+
+    // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
+    double T = (this->params.N-1) * this->params.dt;
+    double dt_u = T / (this->params.Nu-1);
+    this->params.dt_u = dt_u;
 
     // construct the reference trajectory
     this->initialize_reference_trajectories(config_file);
@@ -321,86 +333,143 @@ void Controller::update_distribution_params(Vector_4d_Traj_Bundle U_bundle)
 
 
 // generate a reference trajectory for the predictive control to track
-Vector_12d_Traj Controller::generate_reference_trajectory(Vector_4d x0_com)
+Reference Controller::generate_reference_trajectory(Vector_4d x0_com)
 {
     // pass reference to the dynamics
-    Vector_12d_Traj X_ref;
-    X_ref.resize(this->params.N);
+    Vector_4d_Traj X_com_ref(this->params.N);
+    Vector_8d_Traj X_leg_ref(this->params.N);
+    Vector_2i_Traj D_ref(this->params.N);
 
     // populate the reference trajectory
-    Vector_12d xi_ref;
     Vector_4d xi_com_ref, xi_leg_left_ref, xi_leg_right_ref;
+    Vector_8d x_leg_ref;
     xi_leg_left_ref <<  this->r_des,  this->theta_des, 0.0, 0.0;
     xi_leg_right_ref << this->r_des, -this->theta_des, 0.0, 0.0;
-    
+    x_leg_ref << xi_leg_left_ref, xi_leg_right_ref;
+
+    // populate the reference trajectory    
+    double t;
     for (int i = 0; i < this->params.N; i++) {
         
         // build the COM reference    
-        xi_com_ref << x0_com(0) + this->vx_des * i * this->params.dt, 
+        t = i * this->params.dt;
+        xi_com_ref << x0_com(0) + this->vx_des * t, 
                       this->pz_des, 
                       this->vx_des, 
                       0.0;
 
-        // build full state reference
-        xi_ref << xi_com_ref, xi_leg_left_ref, xi_leg_right_ref;
-
         // insert into trajectory
-        X_ref[i] = xi_ref;
+        X_com_ref[i] = xi_com_ref;
+        X_leg_ref[i] = x_leg_ref;
     }
 
-    return X_ref;
+    // build the domain reference trajectory
+    Vector_2i d_ref;
+    Vector_2i d;
+    d_ref << 1, 1;          // both feet in stance
+    d << 1, 0;              // both feet in stance
+    double T_SSP = 0.35;    // time for SSP
+    double T_reset = 0.0;   // time for reset
+    for (int i = 0; i < this->params.N; i++) {
+        
+        // global time
+        t = i * this->params.dt;
+
+        // in one domain
+        if ((t - T_reset) < T_SSP) {
+            D_ref[i] = d;
+        }
+        // reset the domain
+        else{
+            d = d_ref - d;
+            D_ref[i] = d;
+            T_reset = t;
+        }
+    }
+
+    // insert the references
+    Reference ref;
+    ref.X_com_ref = X_com_ref;
+    ref.X_leg_ref = X_leg_ref;
+    ref.D_ref = D_ref;
+
+    return ref;
 }
 
 
 // evaluate the cost function given a solution
-double Controller::cost_function(Vector_12d_Traj X_ref, Solution Sol, Vector_4d_Traj U)
+double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 {
     // trajectory length 
     int N = this->params.N;
     int Nu = this->params.Nu;
 
-    // upack the relevant variables
+    // upack the relevant state trajectories
     Vector_8d_Traj X_sys = Sol.x_sys_t;
     Vector_8d_Traj X_leg = Sol.x_leg_t;
-    // Vector_8d_Traj X_foot = Sol.x_foot_t; // TODO: add some kind of cost for the foot state
+    Vector_8d_Traj X_foot = Sol.x_foot_t; // TODO: add some kind of cost for the foot state
+    Domain_Traj D = Sol.domain_t;
 
-    // convert to the trajectories into big matrices
-    Matrix_d X_sys_mat, X_leg_mat;
-    X_sys_mat.resize(8, N);
-    X_leg_mat.resize(8, N);
+    // unapck the reference trajectory
+    Vector_4d_Traj X_com_ref = ref.X_com_ref;
+    Vector_8d_Traj X_leg_ref = ref.X_leg_ref;
+    Vector_2i_Traj D_ref = ref.D_ref;
+
+    // ************************************ COM COST ************************************
+
+    // build the COM trajectory
+    Vector_4d_Traj X_com(N);
     for (int i = 0; i < N; i++) {
-        // populate the system matrix
-        X_sys_mat.col(i) = X_sys[i];
-
-        // populate the leg matrix
-        X_leg_mat.col(i) = X_leg[i];
+        X_com[i] = X_sys[i].head<4>();
     }
 
-    // combine the COM state with the LEG state
-    Matrix_d X_com;
-    X_com.resize(4, N);
-    X_com = X_sys_mat.block(0, 0, 4, N);
-    
-    Matrix_d X;
-    X.resize(12, N);
-    X << X_com, X_leg_mat;
+    // compute the COM cost
+    Vector_4d ei_com;
+    double J_com = 0.0;
+    // integrated cost
+    for (int i = 0; i < N-1; i++) {
+        ei_com = X_com[i] - X_com_ref[i];
+        J_com += ei_com.transpose() * this->params.Q_com * ei_com;
+    }
+    //terminal cost
+    ei_com = X_com[N-1] - X_com_ref[N-1];
+    J_com += ei_com.transpose() * this->params.Qf_com * ei_com;
 
-    // state cost
-    Vector_12d xi, xi_des, ei;
-    double J_state, cost;
-    J_state = 0.0;
+    // ************************************ LEG COST ************************************
+
+    // compute the LEG cost
+    Vector_8d ei_leg;
+    double J_legs = 0.0;
+    // integrated cost
+    for (int i = 0; i < N-1; i++) {
+        ei_leg = X_leg[i] - X_leg_ref[i];
+        J_legs += ei_leg.transpose() * this->params.Q_leg * ei_leg;
+    }
+    // terminal cost
+    ei_leg = X_leg[N-1] - X_leg_ref[N-1];
+    J_legs += ei_leg.transpose() * this->params.Qf_leg * ei_leg;
+
+    // ************************************ CONTACT CYCLE COST ************************************
+
+    // convert domain to a binary contact
+    Vector_2i di;
+    Domain d;
+    double J_cycle = 0.0;
     for (int i = 0; i < N; i++) {
-        // compute error state
-        xi = X.col(i);
-        xi_des = X_ref[i];
-        ei = (xi - xi_des);
+        // convert contact type to binary contact
+        d = D[i];
+        d[0] == Contact::STANCE ? di(0) = 1 : di(0) = 0;
+        d[1] == Contact::STANCE ? di(1) = 1 : di(0) = 0;
 
-        // compute the stage cost
-        cost = ei.transpose() * this->params.Q * ei;
-        J_state += cost;
+        // if the domain is different than the desired domain
+        if (di != D_ref[i]) {
+            J_cycle += 5.0;
+        }
     }
 
-    // input cost
+    // ************************************ INPUT COST ************************************
+
+    // penalize the velocity input (want it to be closer to zero)
     Vector_4d ui;
     double J_input = 0.0;
     for (int i = 0; i < Nu; i++) {
@@ -411,16 +480,21 @@ double Controller::cost_function(Vector_12d_Traj X_ref, Solution Sol, Vector_4d_
         J_input += ui.transpose() * this->params.R * ui;
     }
 
-    // terminal cost
-    xi = X.col(N - 1);
-    xi_des = X_ref[N - 1];
-    ei = (xi - xi_des);
-    cost = ei.transpose() * this->params.Qf * ei;
-    J_state += cost;
+    // penalize the rate of change of the input (smaller rates of change)
+    Vector_4d u_delta;
+    for (int i = 0; i < Nu - 1; i++) {
+        // left and right leg input vector
+        u_delta = (U[i + 1] - U[i]) / this->params.dt_u;
+
+        // compute quadratic cost
+        J_input += (u_delta).transpose() * this->params.R_rate * (u_delta);
+    }
+
+    // ************************************ TOTAL COST ************************************
 
     // total cost
     double J_total; 
-    J_total = J_state + J_input;
+    J_total = J_com + J_legs + J_input + J_cycle;
 
     return J_total;
 }
@@ -429,10 +503,6 @@ double Controller::cost_function(Vector_12d_Traj X_ref, Solution Sol, Vector_4d_
 // perform open loop rollouts
 MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K)
 {
-    // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
-    double T = (this->params.N-1) * this->params.dt;
-    double dt_u = T / (this->params.Nu-1);
-
     // generate the time arrays
     Vector_1d_Traj T_x;
     Vector_1d_Traj T_u;
@@ -442,7 +512,7 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0
         T_x[i] = i * this->params.dt;
     }
     for (int i = 0; i < this->params.Nu; i++) {
-        T_u[i] = i * dt_u;
+        T_u[i] = i * this->params.dt_u;
     }
 
     // generate bundle of input trajectories
@@ -454,8 +524,8 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0
     Vector_1d_List J(K);
 
     // generate the reference trajectory
-    Vector_12d_Traj X_ref;
-    X_ref = this->generate_reference_trajectory(x0_sys.head<4>());
+    Reference ref;
+    ref = this->generate_reference_trajectory(x0_sys.head<4>());
 
     // loop over the input trajectories
     Solution sol;
@@ -471,7 +541,7 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0
         sol = this->dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U_bundle[k]);
 
         // compute the cost
-        cost = this->cost_function(X_ref, sol, U_bundle[k]);
+        cost = this->cost_function(ref, sol, U_bundle[k]);
 
         // store the results (use critical sections to avoid race conditions if necessary)
         #pragma omp critical

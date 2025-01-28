@@ -41,6 +41,7 @@ using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 // Trajectory types
 using Vector_1i_Traj = std::vector<int>;
 using Vector_1d_Traj = std::vector<double>;
+using Vector_2i_Traj = std::vector<Vector_2i>;
 using Vector_2d_Traj = std::vector<Vector_2d>;
 using Vector_4d_Traj = std::vector<Vector_4d>;
 using Vector_8d_Traj = std::vector<Vector_8d>;
@@ -80,15 +81,19 @@ struct SystemParams
 // struct to hold control parameters
 struct ControlParams
 {
-    int N;           // number of system dynamics integration steps
-    double dt;       // time step [sec]
-    int K;           // number of parallel 
-    int Nu;          // number of control points
-    int N_elite;     // number of elite control sequences
-    int CEM_iters;   // number of CEM iterations
-    Matrix_12d Q;     // diagonal elements of Q matrix
-    Matrix_12d Qf;    // diagonal elements of Qf matrix
-    Matrix_4d R;     // diagonal elements of R matrix
+    int N;               // number of system dynamics integration steps
+    double dt;           // time step [sec]
+    int K;               // number of parallel 
+    int Nu;              // number of control points
+    int N_elite;         // number of elite control sequences
+    double dt_u;         // time step [sec], for the control inputs
+    int CEM_iters;       // number of CEM iterations
+    Matrix_4d Q_com;     // diagonal elements of com Q matrix
+    Matrix_4d Qf_com;    // diagonal elements of com Qf matrix
+    Matrix_8d Q_leg;     // diagonal elements of leg Q matrix
+    Matrix_8d Qf_leg;    // diagonal elements of leg Qf matrix
+    Matrix_4d R;         // diagonal elements of R matrix
+    Matrix_4d R_rate;    // diagonal elements of R rate matrix
 };
 
 // Distribution struct
@@ -114,6 +119,14 @@ struct Solution
     Vector_2d_Traj tau_t;         // ankle torque trajectory
     Domain_Traj domain_t;    // domain trajectory
     bool viability;          // viability of the trajectory
+};
+
+// Reference type
+struct Reference
+{
+    Vector_4d_Traj X_com_ref; // reference trajectory
+    Vector_8d_Traj X_leg_ref; // reference trajectory
+    Vector_2i_Traj D_ref;     // reference trajectory
 };
 
 // ***********************************************************************************

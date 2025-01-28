@@ -24,6 +24,7 @@ pz_des = config.REFERENCE.pz_des_;
 vx_des = config.REFERENCE.vx_des_;
 r_des = config.REFERENCE.r_des;
 theta_des = config.REFERENCE.theta_des;
+interp = config.SYS_PARAMS.interp;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -209,8 +210,13 @@ if animate == 0
     % INPUT
     subplot(3,6,13); 
     hold on; grid on;
-    plot(t, u_L(:,1), 'LineWidth', 2);
-    plot(t, u_R(:,1), 'LineWidth', 2);
+    if interp == 'Z'
+        stairs(t, u_L(:,1), 'LineWidth', 2);
+        stairs(t, u_R(:,1), 'LineWidth', 2);
+    elseif interp == 'L'
+        plot(t, u_L(:,1), 'LineWidth', 2);
+        plot(t, u_R(:,1), 'LineWidth', 2);
+    end
     xlabel('Time [sec]');
     ylabel('$\hat{\dot{l_0}}$', 'interpreter', 'latex');
     title('leg vel input');
@@ -218,8 +224,13 @@ if animate == 0
 
     subplot(3,6,14); 
     hold on; grid on;
-    plot(t, u_L(:,2), 'LineWidth', 2);
-    plot(t, u_R(:,2), 'LineWidth', 2);
+    if interp == 'Z'
+        stairs(t, u_L(:,2), 'LineWidth', 2);
+        stairs(t, u_R(:,2), 'LineWidth', 2);
+    elseif interp == 'L'
+        plot(t, u_L(:,2), 'LineWidth', 2);
+        plot(t, u_R(:,2), 'LineWidth', 2);
+    end
     xlabel('Time [sec]');
     ylabel('$\hat{\dot{\theta}}$', 'interpreter', 'latex');
     title('angle vel input');
