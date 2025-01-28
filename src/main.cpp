@@ -132,11 +132,13 @@ int main()
     Vector_4d pk_feet = p0_feet;
     Vector_8d xk_feet;
     Domain dk = d0;
+    double t_sim;
     for (int k = 0; k < N_sim; k++) {
-        std::cout << "Sim time: " << k * dt << " sec" << std::endl;
+        t_sim = k * dt;
+        std::cout << "Sim time: " << t_sim << " sec" << std::endl;
 
         // do predictive control 
-        rhc_res = controller.sampling_predictive_control(xk_sys, pk_feet, dk);
+        rhc_res = controller.sampling_predictive_control(t_sim, xk_sys, pk_feet, dk);
 
         // extract the optimal input sequence
         U_opt = rhc_res.U;
@@ -152,7 +154,7 @@ int main()
                                     xk_sys, pk_feet, dk, U_opt_);
         
         // save into solution bundle
-        sol.t[k] = k * dt;
+        sol.t[k] = t_sim;
         sol.x_sys_t[k] = sol_.x_sys_t[1];
         sol.x_leg_t[k] = sol_.x_leg_t[1];
         sol.x_foot_t[k] = sol_.x_foot_t[1];

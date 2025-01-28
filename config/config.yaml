@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 3.0         # simulation duration, [s]
+    duration: 1.5         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -17,19 +17,20 @@ REFERENCE:
     
     # Desire Leg states
     r_des: 0.6          # desired leg length [m]
-    theta_des: 0.0      # desired leg angle [m]
+    theta_des: 0.1      # desired leg angle [m]
 
     pz_des_: 0.6       # desired COM height [m]
-    vx_des_: 2.0
+    vx_des_: 0.0
 
     # Desired COM states as knot points
-    px_des: [0.0, 0.75]
-    pz_des: [0.65, 0.65]
-    time: [0.0, 1.0]
+    px_des: [0.0, 0.0, 0.0, 0.0]
+    pz_des: [0.55, 1.4, 0.55, 0.55]
+    time: [0.0, 0.4, 0.45, 1.0]
 
     # giat cycle params
-    T_cycle: 0.8
-    T_SSP: 0.5
+    gait_enabled: True # whether or not to enable gait cycle tracking
+    T_cycle: 0.8       # gait cycle period total [s]
+    T_SSP: 0.5         # single support phase duration [s]
 
 
 ####################################################################

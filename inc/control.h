@@ -28,9 +28,6 @@ class Controller
         // to initialize the initial distribution
         void initialize_distribution(YAML::Node config_file);
 
-        // set the distribution parameters
-        void set_distribution(Vector_d mean, Matrix_d cov);
-
         // sample the input trajectories from the distribution
         Vector_4d_Traj_Bundle sample_input_trajectory(int K);
 
@@ -38,20 +35,20 @@ class Controller
         void update_distribution_params(Vector_4d_Traj_Bundle U_bundle);
 
         // generate a reference trajectory for the predictive control to track
-        Reference generate_reference_trajectory(Vector_4d x0_com);
+        Reference generate_reference_trajectory(double t_sim, Vector_4d x0_com);
 
         // evaluate the cost function given a solution
         double cost_function(Reference ref, Solution Sol, Vector_4d_Traj U);
 
         // perform open loop rollouts
-        MC_Result monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K);
+        MC_Result monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K);
 
         // select solutions based on cost
         void sort_trajectories(Solution_Bundle  S,       Vector_4d_Traj_Bundle U,        Vector_1d_List J,
                                Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_List& J_elite);
 
         // perform sampling predictive control
-        RHC_Result sampling_predictive_control(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0);
+        RHC_Result sampling_predictive_control(double t, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0);
 
         // internal dynamics object
         Dynamics dynamics;
@@ -76,6 +73,8 @@ class Controller
         double theta_des;
         double T_cycle;
         double T_SSP;
+        Vector_4d_Traj X_com_ref;
+        Vector_1d_Traj t_ref;
 
         // minimum covariance norm (theoretical)
         double min_cov_norm;

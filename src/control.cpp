@@ -122,12 +122,12 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
         p_com_des_ << px_des_temp[i], pz_des_temp[i];
         p_com_traj[i] = p_com_des_;
     }
-
+    
     // some time stuff for the reference trajectory
     int N = this->params.N_x;
     double dt = this->params.dt_x;
-    double rhc_time = (N-1) * dt;         // receding horizon total time
-    double t_end = time[N_ref - 1];       // reference traj total time
+    double rhc_time = (N-1) * dt;            // receding horizon total time
+    double t_end = time[N_ref - 1];          // reference traj total time
     int N_ref_dt = std::ceil(rhc_time / dt); // number of knots in the reference trajectory
 
     // build the reference trajectory
@@ -164,6 +164,10 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
         x_com_des << p_com_des, v_com_des;
         X_com_ref[i] = x_com_des;
     }
+
+    // set the reference trajectory for use inside the class
+    this->X_com_ref = X_com_ref;
+    this->t_ref = time_ref;
 }
 
 
@@ -358,42 +362,63 @@ void Controller::update_distribution_params(Vector_4d_Traj_Bundle U_bundle)
 }
 
 
-// set the distribution parameters
-void Controller::set_distribution(Vector_d mean, Matrix_d cov)
-{
-    // update the distribution
-    this->dist.mean = mean;
-    this->dist.cov = cov;
-}
-
 // generate a reference trajectory for the predictive control to track
-Reference Controller::generate_reference_trajectory(Vector_4d x0_com)
+Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_com)
 {
     // pass reference to the dynamics
     Vector_4d_Traj X_com_ref(this->params.N_x);
     Vector_8d_Traj X_leg_ref(this->params.N_x);
     Vector_2i_Traj D_ref(this->params.N_x);
 
-    // populate the reference trajectory
-    Vector_4d xi_com_ref, xi_leg_left_ref, xi_leg_right_ref;
+    // get the "global time" reference trajectory
+    Vector_1d_Traj t_ref_global = this->t_ref;
+    Vector_4d_Traj X_com_ref_global = this->X_com_ref;
+
+    // build the COM reference trajectory
+    Vector_4d xi_com_ref;
+    double t;
+    for (int i = 0; i < this->params.N_x; i++) {
+    
+        // compute the time given the global reference
+        t = i * this->params.dt_x + t_sim;
+
+        // find where t is in the time reference
+        auto it = std::upper_bound(t_ref.begin(), t_ref.end(), t);
+        int idx = std::distance(t_ref.begin(), it) - 1; // return -1 if before the first element
+                                                        // return N_ref - 1 if after the last element
+
+        // beyond last element
+        if (idx == t_ref_global.size() - 1) {
+            xi_com_ref = X_com_ref_global[t_ref_global.size() - 1]; // state is the last element
+        }
+        else{
+            // linear interpolation
+            double t0 = t_ref_global[idx];
+            double tf = t_ref_global[idx + 1];
+            Vector_4d x0 = X_com_ref_global[idx];
+            Vector_4d xf = X_com_ref_global[idx + 1];
+            xi_com_ref = x0 + (xf - x0) * (t - t0) / (tf - t0);
+        }
+
+        // build the COM reference (only for hardcoded references)
+        // t = i * this->params.dt_x;
+        // xi_com_ref << x0_com(0) + this->vx_des * t, 
+        //               this->pz_des, 
+        //               this->vx_des, 
+        //               0.0;
+
+        // insert into trajectory
+        X_com_ref[i] = xi_com_ref;
+    }
+
+    // build the LEG reference trajectory
+    Vector_4d xi_leg_left_ref, xi_leg_right_ref;
     Vector_8d x_leg_ref;
     xi_leg_left_ref <<  this->r_des,  this->theta_des, 0.0, 0.0;
     xi_leg_right_ref << this->r_des, -this->theta_des, 0.0, 0.0;
     x_leg_ref << xi_leg_left_ref, xi_leg_right_ref;
-
-    // populate the reference trajectory    
-    double t;
     for (int i = 0; i < this->params.N_x; i++) {
-        
-        // build the COM reference    
-        t = i * this->params.dt_x;
-        xi_com_ref << x0_com(0) + this->vx_des * t, 
-                      this->pz_des, 
-                      this->vx_des, 
-                      0.0;
-
         // insert into trajectory
-        X_com_ref[i] = xi_com_ref;
         X_leg_ref[i] = x_leg_ref;
     }
 
@@ -537,7 +562,7 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 
 
 // perform open loop rollouts
-MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K)
+MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K)
 {
     // generate bundle of input trajectories
     Vector_4d_Traj_Bundle U_bundle(K);
@@ -549,7 +574,7 @@ MC_Result Controller::monte_carlo(Vector_8d x0_sys, Vector_4d p0_feet, Domain d0
 
     // generate the reference trajectory
     Reference ref;
-    ref = this->generate_reference_trajectory(x0_sys.head<4>());
+    ref = this->generate_reference_trajectory(t_sim, x0_sys.head<4>());
 
     // loop over the input trajectories
     Solution sol;
@@ -615,7 +640,7 @@ void Controller::sort_trajectories(Solution_Bundle  S,       Vector_4d_Traj_Bund
 
 
 // perform sampling predictive control of your choice here
-RHC_Result Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_4d p0_foot, Domain d0)
+RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sys, Vector_4d p0_foot, Domain d0)
 {
     // Monte Carlo Result to return
     MC_Result mc;
@@ -631,7 +656,7 @@ RHC_Result Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_4d p
 
         // perform monte carlo simulation
         auto t0 = std::chrono::high_resolution_clock::now();
-        mc = this->monte_carlo(x0_sys, p0_foot, d0, this->params.K);
+        mc = this->monte_carlo(t_sim, x0_sys, p0_foot, d0, this->params.K);
 
         // store monte carlo results
         S = mc.S;
@@ -659,7 +684,6 @@ RHC_Result Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_4d p
 
     }
     auto tf_total = std::chrono::high_resolution_clock::now();
-    
     double T_tot = std::chrono::duration<double>(tf_total - t0_total).count();
 
     if (this->verbose == true) 
