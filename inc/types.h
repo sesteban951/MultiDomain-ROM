@@ -81,19 +81,20 @@ struct SystemParams
 // struct to hold control parameters
 struct ControlParams
 {
-    int N;               // number of system dynamics integration steps
-    double dt;           // time step [sec]
-    int K;               // number of parallel 
-    int Nu;              // number of control points
-    int N_elite;         // number of elite control sequences
-    double dt_u;         // time step [sec], for the control inputs
-    int CEM_iters;       // number of CEM iterations
-    Matrix_4d Q_com;     // diagonal elements of com Q matrix
-    Matrix_4d Qf_com;    // diagonal elements of com Qf matrix
-    Matrix_8d Q_leg;     // diagonal elements of leg Q matrix
-    Matrix_8d Qf_leg;    // diagonal elements of leg Qf matrix
-    Matrix_4d R;         // diagonal elements of R matrix
-    Matrix_4d R_rate;    // diagonal elements of R rate matrix
+    int N;                    // number of system dynamics integration steps
+    double dt;                // time step [sec]
+    int K;                    // number of parallel 
+    int Nu;                   // number of control points
+    int N_elite;              // number of elite control sequences
+    double dt_u;              // time step [sec], for the control inputs
+    int CEM_iters;            // number of CEM iterations
+    Matrix_4d Q_com;          // diagonal elements of com Q matrix
+    Matrix_4d Qf_com;         // diagonal elements of com Qf matrix
+    Matrix_8d Q_leg;          // diagonal elements of leg Q matrix
+    Matrix_8d Qf_leg;         // diagonal elements of leg Qf matrix
+    Matrix_4d R;              // diagonal elements of R matrix
+    Matrix_4d R_rate;         // diagonal elements of R rate matrix
+    double gait_cycle_weight; // weight for gait cycle cost
 };
 
 // Distribution struct

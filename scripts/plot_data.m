@@ -20,11 +20,14 @@ config_file = '../config/config.yaml';
 config = yaml.loadFile(config_file);
 
 % extract some variables
-pz_des = config.REFERENCE.pz_des_;
-vx_des = config.REFERENCE.vx_des_;
 r_des = config.REFERENCE.r_des;
 theta_des = config.REFERENCE.theta_des;
 interp = config.SYS_PARAMS.interp;
+
+% trajecotry variables
+px_traj = config.REFERENCE.pz_des;
+pz_traj = config.REFERENCE.pz_des;
+t_traj = config.REFERENCE.time;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -34,7 +37,7 @@ t_interval = [t(1) t(end)];
 
 % plotting / animation
 animate = 1;   % animatio = 1; plot states = 0
-rt = 1;      % realtime rate
+rt = 1.0;      % realtime rate
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
@@ -134,8 +137,7 @@ if animate == 0
     xlabel('Time [sec]');
     ylabel('$r$ [m]', 'Interpreter', 'latex');
     title('LEG Length');
-    legend('actual', 'command');
-    legend('$r_L$', '$\hat{r}_L$', '$r_R$', '$\hat{r}_R$', 'Interpreter', 'latex');
+    % legend('$r_L$', '$\hat{r}_L$', '$r_R$', '$\hat{r}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,4);
     hold on; grid on;
@@ -146,7 +148,7 @@ if animate == 0
     xlabel('Time [sec]');
     ylabel('$\theta$ [rad]', 'Interpreter', 'latex');
     title('LEG Angle');
-    legend('$\theta_L$', '$\hat{\theta}_L$', '$\theta_R$', '$\hat{\theta}_R$', 'Interpreter', 'latex');
+    % legend('$\theta_L$', '$\hat{\theta}_L$', '$\theta_R$', '$\hat{\theta}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,9);
     hold on; grid on;
@@ -157,7 +159,7 @@ if animate == 0
     xlabel('Time [sec]');
     ylabel('$\dot{r}$ [m/s]', 'Interpreter', 'latex');
     title('LEG Length Vel');
-    legend('$\dot{r}_L$', '$\dot{\hat{r}}_L$', '$\dot{r}_R$', '$\dot{\hat{r}}_R$', 'Interpreter', 'latex');
+    % legend('$\dot{r}_L$', '$\dot{\hat{r}}_L$', '$\dot{r}_R$', '$\dot{\hat{r}}_R$', 'Interpreter', 'latex');
 
     subplot(3,6,10);
     hold on; grid on;
@@ -168,7 +170,7 @@ if animate == 0
     xlabel('Time [sec]');
     ylabel('$\dot{\theta}$ [rad/s]', 'Interpreter', 'latex');
     title('LEG Angle Vel');
-    legend('$\dot{\theta_L}$', '$\dot{\hat{\theta}}_L$', '$\dot{\theta}_R$', '$\dot{\hat{\theta}}_R$', 'Interpreter', 'latex');
+    % legend('$\dot{\theta_L}$', '$\dot{\hat{\theta}}_L$', '$\dot{\theta}_R$', '$\dot{\hat{\theta}}_R$', 'Interpreter', 'latex');
 
     % FOOT STATES
     subplot(3,6,5);
@@ -278,10 +280,6 @@ if animate == 1
     pz_max = max([p_com(:,2); x_foot_L(:,2); x_foot_R(:,2)]);
     xlim([px_min-0.5, px_max+0.5]);
     ylim([min(0, pz_min)-0.25, pz_max+0.25]);
-
-    if plot_des == 1
-        yline(pz_des, '--', 'LineWidth', 1.0, 'DisplayName', 'pz_des');
-    end
 
     t  = t * (1/rt);
     for i = 1:replays

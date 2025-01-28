@@ -41,6 +41,9 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     R_diags << R_leg_diags, R_leg_diags;
     R_rate_diags << R_rate_leg_diags, R_rate_leg_diags;
     
+    // gait cycle weight
+    this->params.gait_cycle_weight = config_file["COST"]["gait_cycle_weight"].as<double>();
+
     // initialize the cost matrices
     this->params.Q_com  = Q_com_diags.asDiagonal();
     this->params.Q_leg  = Q_leg_diags.asDiagonal();
@@ -51,8 +54,8 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 
     // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
     double T = (this->params.N-1) * this->params.dt;
-    double dt_u = T / (this->params.Nu-1);
-    this->params.dt_u = dt_u;
+    this->params.dt_u = T / (this->params.Nu-1);
+
 
     // construct the reference trajectory
     this->initialize_reference_trajectories(config_file);
@@ -61,7 +64,7 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->initialize_distribution(config_file);
 
     // set the number of parallel threads to use
-    bool threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
+    this->threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
     if (threading_enabled == true) {
 
         // set the number of threads
@@ -78,6 +81,10 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 // construct the reference trajecotry
 void Controller::initialize_reference_trajectories(YAML::Node config_file)
 {
+    // gait cycle parameters
+    this->T_cycle = config_file["REFERENCE"]["T_cycle"].as<double>();
+    this->T_SSP = config_file["REFERENCE"]["T_SSP"].as<double>();
+
     // reference parameters
     this->r_des = config_file["REFERENCE"]["r_des"].as<double>();
     this->theta_des = config_file["REFERENCE"]["theta_des"].as<double>();
@@ -366,10 +373,11 @@ Reference Controller::generate_reference_trajectory(Vector_4d x0_com)
     // build the domain reference trajectory
     Vector_2i d_ref;
     Vector_2i d;
-    d_ref << 1, 1;          // both feet in stance
-    d << 1, 0;              // both feet in stance
-    double T_SSP = 0.35;    // time for SSP
-    double T_reset = 0.0;   // time for reset
+    d_ref << 1, 1;                  // both feet in stance
+    d << 1, 0;                      // both feet in stance
+    double T_cycle = this->T_cycle; // time for SSP
+    double T_SSP = this->T_SSP;     // time for SSP
+    double T_reset = 0.0;           // time for reset
     for (int i = 0; i < this->params.N; i++) {
         
         // global time
@@ -451,20 +459,21 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 
     // ************************************ CONTACT CYCLE COST ************************************
 
+    // TODO: Consider using a cost based on foot velocity and leg force
     // convert domain to a binary contact
     Vector_2i di;
     Domain d;
     double J_cycle = 0.0;
+    double c;
     for (int i = 0; i < N; i++) {
         // convert contact type to binary contact
         d = D[i];
         d[0] == Contact::STANCE ? di(0) = 1 : di(0) = 0;
         d[1] == Contact::STANCE ? di(1) = 1 : di(0) = 0;
-
-        // if the domain is different than the desired domain
-        if (di != D_ref[i]) {
-            J_cycle += 5.0;
-        }
+        
+        // if same as reference, no cost
+        di == D_ref[i] ? c = 0.0 : c = 1.0 * this->params.gait_cycle_weight;
+        J_cycle += c;
     }
 
     // ************************************ INPUT COST ************************************

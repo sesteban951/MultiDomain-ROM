@@ -63,12 +63,16 @@ class Controller
         std::mt19937 rand_generator;
         std::normal_distribution<double> normal_dist;
 
+        // if multi threading is enabled
+        bool threading_enabled;
+
         // desired reference trajectory
         double pz_des;
         double vx_des;
         double r_des;
         double theta_des;
-        Vector_2d_Traj X_com_des;
+        double T_cycle;
+        double T_SSP;
 
         // minimum covariance norm (theoretical)
         double min_cov_norm;
