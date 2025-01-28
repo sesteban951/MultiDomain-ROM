@@ -33,12 +33,12 @@ t_traj = config.REFERENCE.time;
 
 % segment the time
 t_interval = [t(1) t(end)];
-% t_interval = [0 1];
+% t_interval = [0 2.8];
 
 % plotting / animation
-animate = 1;   % animatio = 1; plot states = 0
+animate = 0;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
-replays = 3;   % how many times to replay the animation
+replays = 1;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
 plot_des = 0;  % plot the desired trajectory
@@ -328,12 +328,6 @@ if animate == 1
                 com_pts = [com_pts; pt_pos];
             end
 
-            % draw the desired trajectory
-            if plot_des == 1
-                px_des = vx_des * (t(ind)*rt);
-                px_des_line = xline(px_des, '--', 'LineWidth', 1.0,'DisplayName', 'px_des');
-            end
-
             drawnow;
             
             % title
@@ -356,16 +350,13 @@ if animate == 1
                 delete(leg_R);
                 delete(ball_foot_L);
                 delete(ball_foot_R);
-                if plot_com == 1
-                    delete(pt_pos);
-                end
-                if plot_foot == 1
-                    delete(foot_L);
-                    delete(foot_R);
-                end
-                if plot_des == 1
-                    delete(px_des_line);
-                end
+                % if plot_com == 1
+                %     delete(pt_pos);
+                % end
+                % if plot_foot == 1
+                %     delete(foot_L);
+                %     delete(foot_R);
+                % end
             end
         end
 
@@ -385,9 +376,6 @@ if animate == 1
                 if plot_foot == 1
                     delete(foot_pts_L(j));
                     delete(foot_pts_R(j));
-                end
-                if plot_des == 1
-                    delete(px_des_line);
                 end
             end
         end

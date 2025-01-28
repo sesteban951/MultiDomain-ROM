@@ -132,8 +132,6 @@ int main()
     Vector_4d pk_feet = p0_feet;
     Vector_8d xk_feet;
     Domain dk = d0;
-    // Vector_d mean_k;
-    // Matrix_d cov_k;
     for (int k = 0; k < N_sim; k++) {
         std::cout << "Sim time: " << k * dt << " sec" << std::endl;
 
@@ -147,12 +145,6 @@ int main()
             U_opt_[i] = U_opt[i];
             U_opt_vec.segment<4>(4*i) = U_opt_[i];
         }
-        // U_opt_[controller.params.N_u-1] = U_opt[controller.params.N_u-1];
-        // U_opt_vec.segment<4>(4*(controller.params.N_u-1)) = U_opt[controller.params.N_u-1];
-
-        // update the distribution
-        // controller.initialize_distribution(config_file);
-        // controller.set_distribution(U_opt_vec, controller.dist.cov);
 
         // integrate the dynamics
         sol_ = dynamics.RK3_rollout(controller.params.T_x, 
