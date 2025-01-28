@@ -57,9 +57,9 @@ CTRL_PARAMS:
     N_x: 50          # number of time steps
     N_u: 15          # number of control points
     dt_x: 0.02       # time step, [s]
-    K: 2500          # number of rollouts
-    N_elite: 250     # number of elite samples
-    CEM_iters: 20     # number of CEM iterations
+    K: 1000          # number of rollouts
+    N_elite: 100     # number of elite samples
+    CEM_iters: 2     # number of CEM iterations
 
 
 ####################################################################
@@ -107,3 +107,11 @@ THREADING:
     enabled: True      # enable threading
     num_threads: 16    # number of thread to use in parallel
     nested: True       # nested parallelism
+
+
+####################################################################
+# INFO
+####################################################################
+
+INFO:
+    verbose: True

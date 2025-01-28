@@ -106,12 +106,12 @@ int main()
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
-    // // compute time stuff
+    // compute time stuff
     // double duration = config_file["SIM"]["duration"].as<double>();
     // int N_sim = std::floor(duration / controller.params.dt);
     // double dt = controller.params.dt;
 
-    // // run the simulation
+    // run the simulation
     // RHC_Result rhc_res;
     // Solution sol;
 
@@ -120,8 +120,8 @@ int main()
     // Vector_8d xk_sys = x0_sys;
     // Vector_4d pk_feet = p0_feet;
     // Domain dk = d0;
-    // Vector_d mean_k;
-    // Matrix_d cov_k;
+    // // Vector_d mean_k;
+    // // Matrix_d cov_k;
     // for (int k = 0; k < N_sim; k++) {
     //     std::cout << "Sim time: " << k * dt << " sec" << std::endl;
 
@@ -132,8 +132,8 @@ int main()
     //     U_opt = rhc_res.U;
         
     //     // get the distribution parameters
-    //     mean_k = controller.dist.mean;
-    //     cov_k = controller.dist.cov;
+    //     // mean_k = controller.dist.mean;
+    //     // cov_k = controller.dist.cov;
 
     //     // integrate the dynamics
     //     sol = dynamics.RK3_rollout(controller.params.T_x, 

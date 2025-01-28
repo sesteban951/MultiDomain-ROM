@@ -70,12 +70,6 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.T_x = T_x;
     this->params.T_u = T_u;
 
-    std::cout << this->params.N_x << " steps, " << this->params.N_u << " control points" << std::endl;
-    std::cout << "dt_x: " << this->params.dt_x << " sec, dt_u: " << this->params.dt_u << " sec" << std::endl;
-    std::cout << "N_elite: " << this->params.N_elite << ", CEM_iters: " << this->params.CEM_iters << std::endl;
-    std::cout << this->params.T_x[0] << " to " << this->params.T_x[this->params.N_x-1] << " sec" << std::endl;
-    std::cout << this->params.T_u[0] << " to " << this->params.T_u[this->params.N_u-1] << " sec" << std::endl;
-
     // construct the reference trajectory
     this->initialize_reference_trajectories(config_file);
 
@@ -97,6 +91,9 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     else {
         omp_set_num_threads(1);
     }
+
+    // logging prinouts
+    this->verbose = config_file["INFO"]["verbose"].as<bool>();
 }
 
 
@@ -649,23 +646,29 @@ RHC_Result Controller::sampling_predictive_control(Vector_8d x0_sys, Vector_4d p
         auto tf = std::chrono::high_resolution_clock::now();
 
         // print some info
-        std::cout << "-----------------------------------" << std::endl;
-        std::cout << "CEM Iteration: " << i+1 << std::endl;
-        std::cout << "-----------------------------------" << std::endl;
-        std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
-        std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
-        std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
-        std::cout << std::endl;
+        if (this->verbose == true) 
+        {
+            std::cout << "-----------------------------------" << std::endl;
+            std::cout << "CEM Iteration: " << i+1 << std::endl;
+            std::cout << "-----------------------------------" << std::endl;
+            std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+            std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
+            std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
+            std::cout << std::endl;
+        }
 
     }
     auto tf_total = std::chrono::high_resolution_clock::now();
     
     double T_tot = std::chrono::duration<double>(tf_total - t0_total).count();
 
-    std::cout << "CEM complete" << std::endl;
-    std::cout << "Total time: " << T_tot << " sec" << std::endl;
-    std::cout << "Average time per iteration: " << T_tot / this->params.CEM_iters << " [sec], " << this->params.CEM_iters/T_tot << " [Hz]" << std::endl;
-    std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
+    if (this->verbose == true) 
+    {
+        std::cout << "CEM complete" << std::endl;
+        std::cout << "Total time: " << T_tot << " sec" << std::endl;
+        std::cout << "Average time per iteration: " << T_tot / this->params.CEM_iters << " [sec], " << this->params.CEM_iters/T_tot << " [Hz]" << std::endl;
+        std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
+    }
 
     // return the best solution
     RHC_Result rhc;

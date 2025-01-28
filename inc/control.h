@@ -80,4 +80,7 @@ class Controller
         // minimum covariance norm (theoretical)
         double min_cov_norm;
 
+        // info 
+        bool verbose;
+
 };
