@@ -37,6 +37,9 @@ class Controller
         // generate a reference trajectory for the predictive control to track
         Reference generate_reference_trajectory(double t_sim, Vector_4d x0_com);
 
+        // evaluate log barrier function cost on legs
+        double cost_log_barrier(Vector_8d x_leg);
+
         // evaluate the cost function given a solution
         double cost_function(Reference ref, Solution Sol, Vector_4d_Traj U);
 
@@ -44,7 +47,7 @@ class Controller
         MC_Result monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K);
 
         // select solutions based on cost
-        void sort_trajectories(Solution_Bundle  S,       Vector_4d_Traj_Bundle U,        Vector_1d_List J,
+        void sort_trajectories(const Solution_Bundle&  S,       const Vector_4d_Traj_Bundle& U,        const Vector_1d_List& J,
                                Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_List& J_elite);
 
         // perform sampling predictive control

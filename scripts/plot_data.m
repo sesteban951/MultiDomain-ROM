@@ -4,14 +4,16 @@
 clear all; close all; clc;
 
 % Load data
-t = load('../data/time.csv');
-x_sys = load('../data/state_sys.csv');
-x_leg = load('../data/state_leg.csv');
-x_foot = load('../data/state_foot.csv');
-u = load('../data/input.csv');
-lambd = load('../data/lambda.csv');
-tau = load('../data/tau.csv');
-d = load('../data/domain.csv');
+data_folder = "../data/";
+
+t = load(data_folder + 'time.csv');
+x_sys = load(data_folder + 'state_sys.csv');
+x_leg = load(data_folder + 'state_leg.csv');
+x_foot = load(data_folder + 'state_foot.csv');
+u = load(data_folder + 'input.csv');
+lambd = load(data_folder + 'lambda.csv');
+tau = load(data_folder + 'tau.csv');
+d = load(data_folder + 'domain.csv');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

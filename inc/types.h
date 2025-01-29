@@ -97,6 +97,11 @@ struct ControlParams
     Matrix_4d R;              // diagonal elements of R matrix
     Matrix_4d R_rate;         // diagonal elements of R rate matrix
     double gait_cycle_weight; // weight for gait cycle cost
+    bool log_barrier_enabled; // enable log barrier function
+    double r_weight;          // weight for log barrier function
+    double theta_weight;      // weight for log barrier function
+    double rdot_weight;       // weight for log barrier function
+    double thetadot_weight;   // weight for log barrier function
 };
 
 // Distribution struct

@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 5.0         # simulation duration, [s]
+    duration: 4.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -23,12 +23,17 @@ REFERENCE:
     vx_des_: 0.0
 
     # Desired COM states as knot points
+    px_des: [0.0, 1.5] 
+    pz_des: [0.55, 0.55]
+    time: [0.0, 3.0]
+
     # px_des: [0.0, 0.25, 0.75, 1.5, 2.5, 3.75]
     # pz_des: [0.55, 0.55, 0.55, 0.55, 0.55, 0.55]
     # time:   [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
-    px_des: [0.0, 0.5, 1.5, 3.0, 5.0]
-    pz_des: [0.5, 0.5, 0.5, 0.5, 0.5]
-    time:   [0.0, 1.0, 2.0, 3.0, 4.0]
+
+    # px_des: [0.0, 0.5, 1.5, 3.0, 5.0]
+    # pz_des: [0.5, 0.5, 0.5, 0.5, 0.5]
+    # time:   [0.0, 1.0, 2.0, 3.0, 4.0]
 
     # giat cycle params
     gait_enabled: False # whether or not to enable gait cycle tracking
@@ -52,6 +57,13 @@ COST:
     # gait cycle weight
     gait_cycle_weight: 0
 
+    # log barriers (weights > 0)
+    log_barrier_enabled: False
+    r_weight: 1.5      
+    rdot_weight: 1.5      
+    theta_weight: 1.5  
+    thetadot_weight: 1.5
+    J_max: 1E6
 
 ####################################################################
 # CONTROL PARAMETERS
@@ -62,7 +74,7 @@ CTRL_PARAMS:
     N_u: 10          # number of control points
     dt_x: 0.01       # time step, [s]
     K: 1000          # number of rollouts
-    N_elite: 75     # number of elite samples
+    N_elite: 500     # number of elite samples
     CEM_iters: 5     # number of CEM iterations
 
 
@@ -108,7 +120,7 @@ DIST_PARAMS:
 THREADING:
 
     # CPU Threading
-    enabled: True      # enable threading
+    enabled: False      # enable threading
     num_threads: 16    # number of thread to use in parallel
     nested: True       # nested parallelism
 

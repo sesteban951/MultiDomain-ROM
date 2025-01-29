@@ -54,11 +54,18 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.Q_leg  = Q_leg_diags.asDiagonal();
     this->params.Qf_com = Qf_com_diags.asDiagonal();
     this->params.Qf_leg = Qf_leg_diags.asDiagonal();
-    this->params.R  = R_diags.asDiagonal();
+    this->params.R = R_diags.asDiagonal();
     this->params.R_rate = R_rate_diags.asDiagonal();
 
     // gait cycle weight
     this->params.gait_cycle_weight = config_file["COST"]["gait_cycle_weight"].as<double>();
+
+    // log barrier function
+    this->params.log_barrier_enabled = config_file["COST"]["log_barrier_enabled"].as<bool>();
+    this->params.r_weight = config_file["COST"]["r_weight"].as<double>();
+    this->params.theta_weight = config_file["COST"]["theta_weight"].as<double>();
+    this->params.rdot_weight = config_file["COST"]["rdot_weight"].as<double>();
+    this->params.thetadot_weight = config_file["COST"]["thetadot_weight"].as<double>();
 
     // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
     double T = (this->params.N_x-1) * this->params.dt_x;
@@ -437,6 +444,54 @@ Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_c
 }
 
 
+// evaluate log barrier function cost on legs
+double Controller::cost_log_barrier(Vector_8d x_leg) {   
+    
+    // want to compute the cost of the log barrier function
+    double J_log = 0.0;
+
+    // log barrier function parameters
+    double r_weight = this->params.r_weight;
+    double rdot_weight = this->params.rdot_weight;
+    double theta_weight = this->params.theta_weight;
+    double thetadot_weight = this->params.thetadot_weight;
+
+    // leg state constraints
+    double r_min = this->dynamics.params.r_min;
+    double r_max = this->dynamics.params.r_max;
+    double theta_min = this->dynamics.params.theta_min;
+    double theta_max = this->dynamics.params.theta_max;
+    double rdot_lim = this->dynamics.params.rdot_lim;
+    double thetadot_lim = this->dynamics.params.thetadot_lim;
+
+    // compute the costs
+    Vector_4d xi_leg;
+    double r, theta, rdot, thetadot;
+    double r_cost, rdot_cost, theta_cost, thetadot_cost;
+    for (int i = 0; i < this->dynamics.n_leg; i++) {
+        // unpack the leg state
+        xi_leg = x_leg.segment<4>(4 * i);
+        r = xi_leg(0);
+        theta = xi_leg(1);
+        rdot = xi_leg(2);
+        thetadot = xi_leg(3);
+        
+        // compare the state to the limits
+
+        // // compute the costs
+        // r_cost = -r_weight * std::log(r - r_min) - r_weight * std::log(r_max - r);
+        // rdot_cost = -rdot_weight * std::log(rdot + rdot_lim) - rdot_weight * std::log(rdot_lim - rdot);
+        // theta_cost = -theta_weight * std::log(theta - theta_min) - theta_weight * std::log(theta_max - theta);
+        // thetadot_cost = -thetadot_weight * std::log(thetadot + thetadot_lim) - thetadot_weight * std::log(thetadot_lim - thetadot);
+
+        // add to the total cost
+        // J_log += r_cost + rdot_cost + theta_cost + thetadot_cost;
+    }
+
+    return J_log =0.0;
+}
+
+
 // evaluate the cost function given a solution
 double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 {
@@ -489,6 +544,14 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
     ei_leg = X_leg[N-1] - X_leg_ref[N-1];
     J_legs += ei_leg.transpose() * this->params.Qf_leg * ei_leg;
 
+    // log barrier function cost
+    double J_legs_barrier = 0.0;
+    if (this->params.log_barrier_enabled) {
+        for (int i = 0; i < N; i++) {
+            J_legs_barrier += this->cost_log_barrier(X_leg[i]);
+        }
+    }
+
     // ************************************ CONTACT CYCLE COST ************************************
 
     // TODO: Consider using a cost based on foot velocity and leg force
@@ -535,7 +598,7 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 
     // total cost
     double J_total; 
-    J_total = J_com + J_legs + J_input + J_cycle;
+    J_total = J_com + J_legs + J_legs_barrier + J_input + J_cycle;
 
     return J_total;
 }
@@ -559,7 +622,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
     // loop over the input trajectories
     Solution sol;
     double cost = 0.0;
-    #pragma omp parallel for private(sol, cost)
+    // #pragma omp parallel for private(sol, cost)
     for (int k = 0; k < K; k++) {
         
         // initialize the solution and cost
@@ -573,11 +636,11 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         cost = this->cost_function(ref, sol, U_bundle[k]);
 
         // store the results (use critical sections to avoid race conditions if necessary)
-        #pragma omp critical
-        {
+        // #pragma omp critical
+        // {
             Sol_bundle[k] = sol;
             J[k] = cost;
-        }
+        // }
     }
 
     // pack solutions into a tuple
@@ -592,30 +655,33 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
 
 
 // select solutions based on cost
-void Controller::sort_trajectories(Solution_Bundle  S,       Vector_4d_Traj_Bundle U,        Vector_1d_Traj J,
+void Controller::sort_trajectories(const Solution_Bundle&  S,       const Vector_4d_Traj_Bundle& U,        const Vector_1d_Traj& J,
                                    Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_Traj& J_elite)
 {
-    // sort the cost vector in ascending order
-    Vector_1i_List idx(this->params.K);
+    std::cout << "Here 1" << std::endl;
+    int K = this->params.K;
+    int N_elite = this->params.N_elite;
+
+    // Create an index vector
+    Vector_1i_List idx(K);
+    std::cout << "Here 2" << std::endl;
     std::iota(idx.begin(), idx.end(), 0);
-    std::sort(idx.begin(), idx.end(), [&J](int i1, int i2) {return J[i1] < J[i2];});
+    std::cout << "Here 3" << std::endl;
 
-    // elite solution containers
-    Solution_Bundle S_elite_(this->params.N_elite);
-    Vector_4d_Traj_Bundle U_elite_(this->params.N_elite);
-    Vector_1d_Traj J_elite_(this->params.N_elite);
+    // Use nth_element to bring the top N_elite elements to the front in O(n) time
+    std::cout << "Here 4" << std::endl;
+    std::cout << idx.size() << ", " << J.size() << std::endl;
+    std::nth_element(idx.begin(), idx.begin() + N_elite, idx.end(),
+                     [&J](int i1, int i2) { return J[i1] < J[i2]; });
+    std::cout << "Here 5" << std::endl;
 
-    // populate the elite solutions
-    for (int i = 0; i < this->params.N_elite; i++) {
-        S_elite_[i] = S[idx[i]];  // top solutions
-        U_elite_[i] = U[idx[i]];  // top control inputs
-        J_elite_[i] = J[idx[i]];  // top costs
+    // Populate elite solutions
+    for (int i = 0; i < N_elite; i++) {
+        S_elite[i] = S[idx[i]];
+        U_elite[i] = U[idx[i]];
+        J_elite[i] = J[idx[i]];
     }
-
-    // update the elite solutions
-    S_elite = S_elite_;
-    U_elite = U_elite_;
-    J_elite = J_elite_;
+    std::cout << "Here 6" << std::endl;
 }
 
 
@@ -636,7 +702,10 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
 
         // perform monte carlo simulation
         auto t0 = std::chrono::high_resolution_clock::now();
+        auto ts = std::chrono::high_resolution_clock::now();
         mc = this->monte_carlo(t_sim, x0_sys, p0_foot, d0, this->params.K);
+        auto te = std::chrono::high_resolution_clock::now();
+        // std::cout << "Time for monte carlo: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
 
         // store monte carlo results
         S = mc.S;
@@ -644,10 +713,16 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
         J = mc.J;
 
         // sort the cost vector in ascending order
+        ts = std::chrono::high_resolution_clock::now();
         this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
+        te = std::chrono::high_resolution_clock::now();
+        // std::cout << "Time for sort: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
 
         // update the distribution parameters
+        ts = std::chrono::high_resolution_clock::now();
         this->update_distribution_params(U_elite);
+        te = std::chrono::high_resolution_clock::now();
+        // std::cout << "Time for update: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
         auto tf = std::chrono::high_resolution_clock::now();
 
         // print some info
