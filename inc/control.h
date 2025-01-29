@@ -73,9 +73,8 @@ class Controller
         double theta_des;
         double T_cycle;
         double T_SSP;
-        Vector_4d_Traj X_com_ref;
-        Vector_2d_Traj p_com_ref;
         Vector_1d_Traj t_ref;
+        Vector_2d_Traj p_com_ref;
 
         // minimum covariance norm (theoretical)
         double min_cov_norm;

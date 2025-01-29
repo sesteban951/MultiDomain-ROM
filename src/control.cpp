@@ -12,6 +12,14 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.N_elite = config_file["CTRL_PARAMS"]["N_elite"].as<int>();
     this->params.CEM_iters = config_file["CTRL_PARAMS"]["CEM_iters"].as<int>();
     
+    // ensure the parameters make sense
+    if (this->params.N_x < this->params.N_u) {
+        throw std::runtime_error("N_x must be greater than N_u");
+    }
+    if (this->params.N_elite > this->params.K) {
+        throw std::runtime_error("N_elite must be less than or equal to K");
+    }
+
     // build the cost matrices from the diagonal elements
     Vector_1d_List Q_com_diags_temp = config_file["COST"]["Q_com_diags"].as<std::vector<double>>();
     Vector_1d_List Q_leg_diags_temp = config_file["COST"]["Q_leg_diags"].as<std::vector<double>>();
@@ -111,69 +119,25 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     this->pz_des = config_file["REFERENCE"]["pz_des_"].as<double>();
 
     // set the desired COM trajectory
-    Vector_1d_List px_des_temp = config_file["REFERENCE"]["px_des"].as<std::vector<double>>();
-    Vector_1d_List pz_des_temp = config_file["REFERENCE"]["pz_des"].as<std::vector<double>>();
     Vector_1d_Traj time = config_file["REFERENCE"]["time"].as<std::vector<double>>();
-
-    Vector_2d_Traj p_com_traj(time.size());
-    Vector_2d p_com_des_;
-    int N_ref = time.size();
-    for (int i = 0; i < N_ref; i++) {
-        p_com_des_ << px_des_temp[i], pz_des_temp[i];
-        p_com_traj[i] = p_com_des_;
-    }
+    Vector_1d_Traj px_des_temp = config_file["REFERENCE"]["px_des"].as<std::vector<double>>();
+    Vector_1d_Traj pz_des_temp = config_file["REFERENCE"]["pz_des"].as<std::vector<double>>();
     
-    // some time stuff for the reference trajectory
-    int N = this->params.N_x;
-    double dt = this->params.dt_x;
-    double rhc_time = (N-1) * dt;            // receding horizon total time
-    double t_end = time[N_ref - 1];          // reference traj total time
-    int N_ref_dt = std::ceil(rhc_time / dt); // number of knots in the reference trajectory
-
-    // build the reference trajectory
-    Vector_1d_Traj time_ref(N_ref_dt);
-    Vector_4d_Traj X_com_ref(N_ref_dt);
-    Vector_2d_Traj p_com_ref(N_ref_dt);
-    Vector_2d p_com_des, v_com_des;
-    Vector_4d x_com_des;
-    double t, t0, tf;
-    for (int i = 0; i < N_ref_dt; i++) {
-        // build the time array
-        t = i * dt;
-        time_ref[i] = t;
-
-        // find where the time is in the reference trajectory
-        auto it = std::upper_bound(time.begin(), time.end(), t);
-        int idx = std::distance(time.begin(), it) - 1; // return -1 if before the first element
-                                                       // return N_ref - 1 if after the last element
-
-        // beyond last element
-        if (idx == N_ref - 1) {
-            p_com_des = p_com_traj[N_ref - 1]; // position is the last element
-            v_com_des << 0.0, 0.0;            // velocity is zero
-
-            p_com_ref[i] = p_com_des;
-        }
-        else{
-            t0 = time[idx];
-            tf = time[idx + 1];
-            Vector_2d p0 = p_com_traj[idx];
-            Vector_2d pf = p_com_traj[idx + 1];
-            v_com_des = (pf - p0) / (tf - t0);
-            p_com_des = p0 + v_com_des * (t - t0);
-
-            p_com_ref[i] = p_com_des;
-        }
-
-        // populate the desired COM state
-        x_com_des << p_com_des, v_com_des;
-        X_com_ref[i] = x_com_des;
+    // ensure they are all the same size
+    int N_ref = time.size();
+    if (N_ref != px_des_temp.size() || N_ref != pz_des_temp.size()) {
+        throw std::runtime_error("px_des, pz_des, and time must be the same size");
     }
 
     // set the reference trajectory for use inside the class
-    this->X_com_ref = X_com_ref;
+    Vector_2d_Traj p_com_ref(N_ref);
+    for (int i = 0; i < N_ref; i++) {
+        p_com_ref[i] << px_des_temp[i], pz_des_temp[i];
+    }
+
+    // set the reference trajectory for use inside the class
+    this->t_ref = time;
     this->p_com_ref = p_com_ref;
-    this->t_ref = time_ref;
 }
 
 
@@ -376,16 +340,17 @@ Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_c
     Vector_8d_Traj X_leg_ref(this->params.N_x);
     Vector_2i_Traj D_ref(this->params.N_x);
 
+    // FIXME: when on single thread this segfaults. WHY?
     // get the "global time" reference trajectory
     Vector_1d_Traj t_ref_global = this->t_ref;
     Vector_2d_Traj p_com_ref_global = this->p_com_ref;
-    Vector_4d_Traj X_com_ref_global = this->X_com_ref;
+    int N_ref = t_ref_global.size();
 
     // build the COM reference trajectory
     Vector_4d xi_com_ref;
-    Vector_2d pi_com_ref;
+    Vector_2d pi_com_ref, p0_com_ref, pf_com_ref;
     Vector_2d vi_com_ref;
-    double t;
+    double t, t0, tf;
     for (int i = 0; i < this->params.N_x; i++) {
     
         // compute the time given the global reference
@@ -397,12 +362,23 @@ Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_c
                                                         // return N_ref - 1 if after the last element
 
         // beyond last element
-        if (idx == t_ref_global.size() - 1) {
-            // fill in 
+        if (idx == N_ref - 1) {
+            // set to last point with zero velocity
+            pi_com_ref = p_com_ref_global[N_ref - 1];
+            vi_com_ref << 0.0, 0.0;
         }
         else{
-            // fill in 
+            // linear interpolation
+            t0 = t_ref_global[idx];
+            tf = t_ref_global[idx + 1];
+            p0_com_ref = p_com_ref_global[idx];
+            pf_com_ref = p_com_ref_global[idx + 1];
+            vi_com_ref = (pf_com_ref - p0_com_ref) / (tf - t0);
+            pi_com_ref = p0_com_ref + vi_com_ref * (t - t0);
         }
+
+        // build the reference
+        xi_com_ref << pi_com_ref, vi_com_ref;
 
         // build the COM reference (only for hardcoded references)
         // t = i * this->params.dt_x;
@@ -583,7 +559,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
     // loop over the input trajectories
     Solution sol;
     double cost = 0.0;
-    // #pragma omp parallel for private(sol, cost)
+    #pragma omp parallel for private(sol, cost)
     for (int k = 0; k < K; k++) {
         
         // initialize the solution and cost
@@ -597,11 +573,11 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         cost = this->cost_function(ref, sol, U_bundle[k]);
 
         // store the results (use critical sections to avoid race conditions if necessary)
-        // #pragma omp critical
-        // {
+        #pragma omp critical
+        {
             Sol_bundle[k] = sol;
             J[k] = cost;
-        // }
+        }
     }
 
     // pack solutions into a tuple
