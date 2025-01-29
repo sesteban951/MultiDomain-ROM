@@ -488,7 +488,7 @@ double Controller::cost_log_barrier(Vector_8d x_leg) {
         // J_log += r_cost + rdot_cost + theta_cost + thetadot_cost;
     }
 
-    return J_log =0.0;
+    return J_log;
 }
 
 
@@ -622,7 +622,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
     // loop over the input trajectories
     Solution sol;
     double cost = 0.0;
-    // #pragma omp parallel for private(sol, cost)
+    #pragma omp parallel for private(sol, cost)
     for (int k = 0; k < K; k++) {
         
         // initialize the solution and cost
@@ -636,11 +636,11 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         cost = this->cost_function(ref, sol, U_bundle[k]);
 
         // store the results (use critical sections to avoid race conditions if necessary)
-        // #pragma omp critical
-        // {
+        #pragma omp critical
+        {
             Sol_bundle[k] = sol;
             J[k] = cost;
-        // }
+        }
     }
 
     // pack solutions into a tuple
@@ -658,22 +658,22 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
 void Controller::sort_trajectories(const Solution_Bundle&  S,       const Vector_4d_Traj_Bundle& U,        const Vector_1d_Traj& J,
                                    Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_Traj& J_elite)
 {
-    std::cout << "Here 1" << std::endl;
+    // std::cout << "Here 1" << std::endl;
     int K = this->params.K;
     int N_elite = this->params.N_elite;
 
     // Create an index vector
     Vector_1i_List idx(K);
-    std::cout << "Here 2" << std::endl;
+    // std::cout << "Here 2" << std::endl;
     std::iota(idx.begin(), idx.end(), 0);
-    std::cout << "Here 3" << std::endl;
+    // std::cout << "Here 3" << std::endl;
 
     // Use nth_element to bring the top N_elite elements to the front in O(n) time
-    std::cout << "Here 4" << std::endl;
-    std::cout << idx.size() << ", " << J.size() << std::endl;
+    // std::cout << "Here 4" << std::endl;
+    // std::cout << idx.size() << ", " << J.size() << std::endl;
     std::nth_element(idx.begin(), idx.begin() + N_elite, idx.end(),
                      [&J](int i1, int i2) { return J[i1] < J[i2]; });
-    std::cout << "Here 5" << std::endl;
+    // std::cout << "Here 5" << std::endl;
 
     // Populate elite solutions
     for (int i = 0; i < N_elite; i++) {
@@ -681,7 +681,7 @@ void Controller::sort_trajectories(const Solution_Bundle&  S,       const Vector
         U_elite[i] = U[idx[i]];
         J_elite[i] = J[idx[i]];
     }
-    std::cout << "Here 6" << std::endl;
+    // std::cout << "Here 6" << std::endl;
 }
 
 

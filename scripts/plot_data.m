@@ -41,9 +41,8 @@ t_interval = [t(1) t(end)];
 animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
 replays = 1;   % how many times to replay the animation
-plot_com = 0;  % plot the foot trajectory
-plot_foot = 0; % plot the foot trajectory
-plot_des = 0;  % plot the desired trajectory
+plot_com = 1;  % plot the foot trajectory
+plot_foot = 1; % plot the foot trajectory
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -352,17 +351,8 @@ if animate == 1
                 delete(leg_R);
                 delete(ball_foot_L);
                 delete(ball_foot_R);
-                % if plot_com == 1
-                %     delete(pt_pos);
-                % end
-                % if plot_foot == 1
-                %     delete(foot_L);
-                %     delete(foot_R);
-                % end
             end
         end
-
-        % pause(0.25);
 
         % clean the plot if still replaying
         if i < replays
