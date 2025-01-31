@@ -27,4 +27,4 @@ add_executable(a src/main.cpp src/dynamics.cpp src/control.cpp)
 
 # link your executables
 target_link_libraries(a Eigen3::Eigen)
-target_link_libraries(a yaml-cpp::yaml-cpp)
+target_link_libraries(a yaml-cpp)
