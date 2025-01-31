@@ -662,7 +662,6 @@ void Controller::sort_trajectories(const Solution_Bundle&  S,       const Vector
     std::iota(idx.begin(), idx.end(), 0);
 
     // Use nth_element to bring the top N_elite elements to the front in O(n) time
-    std::cout << idx.size() << ", " << J.size() << std::endl;
     std::nth_element(idx.begin(), idx.begin() + N_elite, idx.end(),
                      [&J](int i1, int i2) { return J[i1] < J[i2]; });
 

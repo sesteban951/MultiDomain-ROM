@@ -19,33 +19,33 @@ class Dynamics
         ~Dynamics(){};
 
         // NonLinear System dynamics, xdot = f(x, u, d)
-        Dynamics_Result dynamics(Vector_8d x_sys, 
-                                Vector_4d u, 
-                                Vector_4d p_feet,
-                                Domain d);
+        Dynamics_Result dynamics(const Vector_8d& x_sys, 
+                                const Vector_4d& u, 
+                                const Vector_4d& p_feet,
+                                const Domain& d);
 
         // compute the leg state
-        Vector_8d compute_leg_state(Vector_8d x_sys, 
-                                    Vector_4d u,
-                                    Vector_4d p_feet, 
-                                    Domain d);
+        Vector_8d compute_leg_state(const Vector_8d& x_sys, 
+                                    const Vector_4d& u,
+                                    const Vector_4d& p_feet, 
+                                    const Domain& d);
 
         // compute foot state in world frame
-        Vector_8d compute_foot_state(Vector_8d x_sys, 
-                                     Vector_8d x_legs,
-                                     Vector_4d p_feet,
-                                     Domain d);
+        Vector_8d compute_foot_state(const Vector_8d& x_sys, 
+                                     const Vector_8d& x_legs,
+                                     const Vector_4d& p_feet,
+                                     const Domain& d);
 
         // Switching Surfaces
         bool S_TD(Vector_8d x_feet, Leg_Idx leg_idx);
         bool S_TO(Vector_8d x_sys, Vector_8d x_legs, Vector_4d u, Leg_Idx leg_idx);
 
         // check if a switching event has occurred
-        Domain check_switching_event(Vector_8d x_sys, 
-                                     Vector_8d x_legs, 
-                                     Vector_8d x_feet, 
-                                     Vector_4d u,
-                                     Domain d);
+        Domain check_switching_event(const Vector_8d& x_sys, 
+                                     const Vector_8d& x_legs, 
+                                     const Vector_8d& x_feet, 
+                                     const Vector_4d& u,
+                                     const Domain& d);
 
         // apply the reset map
         void reset_map(Vector_8d& x_sys, 
@@ -57,8 +57,8 @@ class Dynamics
 
         // interpolate the input signal
         Vector_4d interpolate_control_input(double t, 
-                                            Vector_1d_Traj T_u, 
-                                            Vector_4d_Traj U);
+                                            const Vector_1d_Traj& T_u, 
+                                            const Vector_4d_Traj& U);
         
         void resizeSolution(Solution& sol, const Vector_1d_Traj& T_x);
 

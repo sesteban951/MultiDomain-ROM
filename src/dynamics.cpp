@@ -25,7 +25,7 @@ Dynamics::Dynamics(YAML::Node config_file)
 
 
 // NonLinear Dynamics function, xdot = f(x, u, d)
-Dynamics_Result Dynamics::dynamics(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet, Domain d) 
+Dynamics_Result Dynamics::dynamics(const Vector_8d& x_sys, const Vector_4d& u, const Vector_4d& p_feet, const Domain& d) 
 {
     // want to compute the state derivative
     Vector_8d xdot;      // state derivative, [xdot_com, xdot_legs]
@@ -180,7 +180,7 @@ Dynamics_Result Dynamics::dynamics(Vector_8d x_sys, Vector_4d u, Vector_4d p_fee
 
 
 // compute the leg state
-Vector_8d Dynamics::compute_leg_state(Vector_8d x_sys, Vector_4d u, Vector_4d p_feet, Domain d)
+Vector_8d Dynamics::compute_leg_state(const Vector_8d& x_sys, const Vector_4d& u, const Vector_4d& p_feet, const Domain& d)
 {
     // want to compute the leg states
     Vector_8d x_legs;
@@ -260,7 +260,7 @@ Vector_8d Dynamics::compute_leg_state(Vector_8d x_sys, Vector_4d u, Vector_4d p_
 
 
 // compute foot state in world frame
-Vector_8d Dynamics::compute_foot_state(Vector_8d x_sys, Vector_8d x_legs, Vector_4d p_feet, Domain d)
+Vector_8d Dynamics::compute_foot_state(const Vector_8d& x_sys, const Vector_8d& x_legs, const Vector_4d& p_feet, const Domain& d)
 {
     // want to compute the foot states
     Vector_8d x_feet;
@@ -373,7 +373,7 @@ bool Dynamics::S_TO(Vector_8d x_sys, Vector_8d x_legs, Vector_4d u, Leg_Idx leg_
 
 
 // Check if a switching event has occurred
-Domain Dynamics::check_switching_event(Vector_8d x_sys, Vector_8d x_legs, Vector_8d x_feet, Vector_4d u, Domain d_current)
+Domain Dynamics::check_switching_event(const Vector_8d& x_sys, const Vector_8d& x_legs, const Vector_8d& x_feet, const Vector_4d& u, const Domain& d_current)
 {
     // return the next domain after checking the switching surfaces
     Domain d_next(this->n_leg);
@@ -503,7 +503,7 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
 
 
 // interpolate an input signal
-Vector_4d Dynamics::interpolate_control_input(double t, Vector_1d_Traj T_u, Vector_4d_Traj U) 
+Vector_4d Dynamics::interpolate_control_input(double t, const Vector_1d_Traj& T_u, const Vector_4d_Traj& U) 
 {
     // we want to find the interpolated control input
     Vector_4d u;
