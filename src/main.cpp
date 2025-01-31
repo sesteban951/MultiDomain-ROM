@@ -126,6 +126,7 @@ int main()
     // run the simulation
     RHC_Result rhc_res;
     Solution sol_;
+    dynamics.resizeSolution(sol_, controller.params.T_x);
     Vector_4d_Traj U_opt(Nu), U_opt_(Nu);
     Vector_d U_opt_vec(2 * Nu * controller.dynamics.n_leg);
     Vector_8d xk_sys = x0_sys;
@@ -152,9 +153,9 @@ int main()
         // controller.dist.mean = U_opt_vec;
 
         // integrate the dynamics
-        sol_ = dynamics.RK3_rollout(controller.params.T_x, 
-                                    controller.params.T_u, 
-                                    xk_sys, pk_feet, dk, U_opt_);
+        dynamics.RK3_rollout(controller.params.T_x, 
+                            controller.params.T_u, 
+                            xk_sys, pk_feet, dk, U_opt_, sol_);
         
         // save into solution bundle
         sol.t[k] = t_sim;

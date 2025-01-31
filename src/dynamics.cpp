@@ -545,24 +545,26 @@ Vector_4d Dynamics::interpolate_control_input(double t, Vector_1d_Traj T_u, Vect
     return u;
 }
 
+void Dynamics::resizeSolution(Solution& sol, const Vector_1d_Traj& T_x) {
+    const int N = T_x.size();
+    sol.x_sys_t.resize(N);
+    sol.x_leg_t.resize(N);
+    sol.x_foot_t.resize(N);
+    sol.u_t.resize(N);
+    sol.lambda_t.resize(N);
+    sol.tau_t.resize(N);
+    sol.domain_t.resize(N);
+}
+
 
 // RK3 Integration of the system dynamics
-Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u, 
-                               Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, 
-                               Vector_4d_Traj U) 
+void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u, 
+                               const Vector_8d& x0_sys, const Vector_4d& p0_feet, const Domain& d0, 
+                               const Vector_4d_Traj& U, Solution& sol) 
 {
     // time integration parameters
     double dt = T_x[1] - T_x[0]; // CAUTION: assumes uniform time steps
     int N = T_x.size();
-
-    // make the solutiuon trajectory containers
-    Vector_8d_Traj x_sys_t(N);  // system state trajectory
-    Vector_8d_Traj x_leg_t(N);  // leg state trajectory
-    Vector_8d_Traj x_foot_t(N); // foot state trajectory
-    Vector_4d_Traj u_t(N);      // interpolated control input trajectory
-    Vector_4d_Traj lambda_t(N); // leg force trajectory
-    Vector_2d_Traj tau_t(N);    // ankle torque trajectory
-    Domain_Traj domain_t(N);    // domain trajectory
 
     // initial condition
     Vector_8d x0_legs;
@@ -578,13 +580,13 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
     tau0 = res.taus;
 
     // populate the initial conditions
-    x_sys_t[0] = x0_sys;
-    x_leg_t[0] = x0_legs;
-    x_foot_t[0] = x0_feet;
-    u_t[0] = U[0];
-    lambda_t[0] = lambda0;
-    tau_t[0] = tau0;
-    domain_t[0] = d0;
+    sol.x_sys_t[0] = x0_sys;
+    sol.x_leg_t[0] = x0_legs;
+    sol.x_foot_t[0] = x0_feet;
+    sol.u_t[0] = U[0];
+    sol.lambda_t[0] = lambda0;
+    sol.tau_t[0] = tau0;
+    sol.domain_t[0] = d0;
 
     // current state variables
     Vector_8d xk_sys = x0_sys;
@@ -660,26 +662,18 @@ Solution Dynamics::RK3_rollout(Vector_1d_Traj T_x, Vector_1d_Traj T_u,
         tauk = res.taus;
 
         // store the states
-        x_sys_t[k] = xk_sys;
-        x_leg_t[k] = xk_legs;
-        x_foot_t[k] = xk_feet;
-        u_t[k] = u3;
-        lambda_t[k] = lambdak;
-        tau_t[k] = tauk;
-        domain_t[k] = dk_next;
+        sol.x_sys_t[k] = xk_sys;
+        sol.x_leg_t[k] = xk_legs;
+        sol.x_foot_t[k] = xk_feet;
+        sol.u_t[k] = u3;
+        sol.lambda_t[k] = lambdak;
+        sol.tau_t[k] = tauk;
+        sol.domain_t[k] = dk_next;
     }
 
     // pack the solution into the solution struct
-    Solution sol;
     sol.t = T_x;
-    sol.x_sys_t = x_sys_t;
-    sol.x_leg_t = x_leg_t;
-    sol.x_foot_t = x_foot_t;
-    sol.u_t = u_t;
-    sol.lambda_t = lambda_t;
-    sol.tau_t = tau_t;
-    sol.domain_t = domain_t;
     sol.viability = viability;
 
-    return sol;
+    return;
 }
