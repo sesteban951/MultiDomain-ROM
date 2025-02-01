@@ -45,41 +45,45 @@ int main()
     ////////////////////////////////// Function testing //////////////////////////////////
 
     // Vector_4d u_const;
-    // Vector_2d u_L, u_R;
-    // u_L << 0.0, 0.0;
-    // u_R << 0.0, -0.0;
-    // u_const << u_L, u_R;
+    Vector_4d u_const;
+    Vector_2d u_L, u_R;
+    u_L << 0.0, 0.0;
+    u_R << 0.0, -0.0;
+    u_const << u_L, u_R;
 
-    // // example rollout of the dynamics
-    // int N = 140;
-    // Vector_1d_Traj T_x(N);
-    // for (int i = 0; i < N; i++) {
-    //     T_x[i] = i * 0.01;
-    // }
+    // example rollout of the dynamics
+    int N = 140;
+    Vector_1d_Traj T_x(N);
+    for (int i = 0; i < N; i++) {
+        T_x[i] = i * 0.01;
+    }
 
-    // int Nu = 70;
-    // Vector_1d_Traj T_u(Nu);
-    // Vector_4d_Traj U(Nu);
-    // for (int i = 0; i < Nu; i++) {
-    //     T_u[i] = i * 0.02;
-    //     U[i] = u_const;
-    // }
+    int Nu = 70;
+    Vector_1d_Traj T_u(Nu);
+    Vector_4d_Traj U(Nu);
+    for (int i = 0; i < Nu; i++) {
+        T_u[i] = i * 0.02;
+        U[i] = u_const;
+    }
 
     // query the dynamics
-    // DynamicsResult res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
-    // Vector_8d xdot = res.xdot;
-    // std::cout << "xdot: " << xdot.transpose() << std::endl;
+    Dynamics_Result res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
+    Vector_8d xdot = res.xdot;
+    std::cout << "xdot: " << xdot.transpose() << std::endl;
 
-    // // leg state
-    // Vector_8d x_leg = dynamics.compute_leg_state(x0_sys, u_const, p0_feet, d0);
-    // std::cout << "x_leg: " << x_leg.transpose() << std::endl;
+    // leg state
+    Vector_8d x_leg = dynamics.compute_leg_state(x0_sys, u_const, p0_feet, d0);
+    std::cout << "x_leg: " << x_leg.transpose() << std::endl;
 
-    // // foot state
-    // Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
-    // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
+    // foot state
+    Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
+    std::cout << "x_foot: " << x_foot.transpose() << std::endl;
     
-    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
-    // // std::cout << "Rollout compl
+    // allocate solution conatiners
+    Solution sol;
+    dynamics.resizeSolution(sol, T_x);
+    dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U, sol);
+    // std::cout << "Rollout compl
     // generate inputs
     // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
 
@@ -106,76 +110,76 @@ int main()
 
     ////////////////////////////////// Nominal testing //////////////////////////////////
 
-    // compute time stuff
-    double duration = config_file["SIM"]["duration"].as<double>();
-    int N_sim = std::floor(duration / controller.params.dt_x);
-    double dt = controller.params.dt_x;
-    int Nu = controller.params.N_u;
+    // // compute time stuff
+    // double duration = config_file["SIM"]["duration"].as<double>();
+    // int N_sim = std::floor(duration / controller.params.dt_x);
+    // double dt = controller.params.dt_x;
+    // int Nu = controller.params.N_u;
     
-    // solution container to use for logging
-    Solution sol;
-    sol.t.resize(N_sim);
-    sol.x_sys_t.resize(N_sim);
-    sol.x_leg_t.resize(N_sim);
-    sol.x_foot_t.resize(N_sim);
-    sol.u_t.resize(N_sim);
-    sol.lambda_t.resize(N_sim);
-    sol.tau_t.resize(N_sim);
-    sol.domain_t.resize(N_sim);
+    // // solution container to use for logging
+    // Solution sol;
+    // sol.t.resize(N_sim);
+    // sol.x_sys_t.resize(N_sim);
+    // sol.x_leg_t.resize(N_sim);
+    // sol.x_foot_t.resize(N_sim);
+    // sol.u_t.resize(N_sim);
+    // sol.lambda_t.resize(N_sim);
+    // sol.tau_t.resize(N_sim);
+    // sol.domain_t.resize(N_sim);
 
-    // run the simulation
-    RHC_Result rhc_res;
-    Solution sol_;
-    dynamics.resizeSolution(sol_, controller.params.T_x);
-    Vector_4d_Traj U_opt(Nu), U_opt_(Nu);
-    Vector_d U_opt_vec(2 * Nu * controller.dynamics.n_leg);
-    Vector_8d xk_sys = x0_sys;
-    Vector_4d pk_feet = p0_feet;
-    Vector_8d xk_feet;
-    Domain dk = d0;
-    double t_sim;
-    for (int k = 0; k < N_sim; k++) {
-        t_sim = k * dt;
-        std::cout << "Sim time: " << t_sim << " sec" << std::endl;
+    // // run the simulation
+    // RHC_Result rhc_res;
+    // Solution sol_;
+    // dynamics.resizeSolution(sol_, controller.params.T_x);
+    // Vector_4d_Traj U_opt(Nu), U_opt_(Nu);
+    // Vector_d U_opt_vec(2 * Nu * controller.dynamics.n_leg);
+    // Vector_8d xk_sys = x0_sys;
+    // Vector_4d pk_feet = p0_feet;
+    // Vector_8d xk_feet;
+    // Domain dk = d0;
+    // double t_sim;
+    // for (int k = 0; k < N_sim; k++) {
+    //     t_sim = k * dt;
+    //     std::cout << "Sim time: " << t_sim << " sec" << std::endl;
 
-        // do predictive control 
-        rhc_res = controller.sampling_predictive_control(t_sim, xk_sys, pk_feet, dk);
+    //     // do predictive control 
+    //     rhc_res = controller.sampling_predictive_control(t_sim, xk_sys, pk_feet, dk);
 
-        // extract the optimal input sequence
-        U_opt = rhc_res.U;
+    //     // extract the optimal input sequence
+    //     U_opt = rhc_res.U;
 
-        for (int i = 0; i < controller.params.N_u; i++) {
-            U_opt_[i] = U_opt[i];
-            U_opt_vec.segment<4>(4*i) = U_opt_[i];
-        }
+    //     for (int i = 0; i < controller.params.N_u; i++) {
+    //         U_opt_[i] = U_opt[i];
+    //         U_opt_vec.segment<4>(4*i) = U_opt_[i];
+    //     }
 
-        // controller.initialize_distribution(config_file);
-        // controller.dist.mean = U_opt_vec;
+    //     // controller.initialize_distribution(config_file);
+    //     // controller.dist.mean = U_opt_vec;
 
-        // integrate the dynamics
-        dynamics.RK3_rollout(controller.params.T_x, 
-                            controller.params.T_u, 
-                            xk_sys, pk_feet, dk, U_opt_, sol_);
+    //     // integrate the dynamics
+    //     dynamics.RK3_rollout(controller.params.T_x, 
+    //                         controller.params.T_u, 
+    //                         xk_sys, pk_feet, dk, U_opt_, sol_);
         
-        // save into solution bundle
-        sol.t[k] = t_sim;
-        sol.x_sys_t[k] = sol_.x_sys_t[1];
-        sol.x_leg_t[k] = sol_.x_leg_t[1];
-        sol.x_foot_t[k] = sol_.x_foot_t[1];
-        sol.u_t[k] = sol_.u_t[1];
-        sol.lambda_t[k] = sol_.lambda_t[1];
-        sol.tau_t[k] = sol_.tau_t[1];
-        sol.domain_t[k] = sol_.domain_t[1];
+    //     // save into solution bundle
+    //     sol.t[k] = t_sim;
+    //     sol.x_sys_t[k] = sol_.x_sys_t[1];
+    //     sol.x_leg_t[k] = sol_.x_leg_t[1];
+    //     sol.x_foot_t[k] = sol_.x_foot_t[1];
+    //     sol.u_t[k] = sol_.u_t[1];
+    //     sol.lambda_t[k] = sol_.lambda_t[1];
+    //     sol.tau_t[k] = sol_.tau_t[1];
+    //     sol.domain_t[k] = sol_.domain_t[1];
 
-        // update the state
-        xk_sys = sol_.x_sys_t[1];
-        dk = sol_.domain_t[1];        
-        xk_feet = sol_.x_foot_t[1];
-        pk_feet(0) = xk_feet(0);
-        pk_feet(1) = xk_feet(1);
-        pk_feet(2) = xk_feet(4);
-        pk_feet(3) = xk_feet(5);
-    }
+    //     // update the state
+    //     xk_sys = sol_.x_sys_t[1];
+    //     dk = sol_.domain_t[1];        
+    //     xk_feet = sol_.x_foot_t[1];
+    //     pk_feet(0) = xk_feet(0);
+    //     pk_feet(1) = xk_feet(1);
+    //     pk_feet(2) = xk_feet(4);
+    //     pk_feet(3) = xk_feet(5);
+    // }
     
     // do a simulation
     // RHC_Result rhc_res = controller.sampling_predictive_control(x0_sys, p0_feet, d0);

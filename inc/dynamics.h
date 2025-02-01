@@ -20,9 +20,9 @@ class Dynamics
 
         // NonLinear System dynamics, xdot = f(x, u, d)
         Dynamics_Result dynamics(const Vector_8d& x_sys, 
-                                const Vector_4d& u, 
-                                const Vector_4d& p_feet,
-                                const Domain& d);
+                                 const Vector_4d& u, 
+                                 const Vector_4d& p_feet,
+                                 const Domain& d);
 
         // compute the leg state
         Vector_8d compute_leg_state(const Vector_8d& x_sys, 
@@ -51,7 +51,7 @@ class Dynamics
         void reset_map(Vector_8d& x_sys, 
                        Vector_8d& x_legs, 
                        Vector_8d& x_feet, 
-                       Vector_4d u,
+                       Vector_4d& u,
                        Domain d_prev, 
                        Domain d_next);
 
@@ -60,6 +60,7 @@ class Dynamics
                                             const Vector_1d_Traj& T_u, 
                                             const Vector_4d_Traj& U);
         
+        // resize the solution bundle to the same as the time vector
         void resizeSolution(Solution& sol, const Vector_1d_Traj& T_x);
 
         // RK forwaqrd propagation

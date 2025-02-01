@@ -408,7 +408,7 @@ Domain Dynamics::check_switching_event(const Vector_8d& x_sys, const Vector_8d& 
 
 
 // apply the reset map
-void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet, Vector_4d u, Domain d_prev, Domain d_next)
+void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet, Vector_4d& u, Domain d_prev, Domain d_next)
 {
     // states to apply reset map to 
     Vector_8d x_sys_post;
@@ -545,6 +545,8 @@ Vector_4d Dynamics::interpolate_control_input(double t, const Vector_1d_Traj& T_
     return u;
 }
 
+
+// resize the solution bundle to the same as the time vector
 void Dynamics::resizeSolution(Solution& sol, const Vector_1d_Traj& T_x) {
     const int N = T_x.size();
     sol.x_sys_t.resize(N);
@@ -579,6 +581,9 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
     lambda0 = res.lambdas;
     tau0 = res.taus;
 
+
+    std::cout << "Flag 1" << std::endl;
+
     // populate the initial conditions
     sol.x_sys_t[0] = x0_sys;
     sol.x_leg_t[0] = x0_legs;
@@ -598,6 +603,9 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
     Domain dk = d0;
     Domain dk_next;
 
+    std::cout << "Flag 2" << std::endl;
+
+
     // ************************************* RK Integration *************************************
     // viability variable (for viability kernel)
     bool viability = true;
@@ -610,6 +618,9 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
 
     // forward propagate the system dynamics
     for (int k = 1; k < N; k++) {
+
+    std::cout << "Flag 2" << std::endl;
+
 
         // interpolation times
         tk = k * dt;
@@ -632,6 +643,9 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
         f1 = res1.xdot;
         f2 = res2.xdot;
         f3 = res3.xdot;
+
+    std::cout << "Flag 3" << std::endl;
+
 
         // take the RK3 step
         xk_sys = xk_sys + (dt / 6) * (f1 + 4 * f2 + f3);
@@ -660,6 +674,9 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
         res = this->dynamics(xk_sys, u3, p_feet, dk);
         lambdak = res.lambdas;
         tauk = res.taus;
+
+    std::cout << "Flag 4" << std::endl;
+
 
         // store the states
         sol.x_sys_t[k] = xk_sys;
