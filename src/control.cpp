@@ -268,7 +268,7 @@ Vector_4d_Traj_Bundle Controller::sample_input_trajectory(int K)
 
 
 // compute mean and covariance from a bundle of control inputs
-void Controller::update_distribution_params(Vector_4d_Traj_Bundle U_bundle)
+void Controller::update_distribution_params(const Vector_4d_Traj_Bundle& U_bundle)
 {
     // some useful ints to use
     int n_leg = this->dynamics.n_leg;

@@ -32,7 +32,7 @@ class Controller
         Vector_4d_Traj_Bundle sample_input_trajectory(int K);
 
         // update the distribution parameters from a bundle of control inputs
-        void update_distribution_params(Vector_4d_Traj_Bundle U_bundle);
+        void update_distribution_params(const Vector_4d_Traj_Bundle& U_bundle);
 
         // generate a reference trajectory for the predictive control to track
         Reference generate_reference_trajectory(double t_sim, Vector_4d x0_com);

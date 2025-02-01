@@ -82,20 +82,23 @@ int main()
     // allocate solution conatiners
     Solution sol;
     dynamics.resizeSolution(sol, T_x);
-    dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U, sol);
-    // std::cout << "Rollout compl
-    // generate inputs
-    // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
 
-    // // update the distribution parameters
-    // controller.update_distribution_params(U_bundle);
-    // std::cout << "mean: \n" << controller.dist.mean.transpose() << std::endl;
-    // std::cout << "cov: \n" << controller.dist.cov << std::endl;
+    // do the rollouts
+    dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U, sol);
+    std::cout << "Rollout complete." << std::endl;
+    
+    // generate inputs
+    Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
+
+    // update the distribution parameters
+    controller.update_distribution_params(U_bundle);
+    controller.update_distribution_params(U_bundle);
+    std::cout << "updated distribution." << std::endl;
 
     // Do a rollout of the dynamics
-    // U = U_bundle[0];
-    // Solution sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
-    // // std::cout << "Rollout complete." << std::endl;
+    U = U_bundle[0];
+    dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U, sol);
+    // std::cout << "Rollout complete." << std::endl;
 
     // generate a reference trajectory
     // Reference ref = controller.generate_reference_trajectory(x0_sys.head<4>());
