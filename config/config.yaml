@@ -3,11 +3,11 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.6, 0.2, 1.5,  # COM: px, pz, vx, vz  (center of mass state)
-         0.6, 0.3, 0.6, -0.3]  # COMMANDS: l0_command, thetadot_command (single integrator state)
+    x0: [0.0, 0.6, 0.0, 0.0,  # COM: px, pz, vx, vz  (center of mass state)
+         0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 4.0         # simulation duration, [s]
+    duration: 5.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -17,21 +17,17 @@ REFERENCE:
     
     # Desire Leg states
     r_des: 0.6          # desired leg length [m]
-    theta_des: 0.1      # desired leg angle [m]
+    theta_des: 0.0      # desired leg angle [m]
 
     pz_des_: 0.6       # desired COM height [m]
     vx_des_: 0.0
 
     # Desired COM states as knot points
-    px_des: [0.0, 1.5] 
+    px_des: [0.0, 1.0] 
     pz_des: [0.55, 0.55]
     time: [0.0, 3.0]
 
-    # px_des: [0.0, 0.25, 0.75, 1.5, 2.5, 3.75]
-    # pz_des: [0.55, 0.55, 0.55, 0.55, 0.55, 0.55]
-    # time:   [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
-
-    # px_des: [0.0, 0.5, 1.5, 3.0, 5.0]
+    # px_des: [0.0, -0.5, -1.5, -3.0, -5.0]
     # pz_des: [0.5, 0.5, 0.5, 0.5, 0.5]
     # time:   [0.0, 1.0, 2.0, 3.0, 4.0]
 
@@ -48,11 +44,11 @@ REFERENCE:
 COST:
     # Quadratic cost weights
     Q_com_diags:  [7.0, 8.0, 0.5, 0.7]   # COM: px, pz, vx, vz
-    Qf_com_diags: [7.0, 8.0, 0.5, 0.7]   # COM: px, pz, vx, vz
+    Qf_com_diags: [10.0, 9.0, 0.7, 0.9]   # COM: px, pz, vx, vz
     Q_leg_diags:  [6.0, 4.0, 0.1, 0.05]  # LEG: r, theta, rdot, thetadot
-    Qf_leg_diags: [6.0, 4.0, 0.1, 0.05]  # LEG: r, theta, rdot, thetadot
-    R_diags: [0.1, 0.1]                # diagonal elements of the control cost matrix    
-    R_rate_diags: [0.01, 0.01]         # diagonal elements of the control cost matrix    
+    Qf_leg_diags: [8.0, 6.0, 0.5, 0.1]  # LEG: r, theta, rdot, thetadot
+    R_diags: [1.0, 1.0]                # diagonal elements of the control cost matrix    
+    R_rate_diags: [0.1, 0.1]         # diagonal elements of the control cost matrix    
 
     # gait cycle weight
     gait_cycle_weight: 0
@@ -71,10 +67,10 @@ COST:
 
 CTRL_PARAMS:
     N_x: 80          # number of time steps
-    N_u: 10          # number of control points
+    N_u: 5          # number of control points
     dt_x: 0.01       # time step, [s]
-    K: 1000          # number of rollouts
-    N_elite: 500     # number of elite samples
+    K: 50          # number of rollouts
+    N_elite: 5     # number of elite samples
     CEM_iters: 5     # number of CEM iterations
 
 
@@ -95,7 +91,7 @@ SYS_PARAMS:
     rdot_lim: 1.0           # max leg velocity [m/s]
     thetadot_lim: 3.14      # max angle velocity [rad/s]
     torque_ankle: True     # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
-    torque_ankle_lim: 5    # ankle torque limit, [Nm]
+    torque_ankle_lim: 3    # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
     interp: 'L'             # control interpolation method
@@ -109,7 +105,7 @@ DIST_PARAMS:
     mu: [0.0, 0.0]              # initial means [l0dot_vel, thetadot_vel]
     sigma: [1.0, 3.14]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
-    epsilon: 0.01             # minimum eigenvalue for covariance matrix
+    epsilon: 0.01               # minimum eigenvalue for covariance matrix
     seed_enabled: False         # enable random seed
     seed: 1                     # random seed
 
@@ -120,9 +116,9 @@ DIST_PARAMS:
 THREADING:
 
     # CPU Threading
-    enabled: False      # enable threading
+    enabled: True      # enable threading
     num_threads: 16    # number of thread to use in parallel
-    nested: True       # nested parallelism
+    nested: False       # nested parallelism
 
 
 ####################################################################
