@@ -70,8 +70,6 @@ class Controller
         bool threading_enabled;
 
         // desired reference trajectory
-        double pz_des;
-        double vx_des;
         double r_des;
         double theta_des;
         double T_cycle;
