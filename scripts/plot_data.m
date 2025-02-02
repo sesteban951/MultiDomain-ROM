@@ -352,13 +352,6 @@ if animate == 1
                 delete(leg_R);
                 delete(ball_foot_L);
                 delete(ball_foot_R);
-                % if plot_com == 1
-                %     delete(pt_pos);
-                % end
-                % if plot_foot == 1
-                %     delete(foot_L);
-                %     delete(foot_R);
-                % end
             end
         end
 

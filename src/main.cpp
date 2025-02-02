@@ -126,9 +126,9 @@ int main()
     int Nu = controller.params.N_u;
 
     // create the one step integration time vector
-    // Vector_1d_Traj T_x_onestep(2);
-    // T_x_onestep[0] = 0.0;
-    // T_x_onestep[1] = dt;
+    Vector_1d_Traj T_x_onestep(2);
+    T_x_onestep[0] = 0.0;
+    T_x_onestep[1] = dt;
     
     // solution container to use for logging
     Solution sol;
@@ -166,20 +166,13 @@ int main()
 
         for (int i = 0; i < controller.params.N_u; i++) {
             U_opt_[i] = U_opt[i];
-            // U_opt_[i].setZero(); // DEBUG: zero out the input for now
             U_opt_vec.segment<4>(4*i) = U_opt_[i];
         }
 
         // integrate the dynamics
-        sol_rhc = dynamics.RK3_rollout(controller.params.T_x, 
+        sol_rhc = dynamics.RK3_rollout(T_x_onestep, 
                              controller.params.T_u, 
                              xk_sys, pk_feet, dk, U_opt_);
-
-        
-        // std::cout << "xk_sys: " << xk_sys.transpose() << std::endl;
-        // std::cout << "xk_legs: " << sol_rhc.x_leg_t[1].transpose() << std::endl;
-        // std::cout << "xk_feet: " << sol_rhc.x_foot_t[1].transpose() << std::endl;
-        // std::cout << "pk_feet: " << pk_feet.transpose() << std::endl;
         
         // save into solution bundle
         sol.t[k] = t_sim;

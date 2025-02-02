@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 17)  # Need c++ 17 for inline variables
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # optimize for speed
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread -fopenmp -march=native -mtune=native -ffast-math -funroll-loops -fomit-frame-pointer")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread -fopenmp")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG")  # Disable debugging in release builds
 

@@ -444,8 +444,6 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
             Vector_4d x_leg_i_post;
             Vector_4d x_foot_i_post;
 
-            // std::cout << "Leg " << i << " switched." << std::endl;
-
             // the i-th leg is now in CONTACT
             if (d_prev[i] == Contact::SWING && d_next[i] == Contact::STANCE) {
 
@@ -469,11 +467,8 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
-                // std::cout << "x_feet_: " << x_feet_.transpose() << std::endl;
                 x_foot_i_post = x_feet_.segment<4>(4*i);
                 x_feet_post.segment<4>(4*i) = x_foot_i_post;
-
-                // std::cout << "x_foot_i_post: " << x_foot_i_post.transpose() << std::endl;
             }
 
             // the i-th leg is now in STANCE
@@ -655,8 +650,6 @@ Solution Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& 
         // if there was a switching event, apply the reset map
         if (dk_next != dk) {
 
-            // std::cout << "switching event detected" << std::endl;
-            
             // update all the states
             this->reset_map(xk_sys, xk_legs, xk_feet, u3, dk, dk_next);
 
@@ -683,8 +676,6 @@ Solution Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& 
         sol.tau_t[k] = tauk;
         sol.domain_t[k] = dk_next;
     }
-
-    // std::cout << "\nrollout done\n" << std::endl;
 
     // pack the solution into the solution struct
     sol.t = T_x;

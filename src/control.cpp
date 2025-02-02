@@ -324,11 +324,6 @@ void Controller::update_distribution_params(const Vector_4d_Traj_Bundle& U_bundl
         eigval(i) = std::max(eigval(i), this->dist.epsilon);
     }
 
-    // // print the eigenvalues
-    // if (this->verbose) {
-    //     std::cout << "Eigenvalues: " << eigval.transpose() << std::endl;
-    // }
-
     // rebuild the covariance matrix with the eigenvalue decomposition, add epsilon to eigenvalues
     cov = eigvec * eigval.asDiagonal() * eigvec_inv;
 
@@ -518,17 +513,11 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
     // integrated cost
     for (int i = 0; i < N-1; i++) {
         ei_com = X_com[i] - ref.X_com_ref[i];
-        // std::cout << "X_com: " << X_com[i].transpose() << std::endl;
-        // std::cout << "X_com_ref: " << ref.X_com_ref[i].transpose() << std::endl;
-        // std::cout <<  "ei_com: " << ei_com.transpose() << std::endl;
         J_com += ei_com.transpose() * this->params.Q_com * ei_com;
     }
     //terminal cost
     ei_com = X_com[N-1] - ref.X_com_ref[N-1];
-    // std::cout <<  "ei_com: " << ei_com.transpose() << std::endl;
     J_com += ei_com.transpose() * this->params.Qf_com * ei_com;
-
-    // std::cout << "J_com: " << J_com << std::endl;
 
     // ************************************ LEG COST ************************************
 
@@ -551,8 +540,6 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
             J_legs_barrier += this->cost_log_barrier(Sol.x_leg_t[i]);
         }
     }
-
-    // std::cout << "J_legs: " << J_legs << std::endl;
 
     // ************************************ CONTACT CYCLE COST ************************************
 
@@ -595,8 +582,6 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
         // compute quadratic cost
         J_input += (u_delta).transpose() * this->params.R_rate * (u_delta);
     }
-
-    // std::cout << "J_input: " << J_input << std::endl<< std::endl;
 
     // ************************************ TOTAL COST ************************************
 
@@ -723,25 +708,11 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
         U = mc.U;
         J = mc.J;
 
-        // print all costs
-        // std::cout << "------------------------------------" << std::endl;
-        // std::cout << "Costs: ";
-        // for (int i = 0; i < this->params.K; i++) {
-        //     std::cout << J[i] << std::endl;
-        // }
-
         // sort the cost vector in ascending order
         ts = std::chrono::high_resolution_clock::now();
         this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
         te = std::chrono::high_resolution_clock::now();
         // std::cout << "Time for sort: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
-
-        // print the elite costs
-        // std::cout << std::endl;
-        // std::cout << "Elite Costs: ";
-        // for (int i = 0; i < this->params.N_elite; i++) {
-        //     std::cout << J_elite[i] << std::endl;
-        // }
 
         // update the distribution parameters
         ts = std::chrono::high_resolution_clock::now();

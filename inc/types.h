@@ -28,12 +28,6 @@ using Vector_4d = Eigen::Matrix<double, 4, 1>;
 using Vector_6d = Eigen::Matrix<double, 6, 1>;
 using Vector_8d = Eigen::Matrix<double, 8, 1>;
 using Vector_12d = Eigen::Matrix<double, 12, 1>;
-// using Vector_2i = Eigen::Vector<int, 2>;
-// using Vector_2d = Eigen::Vector<double, 2>;
-// using Vector_4d = Eigen::Vector<double, 4>;
-// using Vector_6d = Eigen::Vector<double, 6>;
-// using Vector_8d = Eigen::Vector<double, 8>;
-// using Vector_12d = Eigen::Vector<double, 12>;
 
 using Matrix_2d = Eigen::Matrix<double, 2, 2>;
 using Matrix_4d = Eigen::Matrix<double, 4, 4>;
