@@ -639,12 +639,6 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         }
     }
 
-    // print out all the costs
-        // std::cout << "Costs: ";
-        // for (int i = 0; i < K; i++) {
-        //     std::cout << J[i] << ", ";
-        // }
-        // std::cout << std::endl;
 
     // pack solutions into a tuple
     MC_Result mc;
@@ -745,10 +739,24 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
         std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
     }
 
+    // do a final sort to get the best solution
+    Vector_1i_List idx(this->params.N_elite);
+    std::iota(idx.begin(), idx.end(), 0);
+
+    // get only the best solution
+    std::nth_element(idx.begin(), idx.begin() + 1, idx.end(),
+                     [&J_elite](int i1, int i2) { return J_elite[i1] < J_elite[i2]; });
+
+    // get the best solution
+    Solution S_opt;
+    Vector_4d_Traj U_opt;
+    S_opt = S_elite[idx[0]];
+    U_opt = U_elite[idx[0]];
+    
     // return the best solution
     RHC_Result rhc;
-    rhc.S = S_elite[0];
-    rhc.U = U_elite[0];
+    rhc.S = S_opt;
+    rhc.U = U_opt;
 
     return rhc;
 }
