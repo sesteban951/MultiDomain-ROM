@@ -64,13 +64,12 @@ class Dynamics
         void resizeSolution(Solution& sol, const Vector_1d_Traj& T_x);
 
         // RK forwaqrd propagation
-        void RK3_rollout(const Vector_1d_Traj& T_x, 
+        Solution RK3_rollout(const Vector_1d_Traj& T_x, 
                              const Vector_1d_Traj& T_u, 
                              const Vector_8d& x0_sys,
                              const Vector_4d& p0_feet,
                              const Domain& d0,
-                             const Vector_4d_Traj& U,
-                             Solution& sol);
+                             const Vector_4d_Traj& U);
 
         // System parameters
         SystemParams params;

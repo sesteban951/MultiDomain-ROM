@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 1.0         # simulation duration, [s]
+    duration: 4.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -116,7 +116,7 @@ DIST_PARAMS:
 THREADING:
 
     # CPU Threading
-    enabled: False      # enable threading
+    enabled: True      # enable threading
     num_threads: 16    # number of thread to use in parallel
     nested: False       # nested parallelism
 

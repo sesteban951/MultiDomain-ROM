@@ -444,13 +444,15 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
             Vector_4d x_leg_i_post;
             Vector_4d x_foot_i_post;
 
+            // std::cout << "Leg " << i << " switched." << std::endl;
+
             // the i-th leg is now in CONTACT
             if (d_prev[i] == Contact::SWING && d_next[i] == Contact::STANCE) {
 
                 // unpack the state variables
                 Vector_2d p_foot = p_feet_post.segment<2>(2*i);
                 Vector_2d p_foot_i_post;
-                
+
                 // update the foot location (based on hueristic)
                 p_foot_i_post << p_foot(0), 0.0;
                 p_feet_post.segment<2>(2*i) = p_foot_i_post;
@@ -467,8 +469,11 @@ void Dynamics::reset_map(Vector_8d& x_sys, Vector_8d& x_legs, Vector_8d& x_feet,
 
                 // update the foot state
                 Vector_8d x_feet_ = this->compute_foot_state(x_sys_post, x_legs_post, p_feet_post, d_next);
+                // std::cout << "x_feet_: " << x_feet_.transpose() << std::endl;
                 x_foot_i_post = x_feet_.segment<4>(4*i);
                 x_feet_post.segment<4>(4*i) = x_foot_i_post;
+
+                // std::cout << "x_foot_i_post: " << x_foot_i_post.transpose() << std::endl;
             }
 
             // the i-th leg is now in STANCE
@@ -560,13 +565,17 @@ void Dynamics::resizeSolution(Solution& sol, const Vector_1d_Traj& T_x) {
 
 
 // RK3 Integration of the system dynamics
-void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u, 
+Solution Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u, 
                                const Vector_8d& x0_sys, const Vector_4d& p0_feet, const Domain& d0, 
-                               const Vector_4d_Traj& U, Solution& sol) 
+                               const Vector_4d_Traj& U) 
 {
+
     // time integration parameters
     double dt = T_x[1] - T_x[0]; // CAUTION: assumes uniform time steps
     int N = T_x.size();
+
+    Solution sol;
+    this->resizeSolution(sol, T_x);
 
     // initial condition
     Vector_8d x0_legs;
@@ -599,8 +608,6 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
     Vector_2d tauk = tau0;
     Domain dk = d0;
     Domain dk_next;
-
-    std::cout << "xk_sys0 = " << xk_sys.transpose() << std::endl;
 
     // ************************************* RK Integration *************************************
     // viability variable (for viability kernel)
@@ -637,16 +644,10 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
                               u3, p_feet, dk);
         f3 = res3.xdot;
 
-        // std::cout << "f1" << k << " = " << f1.transpose() << std::endl;
-        // std::cout << "f2" << k << " = " << f2.transpose() << std::endl;
-        // std::cout << "f3" << k << " = " << f3.transpose() << std::endl;
-
         // take the RK3 step
         xk_sys = xk_sys + (dt / 6.0) * (f1 + 4.0 * f2 + f3);
         xk_legs = this->compute_leg_state(xk_sys, u3, p_feet, dk);
         xk_feet = this->compute_foot_state(xk_sys, xk_legs, p_feet, dk);
-
-        std::cout << "xk_sys" << k << " = " << xk_sys.transpose() << std::endl;
 
         // check for switching events
         dk_next = this->check_switching_event(xk_sys, xk_legs, xk_feet, u3, dk);
@@ -673,19 +674,6 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
         lambdak = res.lambdas;
         tauk = res.taus;
 
-        // std::cout << "--------------------" << std::endl;
-        // std::cout << "t:" <<  tk << std::endl;
-        // for (int i = 0; i < this->n_leg; i++) {
-        //     if (dk_next[i] == Contact::STANCE) {
-        //         std::cout << "leg " << i << " in stance" << std::endl;
-        //     }
-        //     else {
-        //         std::cout << "leg " << i << " in swing" << std::endl;
-        //     }
-        // }
-        // std::cout << "xk_sys: " << xk_sys.transpose() << std::endl;
-        // std::cout << "xk_legs: " << xk_legs.transpose() << std::endl;
-
         // store the states
         sol.x_sys_t[k] = xk_sys;
         sol.x_leg_t[k] = xk_legs;
@@ -702,5 +690,5 @@ void Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u,
     sol.t = T_x;
     sol.viability = viability;
 
-    return;
+    return sol;
 }

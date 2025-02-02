@@ -91,21 +91,21 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     // construct the initial distribution
     this->initialize_distribution(config_file);
 
-    // // set the number of parallel threads to use
-    // this->threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
-    // if (threading_enabled == true) {
+    // set the number of parallel threads to use
+    this->threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
+    if (threading_enabled == true) {
 
-    //     // set the number of threads
-    //     int num_threads = config_file["THREADING"]["num_threads"].as<int>();
-    //     omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
+        // set the number of threads
+        int num_threads = config_file["THREADING"]["num_threads"].as<int>();
+        omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
         
-    //     // enable nested parallelism
-    //     bool nested = config_file["THREADING"]["nested"].as<bool>();
-    //     if (nested == true) { omp_set_nested(1); }
-    // }
-    // else {
-    //     omp_set_num_threads(1);
-    // }
+        // enable nested parallelism
+        bool nested = config_file["THREADING"]["nested"].as<bool>();
+        if (nested == true) { omp_set_nested(1); }
+    }
+    else {
+        omp_set_num_threads(1);
+    }
 
     // logging prinouts
     this->verbose = config_file["INFO"]["verbose"].as<bool>();
@@ -627,7 +627,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
     Solution sol;
     this->dynamics.resizeSolution(sol, this->params.T_x);
     double cost = 0.0;
-    // #pragma omp parallel for private(sol, cost)
+    #pragma omp parallel for private(sol, cost)
     for (int k = 0; k < K; k++) {
         
         // initialize the cost
@@ -636,15 +636,9 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         // perform the rollout
 	
         // auto t0 = std::chrono::high_resolution_clock::now();
-        this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k], sol);
+        sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k]);
         // auto tf = std::chrono::high_resolution_clock::now();
             // std::cout << "Time for rollout: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
-
-        // for (int i = 0; i < this->params.N_x; i++) {
-        //     std::cout << "sol.x_sys_t[i]: " << sol.x_sys_t[i].transpose() << std::endl;
-        //     std::cout << "sol.x_leg_t[i]: " << sol.x_leg_t[i].transpose() << std::endl;
-        //     // std::cout << "sol.domain_t[i]: " << sol.domain_t[i].transpose() << std::endl;
-        // }
 
         // compute the cost
         // t0 = std::chrono::high_resolution_clock::now();
@@ -653,19 +647,19 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
             // std::cout << "Time for cost: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
 
         // store the results (use critical sections to avoid race conditions if necessary)
-        // #pragma omp critical
-        // {
+        #pragma omp critical
+        {
             Sol_bundle[k] = sol;
             J[k] = cost;
-        // }
+        }
     }
 
     // print out all the costs
-        std::cout << "Costs: ";
-        for (int i = 0; i < K; i++) {
-            std::cout << J[i] << ", ";
-        }
-        std::cout << std::endl;
+        // std::cout << "Costs: ";
+        // for (int i = 0; i < K; i++) {
+        //     std::cout << J[i] << ", ";
+        // }
+        // std::cout << std::endl;
 
     // pack solutions into a tuple
     MC_Result mc;
@@ -709,9 +703,9 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
     MC_Result mc;
 
     // monte carlo variables
-    Solution_Bundle S, S_elite(this->params.N_elite);
-    Vector_4d_Traj_Bundle U, U_elite(this->params.N_elite);
-    Vector_1d_List J, J_elite(this->params.N_elite);
+    Solution_Bundle S(this->params.N_elite), S_elite(this->params.N_elite);
+    Vector_4d_Traj_Bundle U(this->params.N_elite), U_elite(this->params.N_elite);
+    Vector_1d_List J(this->params.N_elite), J_elite(this->params.N_elite);
 
     // perform the CEM iterations
     auto t0_total = std::chrono::high_resolution_clock::now();
@@ -729,11 +723,25 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
         U = mc.U;
         J = mc.J;
 
+        // print all costs
+        // std::cout << "------------------------------------" << std::endl;
+        // std::cout << "Costs: ";
+        // for (int i = 0; i < this->params.K; i++) {
+        //     std::cout << J[i] << std::endl;
+        // }
+
         // sort the cost vector in ascending order
         ts = std::chrono::high_resolution_clock::now();
         this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
         te = std::chrono::high_resolution_clock::now();
         // std::cout << "Time for sort: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
+
+        // print the elite costs
+        // std::cout << std::endl;
+        // std::cout << "Elite Costs: ";
+        // for (int i = 0; i < this->params.N_elite; i++) {
+        //     std::cout << J_elite[i] << std::endl;
+        // }
 
         // update the distribution parameters
         ts = std::chrono::high_resolution_clock::now();
