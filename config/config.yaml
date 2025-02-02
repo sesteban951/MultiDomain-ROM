@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 5.0         # simulation duration, [s]
+    duration: 1.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -59,7 +59,7 @@ COST:
     rdot_weight: 1.5      
     theta_weight: 1.5  
     thetadot_weight: 1.5
-    J_max: 1E6
+    J_max: 1E3
 
 ####################################################################
 # CONTROL PARAMETERS
@@ -103,9 +103,9 @@ SYS_PARAMS:
 
 DIST_PARAMS:
     mu: [0.0, 0.0]              # initial means [l0dot_vel, thetadot_vel]
-    sigma: [1.0, 3.14]          # initial standard deviations
+    sigma: [0.001, 0.001]          # initial standard deviations
     diag_cov: False             # strictly enforce diagonal covariance matrix
-    epsilon: 0.01               # minimum eigenvalue for covariance matrix
+    epsilon: 0.001               # minimum eigenvalue for covariance matrix
     seed_enabled: False         # enable random seed
     seed: 1                     # random seed
 
@@ -116,7 +116,7 @@ DIST_PARAMS:
 THREADING:
 
     # CPU Threading
-    enabled: True      # enable threading
+    enabled: False      # enable threading
     num_threads: 16    # number of thread to use in parallel
     nested: False       # nested parallelism
 

@@ -40,7 +40,7 @@ t_interval = [t(1) t(end)];
 % plotting / animation
 animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
-replays = 1;   % how many times to replay the animation
+replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
 plot_des = 0;  % plot the desired trajectory

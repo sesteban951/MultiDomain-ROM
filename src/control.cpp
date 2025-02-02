@@ -91,21 +91,21 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     // construct the initial distribution
     this->initialize_distribution(config_file);
 
-    // set the number of parallel threads to use
-    this->threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
-    if (threading_enabled == true) {
+    // // set the number of parallel threads to use
+    // this->threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
+    // if (threading_enabled == true) {
 
-        // set the number of threads
-        int num_threads = config_file["THREADING"]["num_threads"].as<int>();
-        omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
+    //     // set the number of threads
+    //     int num_threads = config_file["THREADING"]["num_threads"].as<int>();
+    //     omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
         
-        // enable nested parallelism
-        bool nested = config_file["THREADING"]["nested"].as<bool>();
-        if (nested == true) { omp_set_nested(1); }
-    }
-    else {
-        omp_set_num_threads(1);
-    }
+    //     // enable nested parallelism
+    //     bool nested = config_file["THREADING"]["nested"].as<bool>();
+    //     if (nested == true) { omp_set_nested(1); }
+    // }
+    // else {
+    //     omp_set_num_threads(1);
+    // }
 
     // logging prinouts
     this->verbose = config_file["INFO"]["verbose"].as<bool>();
@@ -324,6 +324,11 @@ void Controller::update_distribution_params(const Vector_4d_Traj_Bundle& U_bundl
         eigval(i) = std::max(eigval(i), this->dist.epsilon);
     }
 
+    // // print the eigenvalues
+    // if (this->verbose) {
+    //     std::cout << "Eigenvalues: " << eigval.transpose() << std::endl;
+    // }
+
     // rebuild the covariance matrix with the eigenvalue decomposition, add epsilon to eigenvalues
     cov = eigvec * eigval.asDiagonal() * eigvec_inv;
 
@@ -513,11 +518,17 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
     // integrated cost
     for (int i = 0; i < N-1; i++) {
         ei_com = X_com[i] - ref.X_com_ref[i];
+        // std::cout << "X_com: " << X_com[i].transpose() << std::endl;
+        // std::cout << "X_com_ref: " << ref.X_com_ref[i].transpose() << std::endl;
+        // std::cout <<  "ei_com: " << ei_com.transpose() << std::endl;
         J_com += ei_com.transpose() * this->params.Q_com * ei_com;
     }
     //terminal cost
     ei_com = X_com[N-1] - ref.X_com_ref[N-1];
+    // std::cout <<  "ei_com: " << ei_com.transpose() << std::endl;
     J_com += ei_com.transpose() * this->params.Qf_com * ei_com;
+
+    // std::cout << "J_com: " << J_com << std::endl;
 
     // ************************************ LEG COST ************************************
 
@@ -541,24 +552,26 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
         }
     }
 
+    // std::cout << "J_legs: " << J_legs << std::endl;
+
     // ************************************ CONTACT CYCLE COST ************************************
 
     // TODO: Consider using a cost based on foot velocity and leg force
     // convert domain to a binary contact
-    Vector_2i di;
-    Domain d;
+    // Vector_2i di;
+    // Domain d;
     double J_cycle = 0.0;
-    double c;
-    for (int i = 0; i < N; i++) {
-        // convert contact type to binary contact
-        d = Sol.domain_t[i];
-        d[0] == Contact::STANCE ? di(0) = 1 : di(0) = 0;
-        d[1] == Contact::STANCE ? di(1) = 1 : di(0) = 0;
+    // double c;
+    // for (int i = 0; i < N; i++) {
+    //     // convert contact type to binary contact
+    //     d = Sol.domain_t[i];
+    //     d[0] == Contact::STANCE ? di(0) = 1 : di(0) = 0;
+    //     d[1] == Contact::STANCE ? di(1) = 1 : di(0) = 0;
         
-        // if same as reference, no cost
-        di == ref.D_ref[i] ? c = 0.0 : c = 1.0 * this->params.gait_cycle_weight;
-        J_cycle += c;
-    }
+    //     // if same as reference, no cost
+    //     di == ref.D_ref[i] ? c = 0.0 : c = 1.0 * this->params.gait_cycle_weight;
+    //     J_cycle += c;
+    // }
 
     // ************************************ INPUT COST ************************************
 
@@ -582,6 +595,8 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
         // compute quadratic cost
         J_input += (u_delta).transpose() * this->params.R_rate * (u_delta);
     }
+
+    // std::cout << "J_input: " << J_input << std::endl<< std::endl;
 
     // ************************************ TOTAL COST ************************************
 
@@ -625,6 +640,12 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         // auto tf = std::chrono::high_resolution_clock::now();
             // std::cout << "Time for rollout: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
 
+        // for (int i = 0; i < this->params.N_x; i++) {
+        //     std::cout << "sol.x_sys_t[i]: " << sol.x_sys_t[i].transpose() << std::endl;
+        //     std::cout << "sol.x_leg_t[i]: " << sol.x_leg_t[i].transpose() << std::endl;
+        //     // std::cout << "sol.domain_t[i]: " << sol.domain_t[i].transpose() << std::endl;
+        // }
+
         // compute the cost
         // t0 = std::chrono::high_resolution_clock::now();
         cost = this->cost_function(ref, sol, U_bundle[k]);
@@ -638,6 +659,13 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
             J[k] = cost;
         // }
     }
+
+    // print out all the costs
+        std::cout << "Costs: ";
+        for (int i = 0; i < K; i++) {
+            std::cout << J[i] << ", ";
+        }
+        std::cout << std::endl;
 
     // pack solutions into a tuple
     MC_Result mc;
