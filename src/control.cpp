@@ -268,7 +268,7 @@ Vector_4d_Traj_Bundle Controller::sample_input_trajectory(int K)
 
 
 // compute mean and covariance from a bundle of control inputs
-void Controller::update_distribution_params(Vector_4d_Traj_Bundle U_bundle)
+void Controller::update_distribution_params(const Vector_4d_Traj_Bundle& U_bundle)
 {
     // some useful ints to use
     int n_leg = this->dynamics.n_leg;
@@ -493,29 +493,18 @@ double Controller::cost_log_barrier(Vector_8d x_leg) {
 
 
 // evaluate the cost function given a solution
-double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
+double Controller::cost_function(const Reference& ref, const Solution& Sol, const Vector_4d_Traj& U)
 {
     // trajectory length 
     int N = this->params.N_x;
     int Nu = this->params.N_u;
-
-    // upack the relevant state trajectories
-    Vector_8d_Traj X_sys = Sol.x_sys_t;
-    Vector_8d_Traj X_leg = Sol.x_leg_t;
-    Vector_8d_Traj X_foot = Sol.x_foot_t; // TODO: add some kind of cost for the foot state
-    Domain_Traj D = Sol.domain_t;
-
-    // unapck the reference trajectory
-    Vector_4d_Traj X_com_ref = ref.X_com_ref;
-    Vector_8d_Traj X_leg_ref = ref.X_leg_ref;
-    Vector_2i_Traj D_ref = ref.D_ref;
 
     // ************************************ COM COST ************************************
 
     // build the COM trajectory
     Vector_4d_Traj X_com(N);
     for (int i = 0; i < N; i++) {
-        X_com[i] = X_sys[i].head<4>();
+        X_com[i] = Sol.x_sys_t[i].head<4>();
     }
 
     // compute the COM cost
@@ -523,11 +512,11 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
     double J_com = 0.0;
     // integrated cost
     for (int i = 0; i < N-1; i++) {
-        ei_com = X_com[i] - X_com_ref[i];
+        ei_com = X_com[i] - ref.X_com_ref[i];
         J_com += ei_com.transpose() * this->params.Q_com * ei_com;
     }
     //terminal cost
-    ei_com = X_com[N-1] - X_com_ref[N-1];
+    ei_com = X_com[N-1] - ref.X_com_ref[N-1];
     J_com += ei_com.transpose() * this->params.Qf_com * ei_com;
 
     // ************************************ LEG COST ************************************
@@ -537,18 +526,18 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
     double J_legs = 0.0;
     // integrated cost
     for (int i = 0; i < N-1; i++) {
-        ei_leg = X_leg[i] - X_leg_ref[i];
+        ei_leg = Sol.x_leg_t[i] - ref.X_leg_ref[i];
         J_legs += ei_leg.transpose() * this->params.Q_leg * ei_leg;
     }
     // terminal cost
-    ei_leg = X_leg[N-1] - X_leg_ref[N-1];
+    ei_leg = Sol.x_leg_t[N-1] - ref.X_leg_ref[N-1];
     J_legs += ei_leg.transpose() * this->params.Qf_leg * ei_leg;
 
     // log barrier function cost
     double J_legs_barrier = 0.0;
     if (this->params.log_barrier_enabled) {
         for (int i = 0; i < N; i++) {
-            J_legs_barrier += this->cost_log_barrier(X_leg[i]);
+            J_legs_barrier += this->cost_log_barrier(Sol.x_leg_t[i]);
         }
     }
 
@@ -556,20 +545,20 @@ double Controller::cost_function(Reference ref, Solution Sol, Vector_4d_Traj U)
 
     // TODO: Consider using a cost based on foot velocity and leg force
     // convert domain to a binary contact
-    Vector_2i di;
-    Domain d;
+    // Vector_2i di;
+    // Domain d;
     double J_cycle = 0.0;
-    double c;
-    for (int i = 0; i < N; i++) {
-        // convert contact type to binary contact
-        d = D[i];
-        d[0] == Contact::STANCE ? di(0) = 1 : di(0) = 0;
-        d[1] == Contact::STANCE ? di(1) = 1 : di(0) = 0;
+    // double c;
+    // for (int i = 0; i < N; i++) {
+    //     // convert contact type to binary contact
+    //     d = Sol.domain_t[i];
+    //     d[0] == Contact::STANCE ? di(0) = 1 : di(0) = 0;
+    //     d[1] == Contact::STANCE ? di(1) = 1 : di(0) = 0;
         
-        // if same as reference, no cost
-        di == D_ref[i] ? c = 0.0 : c = 1.0 * this->params.gait_cycle_weight;
-        J_cycle += c;
-    }
+    //     // if same as reference, no cost
+    //     di == ref.D_ref[i] ? c = 0.0 : c = 1.0 * this->params.gait_cycle_weight;
+    //     J_cycle += c;
+    // }
 
     // ************************************ INPUT COST ************************************
 
@@ -621,19 +610,26 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
 
     // loop over the input trajectories
     Solution sol;
+    this->dynamics.resizeSolution(sol, this->params.T_x);
     double cost = 0.0;
     #pragma omp parallel for private(sol, cost)
     for (int k = 0; k < K; k++) {
         
-        // initialize the solution and cost
-        sol = Solution();
+        // initialize the cost
         cost = 0.0;
 
         // perform the rollout
+	
+        // auto t0 = std::chrono::high_resolution_clock::now();
         sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k]);
+        // auto tf = std::chrono::high_resolution_clock::now();
+            // std::cout << "Time for rollout: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
 
         // compute the cost
+        // t0 = std::chrono::high_resolution_clock::now();
         cost = this->cost_function(ref, sol, U_bundle[k]);
+        // tf = std::chrono::high_resolution_clock::now();
+            // std::cout << "Time for cost: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
 
         // store the results (use critical sections to avoid race conditions if necessary)
         #pragma omp critical
@@ -642,6 +638,13 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
             J[k] = cost;
         }
     }
+
+    // print out all the costs
+        // std::cout << "Costs: ";
+        // for (int i = 0; i < K; i++) {
+        //     std::cout << J[i] << ", ";
+        // }
+        // std::cout << std::endl;
 
     // pack solutions into a tuple
     MC_Result mc;
@@ -658,22 +661,16 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
 void Controller::sort_trajectories(const Solution_Bundle&  S,       const Vector_4d_Traj_Bundle& U,        const Vector_1d_Traj& J,
                                    Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_Traj& J_elite)
 {
-    // std::cout << "Here 1" << std::endl;
     int K = this->params.K;
     int N_elite = this->params.N_elite;
 
     // Create an index vector
     Vector_1i_List idx(K);
-    // std::cout << "Here 2" << std::endl;
     std::iota(idx.begin(), idx.end(), 0);
-    // std::cout << "Here 3" << std::endl;
 
     // Use nth_element to bring the top N_elite elements to the front in O(n) time
-    // std::cout << "Here 4" << std::endl;
-    // std::cout << idx.size() << ", " << J.size() << std::endl;
     std::nth_element(idx.begin(), idx.begin() + N_elite, idx.end(),
                      [&J](int i1, int i2) { return J[i1] < J[i2]; });
-    // std::cout << "Here 5" << std::endl;
 
     // Populate elite solutions
     for (int i = 0; i < N_elite; i++) {
@@ -681,7 +678,6 @@ void Controller::sort_trajectories(const Solution_Bundle&  S,       const Vector
         U_elite[i] = U[idx[i]];
         J_elite[i] = J[idx[i]];
     }
-    // std::cout << "Here 6" << std::endl;
 }
 
 
@@ -692,9 +688,9 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
     MC_Result mc;
 
     // monte carlo variables
-    Solution_Bundle S, S_elite(this->params.N_elite);
-    Vector_4d_Traj_Bundle U, U_elite(this->params.N_elite);
-    Vector_1d_List J, J_elite(this->params.N_elite);
+    Solution_Bundle S(this->params.N_elite), S_elite(this->params.N_elite);
+    Vector_4d_Traj_Bundle U(this->params.N_elite), U_elite(this->params.N_elite);
+    Vector_1d_List J(this->params.N_elite), J_elite(this->params.N_elite);
 
     // perform the CEM iterations
     auto t0_total = std::chrono::high_resolution_clock::now();

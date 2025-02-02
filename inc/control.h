@@ -32,7 +32,7 @@ class Controller
         Vector_4d_Traj_Bundle sample_input_trajectory(int K);
 
         // update the distribution parameters from a bundle of control inputs
-        void update_distribution_params(Vector_4d_Traj_Bundle U_bundle);
+        void update_distribution_params(const Vector_4d_Traj_Bundle& U_bundle);
 
         // generate a reference trajectory for the predictive control to track
         Reference generate_reference_trajectory(double t_sim, Vector_4d x0_com);
@@ -41,7 +41,7 @@ class Controller
         double cost_log_barrier(Vector_8d x_leg);
 
         // evaluate the cost function given a solution
-        double cost_function(Reference ref, Solution Sol, Vector_4d_Traj U);
+        double cost_function(const Reference& ref, const Solution& Sol, const Vector_4d_Traj& U);
 
         // perform open loop rollouts
         MC_Result monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K);
