@@ -5,6 +5,7 @@
 #include <random>
 #include <chrono>
 #include <omp.h>
+#include <mutex>
 
 // package includes
 #include "yaml-cpp/yaml.h"
@@ -53,6 +54,8 @@ class Controller
         // perform sampling predictive control
         RHC_Result sampling_predictive_control(double t, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0);
 
+        void parallelRolloutThread(const std::vector<int>& rolloutIndeces);
+
         // internal dynamics object
         Dynamics dynamics;
 
@@ -84,5 +87,26 @@ class Controller
 
         // info 
         bool verbose;
+
+        struct ThreadInfo {
+            Vector_1d_Traj T_x;
+            Vector_1d_Traj T_u;
+            Vector_8d x0_sys;
+            Vector_4d p0_feet;
+            Domain d0;
+            Vector_4d_Traj_Bundle U_bundle;
+            Solution sol;
+            Reference ref;
+            double cost;
+        } threadInfo_;
+
+        Solution_Bundle Sol_bundle_;
+        Vector_1d_List J_;
+        Vector_4d_Traj_Bundle U_bundle_;
+
+        std::mutex data_;
+        std::mutex rolloutInfo_;
+
+        std::atomic<bool> initialized_ = false;
 
 };

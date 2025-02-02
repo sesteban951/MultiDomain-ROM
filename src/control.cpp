@@ -592,17 +592,46 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
     return J_total;
 }
 
+void Controller::parallelRolloutThread(const std::vector<int>& rolloutIndeces) {
+
+    ThreadInfo ti;
+
+    while (!initialized_) {}
+
+    while(1) {
+        // Copy data locally
+        {
+            std::lock_guard<std::mutex> lck(data_);
+            ti = threadInfo_;
+        }
+
+        for (int k = 0; k < rolloutIndeces.size(); k++) {
+            // Perform rollout
+            this->dynamics.RK3_rollout(ti.T_x, ti.T_u, ti.x0_sys, ti.p0_feet, ti.d0, ti.U_bundle[rolloutIndeces[k]], ti.sol);
+            // Evaluate cost
+            ti.cost = this->cost_function(ti.ref, ti.sol, ti.U_bundle[rolloutIndeces[k]]);
+
+            // copy data back to global
+            {
+                std::lock_guard<std::mutex> lck(rolloutInfo_);
+                Sol_bundle_[rolloutIndeces[k]] = ti.sol;
+                J_[rolloutIndeces[k]] = ti.cost;
+            }
+        }
+    }
+}
+
 
 // perform open loop rollouts
 MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K)
 {
     // generate bundle of input trajectories
-    Vector_4d_Traj_Bundle U_bundle(K);
-    U_bundle = this->sample_input_trajectory(K);
+    U_bundle_.resize(K);
+    U_bundle_ = this->sample_input_trajectory(K);
 
     // initialize the containers for the solutions
-    Solution_Bundle Sol_bundle(K);
-    Vector_1d_List J(K);
+    Sol_bundle_.resize(K);
+    J_.resize(K);
 
     // generate the reference trajectory
     Reference ref;
@@ -612,38 +641,55 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
     Solution sol;
     this->dynamics.resizeSolution(sol, this->params.T_x);
     double cost = 0.0;
-    // #pragma omp parallel for private(sol, cost)
-    for (int k = 0; k < K; k++) {
-        
-        // initialize the cost
-        cost = 0.0;
 
-        // perform the rollout
-	
-        // auto t0 = std::chrono::high_resolution_clock::now();
-        this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k], sol);
-        // auto tf = std::chrono::high_resolution_clock::now();
-            // std::cout << "Time for rollout: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
-
-        // compute the cost
-        // t0 = std::chrono::high_resolution_clock::now();
-        cost = this->cost_function(ref, sol, U_bundle[k]);
-        // tf = std::chrono::high_resolution_clock::now();
-            // std::cout << "Time for cost: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
-
-        // store the results (use critical sections to avoid race conditions if necessary)
-        // #pragma omp critical
-        // {
-            Sol_bundle[k] = sol;
-            J[k] = cost;
-        // }
+    {
+        std::lock_guard<std::mutex> lck(data_);
+        threadInfo_.T_x = this->params.T_x;
+        threadInfo_.T_u = this->params.T_u;
+        threadInfo_.x0_sys = x0_sys;
+        threadInfo_.p0_feet = p0_feet;
+        threadInfo_.d0 = d0;
+        threadInfo_.U_bundle = U_bundle_;
+        threadInfo_.sol = sol;
+        threadInfo_.ref = ref;
     }
+    initialized_ = true;
+
+    // #pragma omp parallel for private(sol, cost)
+    // for (int k = 0; k < K; k++) {
+        
+    //     // initialize the cost
+    //     cost = 0.0;
+
+    //     // perform the rollout
+	
+    //     // auto t0 = std::chrono::high_resolution_clock::now();
+    //     this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k], sol);
+    //     // auto tf = std::chrono::high_resolution_clock::now();
+    //         // std::cout << "Time for rollout: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
+
+    //     // compute the cost
+    //     // t0 = std::chrono::high_resolution_clock::now();
+    //     cost = this->cost_function(ref, sol, U_bundle[k]);
+    //     // tf = std::chrono::high_resolution_clock::now();
+    //         // std::cout << "Time for cost: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
+
+    //     // store the results (use critical sections to avoid race conditions if necessary)
+    //     // #pragma omp critical
+    //     // {
+    //         Sol_bundle[k] = sol;
+    //         J[k] = cost;
+    //     // }
+    // }
 
     // pack solutions into a tuple
     MC_Result mc;
-    mc.S = Sol_bundle;
-    mc.U = U_bundle;
-    mc.J = J;
+    mc.U = U_bundle_;
+    {
+        std::lock_guard<std::mutex> lck(rolloutInfo_);
+        mc.S = Sol_bundle_;
+        mc.J = J_;
+    }
 
     // return the solutions
     return mc;

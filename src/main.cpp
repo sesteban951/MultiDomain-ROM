@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <fstream>
+#include <thread>
 
 // package includes
 #include "Eigen/Dense"
@@ -134,6 +135,19 @@ int main()
     sol.lambda_t.resize(N_sim);
     sol.tau_t.resize(N_sim);
     sol.domain_t.resize(N_sim);
+
+    // spin up rollout threads
+    int num_threads = 4;
+    int rollout_per_thread = ceil((float)controller.params.K / num_threads);
+    std::vector<std::thread> threads;
+    for (int i = 0; i < num_threads; i++) {
+        std::vector<int> indeces;
+        for (int j = 0; j < rollout_per_thread; j++) {
+            indeces.push_back(std::min(i*rollout_per_thread+j, controller.params.K-1));
+        }
+        std::cout << std::endl;
+        threads.emplace_back(&Controller::parallelRolloutThread, &controller, std::move(indeces));
+    }
 
     // run the simulation
     RHC_Result rhc_res;
