@@ -284,19 +284,8 @@ int main()
         
         domain_t_ = domain_t[i];
 
-        if (domain_t_[0] == Contact::STANCE) {
-            domain_[0] = 1;
-        }
-        else {
-            domain_[0] = 0;
-        }
-
-        if (domain_t_[1] == Contact::STANCE) {
-            domain_[1] = 1;
-        }
-        else {
-            domain_[1] = 0;
-        }
+        domain_[0] = (domain_t_[0] == Contact::STANCE) ? 1 : 0;
+        domain_[1] = (domain_t_[1] == Contact::STANCE) ? 1 : 0;
 
         file << domain_.transpose() << std::endl;
     }

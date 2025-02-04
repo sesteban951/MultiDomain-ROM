@@ -359,7 +359,9 @@ if animate == 1
     surf(X, Y, Z, 'FaceAlpha', 0.5, 'FaceColor', [0.8, 0.8, 0.8], 'EdgeColor', [0.7, 0.7, 0.7]);
 
     % set the view
-    view(3);
+    azimuth = 45;
+    elevation = 30;
+    view(azimuth, elevation);
 
     % play the animation 
     t  = t * (1/rt);

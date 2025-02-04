@@ -61,6 +61,11 @@ class Dynamics
                                      const Vector_8d& x_feet, 
                                      const Vector_4d& u,
                                      const Domain& d);
+        Domain check_switching_event_3D(const Vector_12d& x_sys, 
+                                        const Vector_12d& x_legs, 
+                                        const Vector_12d& x_feet, 
+                                        const Vector_6d& u,
+                                        const Domain& d_current);
 
         // apply the reset map
         void reset_map(Vector_8d& x_sys, 
@@ -69,6 +74,12 @@ class Dynamics
                        Vector_4d& u,
                        Domain d_prev, 
                        Domain d_next);
+        void reset_map_3D(Vector_12d& x_sys, 
+                          Vector_12d& x_legs, 
+                          Vector_12d& x_feet, 
+                          Vector_6d& u,
+                          Domain d_prev, 
+                          Domain d_next);
 
         // interpolate the input signal
         Vector_4d interpolate_control_input(double t, 
