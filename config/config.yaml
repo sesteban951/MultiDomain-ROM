@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 4.0         # simulation duration, [s]
+    duration: 10.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -16,13 +16,13 @@ SIM:
 REFERENCE:
     
     # Desire Leg states
-    r_des: 0.5          # desired leg length [m]
+    r_des: 0.6          # desired leg length [m]
     theta_des: 0.0      # desired leg angle [m]
 
     # Desired COM states as knot points
-    px_des: [0.0, 3.0] 
-    pz_des: [0.55, 0.55]
-    time: [0.0, 3.0]
+    px_des: [0.0, 5.0, 0.0] 
+    pz_des: [0.55, 0.55, 0.55]
+    time: [0.0, 4.0, 8.0]
 
     # px_des: [0.0, -0.5, -1.5, -3.0, -5.0]
     # pz_des: [0.5, 0.5, 0.5, 0.5, 0.5]
@@ -64,7 +64,7 @@ CTRL_PARAMS:
     dt_x: 0.01       # time step, [s]
     K: 75          # number of rollouts
     N_elite: 5     # number of elite samples
-    CEM_iters: 3     # number of CEM iterations
+    CEM_iters: 5     # number of CEM iterations
 
 
 ####################################################################
@@ -110,7 +110,7 @@ THREADING:
 
     # CPU Threading
     enabled: False     # enable threading
-    num_threads: 8     # number of thread to use in parallel
+    num_threads: 4     # number of thread to use in parallel
     nested: False      # nested parallelism
 
 

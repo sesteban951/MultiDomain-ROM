@@ -219,132 +219,127 @@ void Controller::initialize_distribution(YAML::Node config_file)
 }
 
 
-// // sample input trajectories from the distribution
-// Vector_4d_Traj_Bundle Controller::sample_input_trajectory(int K)
-// {
-//     // some useful ints to use
-//     int n_leg = this->dynamics.n_leg;
-//     int Nu = this->params.N_u;
+// TODO: there is code optimziation work to be done here
+// sample input trajectories from the distribution
+Vector_6d_Traj_Bundle Controller::sample_input_trajectory(int K)
+{
+    // some useful ints to use
+    int n_leg = this->dynamics.n_leg;
+    int Nu = this->params.N_u;
 
-//     // sample the input trajectories
-//     Vector_d mu = this->dist.mean;
-//     Matrix_d Sigma = this->dist.cov;
+    // perform cholesky decomposition 
+    Eigen::LLT<Matrix_d> llt(this->dist.cov);  
+    Matrix_d L = llt.matrixL();  
 
-//     // perform cholesky decomposition 
-//     Eigen::LLT<Matrix_d> llt(Sigma);  
-//     Matrix_d L = llt.matrixL();  
+    // check if the covariance is positive definite
+    if (llt.info() == Eigen::NumericalIssue) {
+        throw std::runtime_error("Covariance matrix is possibly not positive definite");
+    }
 
-//     // check if the covariance is positive definite
-//     if (llt.info() == Eigen::NumericalIssue) {
-//         throw std::runtime_error("Covariance matrix is possibly not positive definite");
-//     }
+    // Generate random input trajectories and store them in the input bundle
+    Vector_d Z_vec, U_vec;  // TODO: have this as a class variable
+    Z_vec.resize(this->dist.mean.size());
+    U_vec.resize(this->dist.mean.size());
 
-//     // Generate random input trajectories and store them in the input bundle
-//     Vector_d Z_vec, U_vec;
-//     Z_vec.resize(mu.size());
-//     U_vec.resize(mu.size());
+    // U ~ N(mu, Sigma) <=> U = L * Z + mu; Z ~ N(0, I)
+    // initialize the input trajectory bundle
+    Vector_6d_Traj_Bundle U_bundle(K);  // TODO: have this as a class variable
+    Vector_6d_Traj U_traj(Nu);
+    Vector_6d u;
 
-//     // U ~ N(mu, Sigma) <=> U = L * Z + mu; Z ~ N(0, I)
-//     // initialize the input trajectory bundle
-//     Vector_4d_Traj_Bundle U_bundle(K);
-//     Vector_4d_Traj U_traj(Nu);
-//     Vector_4d u;
-
-//     // loop over the number of samples
-//     for (int i = 0; i < K; i++) {
+    // loop over the number of samples
+    for (int i = 0; i < K; i++) {
         
-//         // populate the Z vector; Z ~ N(0, I)
-//         for (int j = 0; j < mu.size(); j++) {
-//             Z_vec(j) = this->normal_dist(this->rand_generator);
-//         }
+        // populate the Z vector; Z ~ N(0, I)
+        for (int j = 0; j < this->dist.mean.size(); j++) {
+            Z_vec(j) = this->normal_dist(this->rand_generator);
+        }
 
-//         // generate the vectorized input trajectory
-//         U_vec = L * Z_vec + mu;
+        // generate the vectorized input trajectory
+        U_vec = L * Z_vec + this->dist.mean;
 
-//         // unvectorize U_vec into U_traj
-//         for (int k = 0; k < this->params.N_u; k++) {
-//             u = U_vec.segment<4>(4 * k);
-//             U_traj[k] = u;
-//         }
+        // unvectorize U_vec into U_traj
+        for (int k = 0; k < this->params.N_u; k++) {
+            u = U_vec.segment<6>(6 * k);
+            U_traj[k] = u;
+        }
 
-//         // store the input trajectory
-//         U_bundle[i] = U_traj;
-//     }
+        // store the input trajectory
+        U_bundle[i] = U_traj;
+    }
 
-//     return U_bundle;
-// }
+    return U_bundle;
+}
 
 
-// // compute mean and covariance from a bundle of control inputs
-// void Controller::update_distribution_params(const Vector_4d_Traj_Bundle& U_bundle)
-// {
-//     // some useful ints to use
-//     int n_leg = this->dynamics.n_leg;
-//     int Nu = this->params.N_u;
+// TODO: there is code optimziation work to be done here
+// compute mean and covariance from a bundle of control inputs
+void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_bundle)
+{
+    // some useful ints to use
+    int n_leg = this->dynamics.n_leg;
+    int Nu = this->params.N_u;
 
-//     // initialize the mean and covariance
-//     Vector_d mean;
-//     Matrix_d cov;
-//     mean.resize(2 * Nu * n_leg);
-//     cov.resize(2 * Nu * n_leg, 2 * Nu * n_leg);
+    // initialize the mean and covariance
+    Vector_d mean; // TODO: have this as a class variable
+    Matrix_d cov;
+    mean.resize(3 * Nu * n_leg);
+    cov.resize(3 * Nu * n_leg, 3 * Nu * n_leg);
 
-//     // size of the bundle
-//     int K = U_bundle.size(); // not necceseraly equal to this->params.K
+    // used for computing the mean
+    Matrix_d U_data; // TODO: have this as a class variable
+    U_data.resize(3 * Nu * n_leg, this->params.K);
 
-//     // used for computing the mean
-//     Matrix_d U_data;
-//     U_data.resize(2 * Nu * n_leg, K);
+    // compute the mean
+    Vector_6d_Traj U_traj(Nu);
+    Vector_6d u;
+    Vector_d U_vec;
+    U_vec.resize(3 * Nu * n_leg);
+    for (int i = 0; i < this->params.K; i++) {
 
-//     // compute the mean
-//     Vector_4d_Traj U_traj(Nu);
-//     Vector_4d u;
-//     Vector_d U_vec;
-//     U_vec.resize(2 * Nu * n_leg);
-//     for (int i = 0; i < K; i++) {
+        // vectorize the input trajectory
+        U_traj = U_bundle[i];
+        for (int j = 0; j < Nu; j++) {
+            u = U_traj[j];
+            U_vec.segment<6>(6 * j) = u;
+        }   
+        mean += U_vec;
 
-//         // vectorize the input trajectory
-//         U_traj = U_bundle[i];
-//         for (int j = 0; j < Nu; j++) {
-//             u = U_traj[j];
-//             U_vec.segment<4>(4 * j) = u;
-//         }   
-//         mean += U_vec;
+        // insert into data matrix to use later
+        U_data.col(i) = U_vec;
+    }
+    mean /= this->params.K;
 
-//         // insert into data matrix to use later
-//         U_data.col(i) = U_vec;
-//     }
-//     mean /= K;
-
-//     // compute the sample covariance (K-1 b/c Bessel correction)
-//     cov = (1.0 / (K-1)) * (U_data.colwise() - mean) * (U_data.colwise() - mean).transpose();
+    // compute the sample covariance (K-1 b/c Bessel correction)
+    cov = (1.0 / (this->params.K-1)) * (U_data.colwise() - mean) * (U_data.colwise() - mean).transpose();
     
-//     // compute the eigenvalue decomposition
-//     Eigen::SelfAdjointEigenSolver<Matrix_d> eig(cov);
-//     if (eig.info() == Eigen::NumericalIssue) {
-//         throw std::runtime_error("Covariance matrix is possibly not positive definite");
-//     }
-//     Matrix_d eigvec = eig.eigenvectors();
-//     Vector_d eigval = eig.eigenvalues();
-//     Matrix_d eigvec_inv = eigvec.inverse();
+    // compute the eigenvalue decomposition
+    Eigen::SelfAdjointEigenSolver<Matrix_d> eig(cov);
+    if (eig.info() == Eigen::NumericalIssue) {
+        throw std::runtime_error("Covariance matrix is possibly not positive definite");
+    }
+    Matrix_d eigvec = eig.eigenvectors();
+    Vector_d eigval = eig.eigenvalues();
+    Matrix_d eigvec_inv = eigvec.inverse();
 
-//     // modify eigenvalues with epsilon if it gets too low
-//     for (int i = 0; i < eigval.size(); i++) {
-//         eigval(i) = std::max(eigval(i), this->dist.epsilon);
-//     }
+    // modify eigenvalues with epsilon if it gets too low
+    for (int i = 0; i < eigval.size(); i++) {
+        eigval(i) = std::max(eigval(i), this->dist.epsilon);
+    }
 
-//     // rebuild the covariance matrix with the eigenvalue decomposition, add epsilon to eigenvalues
-//     cov = eigvec * eigval.asDiagonal() * eigvec_inv;
+    // rebuild the covariance matrix with the eigenvalue decomposition, add epsilon to eigenvalues
+    cov = eigvec * eigval.asDiagonal() * eigvec_inv;
 
-//     //  if stricly diagonal covariance option
-//     if (this->dist.diag_cov == true) {
-//         // set the covariance to be diagonal, (Hadamard Product, cov * I = diag(cov))
-//         cov = cov.cwiseProduct(Matrix_d::Identity(2 * Nu * n_leg, 2 * Nu * n_leg));
-//     }
+    //  if stricly diagonal covariance option
+    if (this->dist.diag_cov == true) {
+        // set the covariance to be diagonal, (Hadamard Product, cov * I = diag(cov))
+        cov = cov.cwiseProduct(Matrix_d::Identity(3 * Nu * n_leg, 3 * Nu * n_leg));
+    }
 
-//     // update the distribution
-//     this->dist.mean = mean;
-//     this->dist.cov = cov;    
-// }
+    // update the distribution
+    this->dist.mean = mean;
+    this->dist.cov = cov;    
+}
 
 
 // // generate a reference trajectory for the predictive control to track

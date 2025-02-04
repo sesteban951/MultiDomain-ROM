@@ -88,14 +88,6 @@ int main()
     // do the rollouts
     sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
     std::cout << "Rollout complete." << std::endl;
-    
-    // // generate inputs
-    // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
-
-    // // update the distribution parameters
-    // controller.update_distribution_params(U_bundle);
-    // controller.update_distribution_params(U_bundle);
-    // std::cout << "updated distribution." << std::endl;
 
     // // Do a rollout of the dynamics
     // U = U_bundle[0];
@@ -119,7 +111,21 @@ int main()
     // RHC_Result rhc_res = controller.sampling_predictive_control(0.0, x0_sys, p0_feet, d0);
     // Solution sol = rhc_res.S;
 
-    ////////////////////////////////// Dynamics testing //////////////////////////////////
+    ////////////////////////////////// Control testing //////////////////////////////////
+
+    // generate inputs
+    Vector_6d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000000);
+
+    // update the distribution parameters
+    controller.update_distribution_params(U_bundle);
+    std::cout << "updated distribution." << std::endl;
+
+    std::cout << "mean: " << std::endl;
+    std::cout << controller.dist.mean.transpose() << std::endl;
+    std::cout << "covariance: " << std::endl;
+    std::cout << controller.dist.cov << std::endl;
+
+    ////////////////////////////////// Simulation testing //////////////////////////////////
 
     // // compute time stuff
     // double duration = config_file["SIM"]["duration"].as<double>();
@@ -200,9 +206,6 @@ int main()
     // // print some info
     // double T_tot = std::chrono::duration<double>(tf - t0).count();
     // std::cout << "Total time: " << T_tot << " sec" << std::endl;
-
-    ////////////////////////////////// Control testing //////////////////////////////////
-
 
     ////////////////////////////////// Logging //////////////////////////////////
 

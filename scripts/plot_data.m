@@ -147,6 +147,8 @@ if animate == 0
     plot(t, x_leg_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,2), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     plot(t, x_leg_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(theta_des, 'LineWidth', 1.0, 'Color', 'k', 'LineStyle', '--');
+    yline(-theta_des, 'LineWidth', 1.0, 'Color', 'k', 'LineStyle', '--');
     xlabel('Time [sec]');
     ylabel('$\theta$ [rad]', 'Interpreter', 'latex');
     title('LEG Angle');
@@ -269,7 +271,6 @@ end
 if animate == 1
 
     figure('Name', 'Animation');
-    set(gcf,'renderer','painters');
     hold on;
 
     xline(0);
@@ -283,6 +284,8 @@ if animate == 1
     pz_max = max([p_com(:,2); x_foot_L(:,2); x_foot_R(:,2)]);
     xlim([px_min-0.5, px_max+0.5]);
     ylim([min(0, pz_min)-0.25, pz_max+0.25]);
+
+    set(gcf,'renderer','painters');
 
     t  = t * (1/rt);
     for i = 1:replays

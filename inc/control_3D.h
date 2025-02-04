@@ -31,11 +31,11 @@ class Controller
         // to initialize the parametric distribution
         void initialize_distribution(YAML::Node config_file);
 
-        // // sample the input trajectories from the distribution
-        // Vector_4d_Traj_Bundle sample_input_trajectory(int K);
+        // sample the input trajectories from the distribution
+        Vector_6d_Traj_Bundle sample_input_trajectory(int K);
 
-        // // update the distribution parameters from a bundle of control inputs
-        // void update_distribution_params(const Vector_4d_Traj_Bundle& U_bundle);
+        // update the distribution parameters from a bundle of control inputs
+        void update_distribution_params(const Vector_6d_Traj_Bundle& U_bundle);
 
         // // generate a reference trajectory for the predictive control to track
         // Reference generate_reference_trajectory(double t_sim, Vector_4d x0_com);

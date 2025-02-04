@@ -144,6 +144,10 @@ int main()
     Solution sol_rhc;
     controller.dynamics.resizeSolution(sol_rhc, controller.params.T_x);
 
+    // to time time stuff
+    double T_rhc = 0.0;
+    double T_total = 0.0;
+
     // run the simulation
     RHC_Result rhc_res;
     Vector_4d_Traj U_opt(Nu), U_opt_(Nu);
@@ -153,13 +157,16 @@ int main()
     Vector_8d xk_feet;
     Domain dk = d0;
     double t_sim;
-    auto t0 = std::chrono::high_resolution_clock::now();
+    auto t0_tot = std::chrono::high_resolution_clock::now();
     for (int k = 0; k < N_sim; k++) {
         t_sim = k * dt;
         std::cout << "Sim time: " << t_sim << " sec" << std::endl;
 
         // do predictive control 
+        auto t0 = std::chrono::high_resolution_clock::now();
         rhc_res = controller.sampling_predictive_control(t_sim, xk_sys, pk_feet, dk);
+        auto tf = std::chrono::high_resolution_clock::now();
+        T_rhc += std::chrono::duration<double>(tf - t0).count();
 
         // extract the optimal input sequence
         U_opt = rhc_res.U;
@@ -193,11 +200,14 @@ int main()
         pk_feet(2) = xk_feet(4);
         pk_feet(3) = xk_feet(5);
     }
-    auto tf = std::chrono::high_resolution_clock::now();
+    auto tf_tot = std::chrono::high_resolution_clock::now();
 
     // print some info
-    double T_tot = std::chrono::duration<double>(tf - t0).count();
-    std::cout << "Total time: " << T_tot << " sec" << std::endl;
+    double T_tot = std::chrono::duration<double>(tf_tot - t0_tot).count();
+    std::cout << "Total time: " << T_tot << " [sec]" << std::endl;
+
+    double T_rhc_avg = (T_rhc / N_sim) * 1000.0;
+    std::cout << "Average time for RHC: " << T_rhc_avg << " [ms], " << 1000.0 / T_rhc_avg << " [Hz]" << std::endl;
 
     ////////////////////////////////// Logging //////////////////////////////////
 

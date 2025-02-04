@@ -85,7 +85,7 @@ SYS_PARAMS:
 ####################################################################
 
 DIST_PARAMS:
-    mu: [0.1, 0.2, 0.3]         # initial means [l0dot_vel, thetadot_vel]
+    mu: [0.0, 0.0, 0.0]         # initial means [l0dot_vel, thetadot_vel]
     sigma: [0.5, 1.57, 1.57]    # initial standard deviations
     epsilon: 0.01               # minimum eigenvalue for covariance matrix
     diag_cov: False             # strictly enforce diagonal covariance matrix
