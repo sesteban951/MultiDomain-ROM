@@ -215,14 +215,14 @@ int main()
     bool viability = sol.viability;
 
     // save the solution to a file
-    std::string time_file = "../data_3D/time.csv";
-    std::string x_sys_file = "../data_3D/state_sys.csv";
-    std::string x_leg_file = "../data_3D/state_leg.csv";
-    std::string x_foot_file = "../data_3D/state_foot.csv";
-    std::string u_file = "../data_3D/input.csv";
-    std::string lambda_file = "../data_3D/lambda.csv";
-    std::string tau_file = "../data_3D/tau.csv";
-    std::string domain_file = "../data_3D/domain.csv";
+    std::string time_file = "../data/3D/time.csv";
+    std::string x_sys_file = "../data/3D/state_sys.csv";
+    std::string x_leg_file = "../data/3D/state_leg.csv";
+    std::string x_foot_file = "../data/3D/state_foot.csv";
+    std::string u_file = "../data/3D/input.csv";
+    std::string lambda_file = "../data/3D/lambda.csv";
+    std::string tau_file = "../data/3D/tau.csv";
+    std::string domain_file = "../data/3D/domain.csv";
 
     int N_ = t.size();
 
