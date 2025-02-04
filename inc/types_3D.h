@@ -128,9 +128,9 @@ struct Solution
 // Reference type
 struct Reference
 {
-    Vector_6d_Traj X_com_ref; // reference trajectory
-    Vector_12d_Traj X_leg_ref; // reference trajectory
-    Vector_2i_Traj D_ref;     // reference trajectory
+    Vector_1d_Traj t_ref;     // time reference
+    Vector_3d_Traj p_com_ref; // com position reference
+    Vector_12d X_leg_ref;     // leg state reference
 };
 
 // ***********************************************************************************

@@ -4,205 +4,218 @@
 // Constructor
 Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 {
-    // // set the control parameters
-    // this->params.N_x = config_file["CTRL_PARAMS"]["N_x"].as<int>();
-    // this->params.N_u = config_file["CTRL_PARAMS"]["N_u"].as<int>();
-    // this->params.dt_x = config_file["CTRL_PARAMS"]["dt_x"].as<double>();
-    // this->params.K = config_file["CTRL_PARAMS"]["K"].as<int>();
-    // this->params.N_elite = config_file["CTRL_PARAMS"]["N_elite"].as<int>();
-    // this->params.CEM_iters = config_file["CTRL_PARAMS"]["CEM_iters"].as<int>();
+    // set the control parameters
+    this->params.N_x = config_file["CTRL_PARAMS"]["N_x"].as<int>();
+    this->params.N_u = config_file["CTRL_PARAMS"]["N_u"].as<int>();
+    this->params.dt_x = config_file["CTRL_PARAMS"]["dt_x"].as<double>();
+    this->params.K = config_file["CTRL_PARAMS"]["K"].as<int>();
+    this->params.N_elite = config_file["CTRL_PARAMS"]["N_elite"].as<int>();
+    this->params.CEM_iters = config_file["CTRL_PARAMS"]["CEM_iters"].as<int>();
     
-    // // ensure the parameters make sense
-    // if (this->params.N_x < this->params.N_u) {
-    //     throw std::runtime_error("N_x must be greater than N_u");
-    // }
-    // if (this->params.N_elite > this->params.K) {
-    //     throw std::runtime_error("N_elite must be less than or equal to K");
-    // }
+    // ensure the parameters make sense
+    if (this->params.N_x < this->params.N_u) {
+        throw std::runtime_error("N_x must be greater than N_u!");
+    }
+    if (this->params.N_elite > this->params.K) {
+        throw std::runtime_error("N_elite must be less than or equal to K!");
+    }
 
-    // // build the cost matrices from the diagonal elements
-    // Vector_1d_List Q_com_diags_temp = config_file["COST"]["Q_com_diags"].as<std::vector<double>>();
-    // Vector_1d_List Q_leg_diags_temp = config_file["COST"]["Q_leg_diags"].as<std::vector<double>>();
-    // Vector_1d_List Qf_com_diags_temp = config_file["COST"]["Qf_com_diags"].as<std::vector<double>>();
-    // Vector_1d_List Qf_leg_diags_temp = config_file["COST"]["Qf_leg_diags"].as<std::vector<double>>();
-    // Vector_1d_List R_diags_temp = config_file["COST"]["R_diags"].as<std::vector<double>>();
-    // Vector_1d_List R_rate_diags_temp = config_file["COST"]["R_rate_diags"].as<std::vector<double>>();
+    // compute u(t) dt (N_x of the integration is not necessarily equal to the number of control points, N_u)
+    double T = (this->params.N_x-1) * this->params.dt_x;
+    this->params.dt_u = T / (this->params.N_u-1);
 
-    // Vector_4d Q_com_diags, Qf_com_diags;
-    // Vector_4d Q_leg_diag, Qf_leg_diag;
-    // for (int i = 0; i < Q_com_diags_temp.size(); i++) {
-    //     Q_com_diags[i] = Q_com_diags_temp[i];
-    //     Qf_com_diags[i] = Qf_com_diags_temp[i];
-    //     Q_leg_diag[i] = Q_leg_diags_temp[i];
-    //     Qf_leg_diag[i] = Qf_leg_diags_temp[i];
-    // }
-    // Vector_8d Q_leg_diags, Qf_leg_diags;
-    // Q_leg_diags << Q_leg_diag, Q_leg_diag;
-    // Qf_leg_diags << Qf_leg_diag, Qf_leg_diag;
-    
-    // Vector_2d R_leg_diags, R_rate_leg_diags;
-    // for (int i = 0; i < R_diags_temp.size(); i++) {
-    //     R_leg_diags[i] = R_diags_temp[i];
-    //     R_rate_leg_diags[i] = R_rate_diags_temp[i];
-    // }
-    // Vector_4d R_diags, R_rate_diags;
-    // R_diags << R_leg_diags, R_leg_diags;
-    // R_rate_diags << R_rate_leg_diags, R_rate_leg_diags;
+    // generate the time arrays
+    Vector_1d_Traj T_x;
+    Vector_1d_Traj T_u;
+    T_x.resize(this->params.N_x);
+    T_u.resize(this->params.N_u);
+    for (int i = 0; i < this->params.N_x; i++) {
+        T_x[i] = i * this->params.dt_x;
+    }
+    for (int i = 0; i < this->params.N_u; i++) {
+        T_u[i] = i * this->params.dt_u;
+    }
+    this->params.T_x = T_x;
+    this->params.T_u = T_u;
 
-    // // initialize the cost matrices
-    // this->params.Q_com  = Q_com_diags.asDiagonal();
-    // this->params.Q_leg  = Q_leg_diags.asDiagonal();
-    // this->params.Qf_com = Qf_com_diags.asDiagonal();
-    // this->params.Qf_leg = Qf_leg_diags.asDiagonal();
-    // this->params.R = R_diags.asDiagonal();
-    // this->params.R_rate = R_rate_diags.asDiagonal();
+    // initialize the cost matrices
+    this->initialize_costs(config_file);
 
-    // // gait cycle weight
-    // this->params.gait_cycle_weight = config_file["COST"]["gait_cycle_weight"].as<double>();
+    // construct the reference trajectory
+    this->initialize_reference_trajectories(config_file);
 
-    // // log barrier function
-    // this->params.log_barrier_enabled = config_file["COST"]["log_barrier_enabled"].as<bool>();
-    // this->params.J_barrier = config_file["COST"]["J_barrier"].as<double>();
+    // construct the initial distribution
+    this->initialize_distribution(config_file);
 
-    // // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
-    // double T = (this->params.N_x-1) * this->params.dt_x;
-    // this->params.dt_u = T / (this->params.N_u-1);
+    // set the number of parallel threads to use
+    this->threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
+    if (threading_enabled == true) {
 
-    // // generate the time arrays
-    // Vector_1d_Traj T_x;
-    // Vector_1d_Traj T_u;
-    // T_x.resize(this->params.N_x);
-    // T_u.resize(this->params.N_u);
-    // for (int i = 0; i < this->params.N_x; i++) {
-    //     T_x[i] = i * this->params.dt_x;
-    // }
-    // for (int i = 0; i < this->params.N_u; i++) {
-    //     T_u[i] = i * this->params.dt_u;
-    // }
-    // this->params.T_x = T_x;
-    // this->params.T_u = T_u;
-
-    // // construct the reference trajectory
-    // this->initialize_reference_trajectories(config_file);
-
-    // // construct the initial distribution
-    // this->initialize_distribution(config_file);
-
-    // // set the number of parallel threads to use
-    // this->threading_enabled = config_file["THREADING"]["enabled"].as<bool>();
-    // if (threading_enabled == true) {
-
-    //     // set the number of threads
-    //     int num_threads = config_file["THREADING"]["num_threads"].as<int>();
-    //     omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
+        // set the number of threads
+        int num_threads = config_file["THREADING"]["num_threads"].as<int>();
+        omp_set_num_threads(num_threads); // Set the number of threads for parallel regions
         
-    //     // enable nested parallelism
-    //     bool nested = config_file["THREADING"]["nested"].as<bool>();
-    //     if (nested == true) { omp_set_nested(1); }
-    // }
-    // else {
-    //     omp_set_num_threads(1);
-    // }
+        // enable nested parallelism
+        bool nested = config_file["THREADING"]["nested"].as<bool>();
+        if (nested == true) { omp_set_nested(1); }
+    }
+    else {
+        omp_set_num_threads(1);
+    }
 
-    // // logging prinouts
-    // this->verbose = config_file["INFO"]["verbose"].as<bool>();
+    // logging prinouts
+    this->verbose = config_file["INFO"]["verbose"].as<bool>();
+}
+
+void Controller::initialize_costs(YAML::Node config_file)
+{
+    // build the cost matrices from the diagonal elements
+    Vector_1d_List Q_com_diags_temp = config_file["COST"]["Q_com_diags"].as<std::vector<double>>();
+    Vector_1d_List Q_leg_diags_temp = config_file["COST"]["Q_leg_diags"].as<std::vector<double>>();
+    Vector_1d_List Qf_com_diags_temp = config_file["COST"]["Qf_com_diags"].as<std::vector<double>>();
+    Vector_1d_List Qf_leg_diags_temp = config_file["COST"]["Qf_leg_diags"].as<std::vector<double>>();
+    Vector_1d_List R_diags_temp = config_file["COST"]["R_diags"].as<std::vector<double>>();
+    Vector_1d_List R_rate_diags_temp = config_file["COST"]["R_rate_diags"].as<std::vector<double>>();
+
+    Vector_6d Q_com_diags, Qf_com_diags;
+    Vector_6d Q_leg_diag, Qf_leg_diag;
+    for (int i = 0; i < Q_com_diags_temp.size(); i++) {
+        Q_com_diags[i] = Q_com_diags_temp[i];
+        Qf_com_diags[i] = Qf_com_diags_temp[i];
+        Q_leg_diag[i] = Q_leg_diags_temp[i];
+        Qf_leg_diag[i] = Qf_leg_diags_temp[i];
+    }
+    Vector_12d Q_leg_diags, Qf_leg_diags;
+    Q_leg_diags << Q_leg_diag, Q_leg_diag;
+    Qf_leg_diags << Qf_leg_diag, Qf_leg_diag;
+    
+    Vector_3d R_leg_diags, R_rate_leg_diags;
+    for (int i = 0; i < R_diags_temp.size(); i++) {
+        R_leg_diags[i] = R_diags_temp[i];
+        R_rate_leg_diags[i] = R_rate_diags_temp[i];
+    }
+    Vector_6d R_diags, R_rate_diags;
+    R_diags << R_leg_diags, R_leg_diags;
+    R_rate_diags << R_rate_leg_diags, R_rate_leg_diags;
+
+    // initialize the cost matrices
+    this->params.Q_com  = Q_com_diags.asDiagonal();
+    this->params.Q_leg  = Q_leg_diags.asDiagonal();
+    this->params.Qf_com = Qf_com_diags.asDiagonal();
+    this->params.Qf_leg = Qf_leg_diags.asDiagonal();
+    this->params.R = R_diags.asDiagonal();
+    this->params.R_rate = R_rate_diags.asDiagonal();
+
+    // log barrier function
+    this->params.log_barrier_enabled = config_file["COST"]["log_barrier_enabled"].as<bool>();
+    this->params.J_barrier = config_file["COST"]["J_barrier"].as<double>();
 }
 
 
-// construct the reference trajecotry
+// construct the reference trajectory
 void Controller::initialize_reference_trajectories(YAML::Node config_file)
 {
-    // // gait cycle parameters
-    // this->T_cycle = config_file["REFERENCE"]["T_cycle"].as<double>();
-    // this->T_SSP = config_file["REFERENCE"]["T_SSP"].as<double>();
-
-    // // reference parameters
-    // this->r_des = config_file["REFERENCE"]["r_des"].as<double>();
-    // this->theta_des = config_file["REFERENCE"]["theta_des"].as<double>();
-
-    // // set the desired COM trajectory
-    // Vector_1d_Traj time = config_file["REFERENCE"]["time"].as<std::vector<double>>();
-    // Vector_1d_Traj px_des_temp = config_file["REFERENCE"]["px_des"].as<std::vector<double>>();
-    // Vector_1d_Traj pz_des_temp = config_file["REFERENCE"]["pz_des"].as<std::vector<double>>();
+    // set the desired COM trajectory
+    Vector_1d_Traj time = config_file["REFERENCE"]["time"].as<std::vector<double>>();
+    Vector_1d_Traj px_des_temp = config_file["REFERENCE"]["px_des"].as<std::vector<double>>();
+    Vector_1d_Traj py_des_temp = config_file["REFERENCE"]["py_des"].as<std::vector<double>>();
+    Vector_1d_Traj pz_des_temp = config_file["REFERENCE"]["pz_des"].as<std::vector<double>>();
     
-    // // ensure they are all the same size
-    // int N_ref = time.size();
-    // if (N_ref != px_des_temp.size() || N_ref != pz_des_temp.size()) {
-    //     throw std::runtime_error("px_des, pz_des, and time must be the same size");
-    // }
+    // ensure they are all the same size
+    int N_ref = time.size();
+    if (N_ref != px_des_temp.size() || N_ref != py_des_temp.size() || N_ref != pz_des_temp.size()) {
+        throw std::runtime_error("px_des, py_des, pz_des, and time must be the same size");
+    }
 
-    // // set the reference trajectory for use inside the class
-    // Vector_2d_Traj p_com_ref(N_ref);
-    // for (int i = 0; i < N_ref; i++) {
-    //     p_com_ref[i] << px_des_temp[i], pz_des_temp[i];
-    // }
+    // set the com reference trajectory
+    Vector_3d_Traj p_com_ref(N_ref);
+    for (int i = 0; i < N_ref; i++) {
+        p_com_ref[i] << px_des_temp[i], py_des_temp[i], pz_des_temp[i];
+    }
 
-    // // set the reference trajectory for use inside the class
-    // this->t_ref = time;
-    // this->p_com_ref = p_com_ref;
+    // build the leg reference vector
+    double r_des, theta_x_des, theta_y_des;
+    r_des = config_file["REFERENCE"]["r_des"].as<double>();
+    theta_x_des = config_file["REFERENCE"]["theta_x_des"].as<double>();
+    theta_y_des = config_file["REFERENCE"]["theta_x_des"].as<double>();
+
+    Vector_6d X_leg_ref_L, X_leg_ref_R;
+    X_leg_ref_L << r_des,  theta_x_des, theta_y_des, 0.0, 0.0, 0.0;
+    X_leg_ref_R << r_des, -theta_x_des, theta_y_des, 0.0, 0.0, 0.0;
+    Vector_12d X_leg_ref;
+
+    // set the leg reference trajectory
+    Reference ref;
+    ref.t_ref = time;
+    ref.p_com_ref = p_com_ref;
+    ref.X_leg_ref << X_leg_ref_L, X_leg_ref_R;
+
+    // set the reference
+    this->ref = ref;
 }
 
 
 // construct the intial distribution
 void Controller::initialize_distribution(YAML::Node config_file)
 {
-    // // some useful ints to use
-    // int n_leg = this->dynamics.n_leg;
-    // int Nu = this->params.N_u;
+    // some useful ints to use
+    int n_leg = this->dynamics.n_leg; // number of legs
+    int Nu = this->params.N_u;        // number of control knots
 
-    // // initialize the matrices
-    // this->dist.mean.resize(2 * Nu * n_leg);
-    // this->dist.cov.resize(2 * Nu * n_leg, 2 * Nu * n_leg);
-    // this->dist.mean.setZero();
-    // this->dist.cov.setZero();
+    // set the epsilon for numerical stability of covariance matrix
+    this->dist.epsilon = config_file["DIST_PARAMS"]["epsilon"].as<double>();
 
-    // // set the epsilon for numerical stability of covariance matrix
-    // this->dist.epsilon = config_file["DIST_PARAMS"]["epsilon"].as<double>();
+    // compute the theoretical lower bound (lower bound of Frobenius norm, assuming epsilon eigs)
+    this->min_cov_norm = std::sqrt(3 * n_leg * Nu ) * this->dist.epsilon;
 
-    // // compute the theoretical lower bound (lower bound of Frobenius norm, assume epsilon eigs)
-    // this->min_cov_norm = std::sqrt(2 * Nu * n_leg) * this->dist.epsilon;
+    // initialize the matrices
+    this->dist.mean.resize(3 * n_leg * Nu);
+    this->dist.cov.resize(3 * n_leg * Nu, 3 * n_leg * Nu);
+    this->dist.mean.setZero();
+    this->dist.cov.setZero();
 
-    // // set the initial mean
-    // std::vector<double> mean_temp = config_file["DIST_PARAMS"]["mu"].as<std::vector<double>>();
-    // Vector_4d mean;
-    // mean << mean_temp[0], mean_temp[1], mean_temp[0], mean_temp[1];
-    // for (int i = 0; i < Nu; i++) {
-    //     this->dist.mean.segment<4>(2 * i * n_leg) = mean;
-    // }
+    // set the initial mean
+    std::vector<double> mean_temp = config_file["DIST_PARAMS"]["mu"].as<std::vector<double>>();
+    Vector_6d mean;
+    mean << mean_temp[0], mean_temp[1], mean_temp[2], 
+            mean_temp[0], mean_temp[1], mean_temp[2];
+    for (int i = 0; i < Nu; i++) {
+        this->dist.mean.segment<6>(i * 3 * n_leg) = mean;
+    }
 
-    // // set the initial covariance
-    // std::vector<double> cov_temp = config_file["DIST_PARAMS"]["sigma"].as<std::vector<double>>();
-    // Vector_4d cov_diags;
-    // cov_diags << cov_temp[0], cov_temp[1], cov_temp[0], cov_temp[1];
-    // Matrix_4d cov = cov_diags.asDiagonal();
-    // for (int i = 0; i < Nu; i++) {
-    //     this->dist.cov.block<4, 4>(2 * i * n_leg, 2 * i * n_leg) = cov;
-    // }
+    // set the initial covariance
+    std::vector<double> cov_temp = config_file["DIST_PARAMS"]["sigma"].as<std::vector<double>>();
+    Vector_6d cov_diags;
+    cov_diags << cov_temp[0], cov_temp[1], cov_temp[2], cov_temp[0], cov_temp[1], cov_temp[2];
+    Matrix_6d cov = cov_diags.asDiagonal();
+    for (int i = 0; i < Nu; i++) {
+        this->dist.cov.block<6, 6>(3 * i * n_leg, 3 * i * n_leg) = cov;
+    }
 
-    // // set if covariance should be strictly diagonal
-    // this->dist.diag_cov = config_file["DIST_PARAMS"]["diag_cov"].as<bool>();
+    // set if covariance should be strictly diagonal
+    this->dist.diag_cov = config_file["DIST_PARAMS"]["diag_cov"].as<bool>();
 
-    // // set the random 
-    // this->dist.seed_enabled = config_file["DIST_PARAMS"]["seed_enabled"].as<bool>();
-    // this->dist.seed = config_file["DIST_PARAMS"]["seed"].as<int>();
+    // set the random 
+    this->dist.seed_enabled = config_file["DIST_PARAMS"]["seed_enabled"].as<bool>();
+    this->dist.seed = config_file["DIST_PARAMS"]["seed"].as<int>();
 
-    // // create random device
-    // std::random_device rand_device;
+    // create random device
+    std::random_device rand_device;
 
-    // // use the random device to seed Mersenne Twister generator
-    // std::mt19937 rand_generator(rand_device());
+    // use the random device to seed Mersenne Twister generator
+    std::mt19937 rand_generator(rand_device());
 
-    // // set the seed if enabled
-    // if (this->dist.seed_enabled) {
-    //     rand_generator.seed(this->dist.seed);
-    // }
+    // set the seed if enabled
+    if (this->dist.seed_enabled) {
+        rand_generator.seed(this->dist.seed);
+    }
 
-    // // Create a normal distribution
-    // std::normal_distribution<double> normal_dist(0.0, 1.0);
+    // Create a normal distribution
+    std::normal_distribution<double> normal_dist(0.0, 1.0);
     
-    // // set the random number generator and normal distribution
-    // this->rand_generator = rand_generator;
-    // this->normal_dist = normal_dist;
+    // set the random number generator and normal distribution
+    this->rand_generator = rand_generator;
+    this->normal_dist = normal_dist;
 }
 
 
@@ -532,25 +545,6 @@ void Controller::initialize_distribution(YAML::Node config_file)
 //         J_legs += J_legs_barrier;
 //     }
 
-//     // ************************************ CONTACT CYCLE COST ************************************
-
-//     // TODO: Consider using a cost based on foot velocity and leg force
-//     // convert domain to a binary contact
-//     // Vector_2i di;
-//     // Domain d;
-//     double J_cycle = 0.0;
-//     // double c;
-//     // for (int i = 0; i < N; i++) {
-//     //     // convert contact type to binary contact
-//     //     d = Sol.domain_t[i];
-//     //     d[0] == Contact::STANCE ? di(0) = 1 : di(0) = 0;
-//     //     d[1] == Contact::STANCE ? di(1) = 1 : di(0) = 0;
-        
-//     //     // if same as reference, no cost
-//     //     di == ref.D_ref[i] ? c = 0.0 : c = 1.0 * this->params.gait_cycle_weight;
-//     //     J_cycle += c;
-//     // }
-
 //     // ************************************ INPUT COST ************************************
 
 //     // penalize the velocity input (want it to be closer to zero)
@@ -578,7 +572,7 @@ void Controller::initialize_distribution(YAML::Node config_file)
 
 //     // total cost
 //     double J_total; 
-//     J_total = J_com + J_legs + J_input + J_cycle;
+//     J_total = J_com + J_legs + J_input;
 
 //     return J_total;
 // }

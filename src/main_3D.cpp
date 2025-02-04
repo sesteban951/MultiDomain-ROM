@@ -10,7 +10,7 @@
 // custom includes
 #include "../inc/types_3D.h"
 #include "../inc/dynamics_3D.h"
-// #include "../inc/control_3D.h"
+#include "../inc/control_3D.h"
 
 int main()
 {
@@ -20,7 +20,7 @@ int main()
     
     // create dynamics object
     Dynamics dynamics(config_file);
-    // Controller controller(config_file);
+    Controller controller(config_file);
 
     // initial conditions
     Vector_12d x0_sys;
@@ -119,7 +119,7 @@ int main()
     // RHC_Result rhc_res = controller.sampling_predictive_control(0.0, x0_sys, p0_feet, d0);
     // Solution sol = rhc_res.S;
 
-    ////////////////////////////////// Nominal testing //////////////////////////////////
+    ////////////////////////////////// Dynamics testing //////////////////////////////////
 
     // // compute time stuff
     // double duration = config_file["SIM"]["duration"].as<double>();
@@ -200,6 +200,9 @@ int main()
     // // print some info
     // double T_tot = std::chrono::duration<double>(tf - t0).count();
     // std::cout << "Total time: " << T_tot << " sec" << std::endl;
+
+    ////////////////////////////////// Control testing //////////////////////////////////
+
 
     ////////////////////////////////// Logging //////////////////////////////////
 

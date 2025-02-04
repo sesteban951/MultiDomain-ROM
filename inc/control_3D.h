@@ -22,10 +22,13 @@ class Controller
         Controller(YAML::Node config_file);
         ~Controller(){};
 
-        // construct the long horizon reference trajecotry
+        // initialize the cost matrices
+        void initialize_costs(YAML::Node config_file);
+
+        // initialize the global time reference trajecotry
         void initialize_reference_trajectories(YAML::Node config_file);
 
-        // to initialize the initial distribution
+        // to initialize the parametric distribution
         void initialize_distribution(YAML::Node config_file);
 
         // // sample the input trajectories from the distribution
@@ -62,25 +65,19 @@ class Controller
         // distribution parameters
         GaussianDistribution dist;
 
+        // reference
+        Reference ref;
+
         // random number generator
         std::mt19937 rand_generator;
         std::normal_distribution<double> normal_dist;
 
-        // if multi threading is enabled
-        bool threading_enabled;
-
-        // desired reference trajectory
-        double r_des;
-        double theta_des;
-        double T_cycle;
-        double T_SSP;
-        Vector_1d_Traj t_ref;
-        Vector_3d_Traj p_com_ref;
-
         // minimum covariance norm (theoretical)
         double min_cov_norm;
 
+        // if multi threading is enabled
+        bool threading_enabled;
+
         // info 
         bool verbose;
-
 };
