@@ -8,7 +8,7 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "../inc/types.h"
+#include "../inc/types_3D.h"
 #include "../inc/dynamics_3D.h"
 // #include "../inc/control_3D.h"
 
@@ -69,7 +69,7 @@ int main()
     }
 
     // query the dynamics
-    Dynamics_Result_3D res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
+    Dynamics_Result res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
     Vector_12d xdot = res.xdot;
     std::cout << "xdot: " << xdot.transpose() << std::endl;
 
@@ -82,7 +82,7 @@ int main()
     std::cout << "x_foot: " << x_foot.transpose() << std::endl;
     
     // allocate solution conatiners
-    Solution_3D sol;
+    Solution sol;
     dynamics.resizeSolution(sol, T_x);
 
     // do the rollouts

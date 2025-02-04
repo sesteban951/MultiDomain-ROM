@@ -25,7 +25,7 @@ Dynamics::Dynamics(YAML::Node config_file)
 
 
 // NonLinear Dynamics function, xdot = f(x, u, d)
-Dynamics_Result_3D Dynamics::dynamics(const Vector_12d& x_sys, const Vector_6d& u, const Vector_6d& p_feet, const Domain& d) 
+Dynamics_Result Dynamics::dynamics(const Vector_12d& x_sys, const Vector_6d& u, const Vector_6d& p_feet, const Domain& d) 
 {
     // want to compute the state derivative
     Vector_12d xdot;     // state derivative, [xdot_com, xdot_command]
@@ -194,7 +194,7 @@ Dynamics_Result_3D Dynamics::dynamics(const Vector_12d& x_sys, const Vector_6d& 
     xdot << v_com, a_com, v_commands;
 
     // pack into the struct
-    Dynamics_Result_3D res;
+    Dynamics_Result res;
     res.xdot = xdot;
     res.lambdas = lambdas;
     res.taus = taus;
@@ -603,7 +603,7 @@ Vector_6d Dynamics::interpolate_control_input(double t, const Vector_1d_Traj& T_
 
 
 // resize the solution bundle to the same as the time vector
-void Dynamics::resizeSolution(Solution_3D& sol, const Vector_1d_Traj& T_x) {
+void Dynamics::resizeSolution(Solution& sol, const Vector_1d_Traj& T_x) {
     const int N = T_x.size();
     sol.x_sys_t.resize(N);
     sol.x_leg_t.resize(N);
@@ -616,7 +616,7 @@ void Dynamics::resizeSolution(Solution_3D& sol, const Vector_1d_Traj& T_x) {
 
 
 // RK3 Integration of the system dynamics
-Solution_3D Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u, 
+Solution Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& T_u, 
                                      const Vector_12d& x0_sys, const Vector_6d& p0_feet, const Domain& d0, 
                                      const Vector_6d_Traj& U) 
 {
@@ -624,7 +624,7 @@ Solution_3D Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Tra
     double dt = T_x[1] - T_x[0]; // WARNING: assumes uniform time steps
     int N = T_x.size();
 
-    Solution_3D sol;
+    Solution sol;
     this->resizeSolution(sol, T_x);
 
     // initial condition
@@ -636,7 +636,7 @@ Solution_3D Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Tra
     // first iteration just to get the initial leg forces and torques
     Vector_6d lambda0;
     Vector_6d tau0;
-    Dynamics_Result_3D res = this->dynamics(x0_sys, U[0], p0_feet, d0);
+    Dynamics_Result res = this->dynamics(x0_sys, U[0], p0_feet, d0);
     lambda0 = res.lambdas;
     tau0 = res.taus;
 
@@ -667,7 +667,7 @@ Solution_3D Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Tra
     double tk, t1, t2, t3;
     Vector_6d u1, u2, u3;
     Vector_12d f1, f2, f3;
-    Dynamics_Result_3D res1, res2, res3;
+    Dynamics_Result res1, res2, res3;
 
     // forward propagate the system dynamics
     for (int k = 1; k < N; k++) {

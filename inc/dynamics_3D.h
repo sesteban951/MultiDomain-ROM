@@ -8,7 +8,7 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "types.h"
+#include "types_3D.h"
 
 // class for system dynamics
 class Dynamics
@@ -20,7 +20,7 @@ class Dynamics
         ~Dynamics(){};
 
         // NonLinear System dynamics, xdot = f(x, u, d)
-        Dynamics_Result_3D dynamics(const Vector_12d& x_sys, 
+        Dynamics_Result dynamics(const Vector_12d& x_sys, 
                                        const Vector_6d& u, 
                                        const Vector_6d& p_feet,
                                        const Domain& d);
@@ -62,10 +62,10 @@ class Dynamics
                                                const Vector_6d_Traj& U);
         
         // resize the solution bundle to the same as the time vector
-        void resizeSolution(Solution_3D& sol, const Vector_1d_Traj& T_x);
+        void resizeSolution(Solution& sol, const Vector_1d_Traj& T_x);
 
         // RK forwaqrd propagation
-        Solution_3D RK3_rollout(const Vector_1d_Traj& T_x, 
+        Solution RK3_rollout(const Vector_1d_Traj& T_x, 
                                 const Vector_1d_Traj& T_u, 
                                 const Vector_12d& x0_sys,
                                 const Vector_6d& p0_feet,
