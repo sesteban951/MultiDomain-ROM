@@ -9,8 +9,8 @@
 
 // custom includes
 #include "../inc/types.h"
-#include "../inc/dynamics.h"
-#include "../inc/control.h"
+#include "../inc/dynamics_3D.h"
+// #include "../inc/control_3D.h"
 
 int main()
 {
@@ -20,7 +20,7 @@ int main()
     
     // create dynamics object
     Dynamics dynamics(config_file);
-    Controller controller(config_file);
+    // Controller controller(config_file);
 
     // initial conditions
     Vector_12d x0_sys;
@@ -69,24 +69,24 @@ int main()
     }
 
     // query the dynamics
-    Dynamics_Result_3D res = dynamics.dynamics_3D(x0_sys, u_const, p0_feet, d0);
+    Dynamics_Result_3D res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
     Vector_12d xdot = res.xdot;
     std::cout << "xdot: " << xdot.transpose() << std::endl;
 
     // leg state
-    Vector_12d x_leg = dynamics.compute_leg_state_3D(x0_sys, u_const, p0_feet, d0);
+    Vector_12d x_leg = dynamics.compute_leg_state(x0_sys, u_const, p0_feet, d0);
     std::cout << "x_leg: " << x_leg.transpose() << std::endl;
 
     // foot state
-    Vector_12d x_foot = dynamics.compute_foot_state_3D(x0_sys, x_leg, p0_feet, d0);
+    Vector_12d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
     std::cout << "x_foot: " << x_foot.transpose() << std::endl;
     
     // allocate solution conatiners
     Solution_3D sol;
-    dynamics.resizeSolution_3D(sol, T_x);
+    dynamics.resizeSolution(sol, T_x);
 
     // do the rollouts
-    sol = dynamics.RK3_rollout_3D(T_x, T_u, x0_sys, p0_feet, d0, U);
+    sol = dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U);
     std::cout << "Rollout complete." << std::endl;
     
     // // generate inputs
