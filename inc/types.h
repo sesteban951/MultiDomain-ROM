@@ -24,28 +24,31 @@ using Leg_Idx = int;
 // Fixed size arrays
 using Vector_2i = Eigen::Matrix<int, 2, 1>;
 using Vector_2d = Eigen::Matrix<double, 2, 1>;
+using Vector_3d = Eigen::Matrix<double, 3, 1>;
 using Vector_4d = Eigen::Matrix<double, 4, 1>;
 using Vector_6d = Eigen::Matrix<double, 6, 1>;
 using Vector_8d = Eigen::Matrix<double, 8, 1>;
 using Vector_12d = Eigen::Matrix<double, 12, 1>;
 
 using Matrix_2d = Eigen::Matrix<double, 2, 2>;
+using Matrix_3d = Eigen::Matrix<double, 3, 3>;
 using Matrix_4d = Eigen::Matrix<double, 4, 4>;
+using Matrix_6d = Eigen::Matrix<double, 6, 6>;
 using Matrix_8d = Eigen::Matrix<double, 8, 8>;
 using Matrix_12d = Eigen::Matrix<double, 12, 12>;
 
 // Dynamic arrays
-// using Vector_d = Eigen::Matrix<double, Eigen::Dynamic, 1>;
+using Vector_d = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
-
-using Vector_d = Eigen::Vector<double, Eigen::Dynamic>;
 
 // Trajectory types
 using Vector_1i_Traj = std::vector<int>;
 using Vector_1d_Traj = std::vector<double>;
 using Vector_2i_Traj = std::vector<Vector_2i>;
 using Vector_2d_Traj = std::vector<Vector_2d>;
+using Vector_3d_Traj = std::vector<Vector_3d>;
 using Vector_4d_Traj = std::vector<Vector_4d>;
+using Vector_6d_Traj = std::vector<Vector_6d>;
 using Vector_8d_Traj = std::vector<Vector_8d>;
 using Vector_12d_Traj = std::vector<Vector_12d>;
 
@@ -123,9 +126,21 @@ struct Solution
     Vector_8d_Traj x_foot_t; // foot state trajectory
     Vector_4d_Traj u_t;      // interpolated control input trajectory
     Vector_4d_Traj lambda_t; // leg force trajectory
-    Vector_2d_Traj tau_t;         // ankle torque trajectory
+    Vector_2d_Traj tau_t;    // ankle torque trajectory
     Domain_Traj domain_t;    // domain trajectory
     bool viability;          // viability of the trajectory
+};
+struct Solution_3D
+{
+    Vector_1d_Traj t;         // time trajectory
+    Vector_12d_Traj x_sys_t;  // system state trajectory
+    Vector_12d_Traj x_leg_t;  // leg state trajectory
+    Vector_12d_Traj x_foot_t; // foot state trajectory
+    Vector_6d_Traj u_t;       // interpolated control input trajectory
+    Vector_6d_Traj lambda_t;  // leg force trajectory
+    Vector_6d_Traj tau_t;     // ankle torque trajectory
+    Domain_Traj domain_t;     // domain trajectory
+    bool viability;           // viability of the trajectory
 };
 
 // Reference type
@@ -142,7 +157,9 @@ struct Reference
 
 // Bundle of Trajectories
 using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
+using Vector_3d_Traj_Bundle = std::vector<Vector_3d_Traj>;
 using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
+using Vector_6d_Traj_Bundle = std::vector<Vector_6d_Traj>;
 using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
 using Vector_12d_Traj_Bundle = std::vector<Vector_12d_Traj>;
 
@@ -159,6 +176,12 @@ struct Dynamics_Result
     Vector_8d xdot;    // state derivative
     Vector_4d lambdas; // leg force
     Vector_2d taus;    // ankle torque
+};
+struct Dynamics_Result_3D
+{
+    Vector_12d xdot;    // state derivative
+    Vector_6d lambdas; // leg force
+    Vector_6d taus;    // ankle torque
 };
 
 struct MC_Result

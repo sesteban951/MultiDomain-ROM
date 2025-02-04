@@ -24,7 +24,10 @@ find_package(yaml-cpp REQUIRED)
 
 # add the exectuable files
 add_executable(a src/main.cpp src/dynamics.cpp src/control.cpp)
+add_executable(s src/main_3D.cpp src/dynamics.cpp src/control.cpp)
 
 # link your executables
 target_link_libraries(a Eigen3::Eigen)
 target_link_libraries(a yaml-cpp)
+target_link_libraries(s Eigen3::Eigen)
+target_link_libraries(s yaml-cpp)
