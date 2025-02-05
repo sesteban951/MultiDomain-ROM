@@ -3,8 +3,8 @@
 ####################################################################
 
 STATE:
-    x0: [0.0, 0.0, 0.8, 0.1, 0.3, 1.0,  # COM: px, py, pz, vx, vy, vz  (center of mass state)
-         0.6, 0.3, 0.0, 0.6, -0.3, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
+    x0: [0.0, 0.0, 0.6, 0.0, 0.0, 0.0,  # COM: px, py, pz, vx, vy, vz  (center of mass state)
+         0.6, 0.1, 0.0, 0.6, -0.1, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
 
 SIM:
     duration: 4.0         # simulation duration, [s]
@@ -16,15 +16,15 @@ SIM:
 REFERENCE:
     
     # Desire Leg states (velocities are assumed to be zero)
-    r_des: 0.5          # desired leg length [m]
-    theta_x_des: 0.1    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
+    r_des: 0.55          # desired leg length [m]
+    theta_x_des: 0.05    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
     # Desired COM states as knot points
-    px_des: [0.0, 1.0, 2.0, 3.0] 
-    py_des: [0.0, 0.0, 0.0, 0.0] 
-    pz_des: [0.55, 0.55, 0.55, 0.55]
-    time: [0.0, 1.0, 2.0, 3.0]
+    px_des: [0.0, 1.5] 
+    py_des: [0.0, 0.0] 
+    pz_des: [0.55, 0.55]
+    time: [0.0, 3.0]
 
 
 ####################################################################
@@ -50,11 +50,11 @@ COST:
 
 CTRL_PARAMS:
     N_x: 80         # number of time steps
-    N_u: 5          # number of control points
+    N_u: 2          # number of control points
     dt_x: 0.01      # time step, [s]
     K: 75           # number of rollouts
     N_elite: 5      # number of elite samples
-    CEM_iters: 3    # number of CEM iterations
+    CEM_iters: 5    # number of CEM iterations
 
 
 ####################################################################
