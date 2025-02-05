@@ -22,6 +22,23 @@ class Controller
         Controller(YAML::Node config_file);
         ~Controller(){};
 
+        // perform open loop rollouts
+        MC_Result monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0);
+
+        // perform sampling predictive control
+        RHC_Result sampling_predictive_control(double t, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0);
+
+        // internal dynamics object
+        Dynamics dynamics;
+
+        // Control parameters
+        ControlParams params;
+
+        // distribution parameters
+        GaussianDistribution dist;
+
+    private:
+
         // initialize the cost matrices
         void initialize_costs(YAML::Node config_file);
 
@@ -30,6 +47,9 @@ class Controller
 
         // to initialize the parametric distribution
         void initialize_distribution(YAML::Node config_file);
+
+        // initialize the remaining class variables
+        void initialize_variables();
 
         // sample the input trajectories from the distribution
         Vector_6d_Traj_Bundle sample_input_trajectory();
@@ -46,24 +66,18 @@ class Controller
         // evaluate the cost function given a solution
         double cost_function(const ReferenceLocal& ref, const Solution& Sol, const Vector_6d_Traj& U);
 
-        // perform open loop rollouts
-        MC_Result monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0);
-
         // select solutions based on cost
         void sort_trajectories(const Solution_Bundle&  S,      const Vector_6d_Traj_Bundle& U,      const Vector_1d_List& J,
                                      Solution_Bundle&  S_elite,      Vector_6d_Traj_Bundle& U_elite,      Vector_1d_List& J_elite);
 
-        // perform sampling predictive control
-        RHC_Result sampling_predictive_control(double t, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0);
+        // sampling sectors and matrices
+        Matrix_d L;              // cholesky factor
+        Vector_d Z_vec_sample;   // standard normal vector
+        Vector_d U_vec_sample;   // multi-varaite gaussian vector
+        Vector_6d_Traj_Bundle U_traj_samples;  // sampled input trajectories
+        Vector_6d_Traj U_traj_sample;          // sampled input trajectory
 
-        // internal dynamics object
-        Dynamics dynamics;
-
-        // Control parameters
-        ControlParams params;
-
-        // distribution parameters
-        GaussianDistribution dist;
+        // dsitribution update parameters
 
         // global reference (throughout the entire simulation)
         ReferenceGlobal ref;

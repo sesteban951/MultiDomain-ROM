@@ -38,6 +38,9 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
     this->params.T_x = T_x;
     this->params.T_u = T_u;
 
+    // initialize the class variables
+    this->initialize_variables();
+
     // initialize the cost matrices
     this->initialize_costs(config_file);
 
@@ -65,6 +68,22 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 
     // logging prinouts
     this->verbose = config_file["INFO"]["verbose"].as<bool>();
+}
+
+
+void Controller::initialize_variables()
+{
+    int n_leg = this->dynamics.n_leg;
+    int N_u = this->params.N_u;
+
+    // vectors and matrices that we use to sample from the distribution
+    this->L.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
+    this->Z_vec_sample.resize(3 * N_u * n_leg);
+    this->U_vec_sample.resize(3 * N_u * n_leg);
+
+    // trajectory bundles and samples
+    this->U_traj_samples.resize(this->params.K);
+    this->U_traj_sample.resize(N_u);
 }
 
 void Controller::initialize_costs(YAML::Node config_file)
@@ -220,52 +239,44 @@ void Controller::initialize_distribution(YAML::Node config_file)
 }
 
 
-// TODO: there is code optimziation work to be done here
 // sample input trajectories from the distribution
 Vector_6d_Traj_Bundle Controller::sample_input_trajectory()
 {
     // perform cholesky decomposition 
     Eigen::LLT<Matrix_d> llt(this->dist.cov);  
-    Matrix_d L = llt.matrixL();  
+    this->L = llt.matrixL();
 
     // check if the covariance is positive definite
     if (llt.info() == Eigen::NumericalIssue) {
         throw std::runtime_error("Covariance matrix is possibly not positive definite");
     }
 
-    // Generate random input trajectories and store them in the input bundle
-    Vector_d Z_vec, U_vec;  // TODO: have this as a class variable
-    Z_vec.resize(this->dist.mean.size());
-    U_vec.resize(this->dist.mean.size());
-
     // U ~ N(mu, Sigma) <=> U = L * Z + mu; Z ~ N(0, I)
     // initialize the input trajectory bundle
-    Vector_6d_Traj_Bundle U_bundle(this->params.K); // TODO: have this as a class variable
-    Vector_6d_Traj U_traj(this->params.N_u);        // TODO: have this as a class variable
-    Vector_6d u;                                    // TODO: have this as a class variable
+    Vector_6d u;                                    
 
     // loop over the number of samples
     for (int i = 0; i < this->params.K; i++) {
         
         // populate the Z vector; Z ~ N(0, I)
         for (int j = 0; j < this->dist.mean.size(); j++) {
-            Z_vec(j) = this->normal_dist(this->rand_generator);
+            this->Z_vec_sample(j) = this->normal_dist(this->rand_generator);
         }
 
         // generate the vectorized input trajectory
-        U_vec = L * Z_vec + this->dist.mean;
+        this->U_vec_sample = L * Z_vec_sample + this->dist.mean;
 
         // unvectorize U_vec into U_traj
         for (int k = 0; k < this->params.N_u; k++) {
-            u = U_vec.segment<6>(6 * k);
-            U_traj[k] = u;
+            u = this->U_vec_sample.segment<6>(6 * k);
+            this->U_traj_sample[k] = u;
         }
 
         // store the input trajectory
-        U_bundle[i] = U_traj;
+        U_traj_samples[i] = U_traj_sample;
     }
 
-    return U_bundle;
+    return U_traj_samples; // TODO: still need to return nothing here
 }
 
 
@@ -669,8 +680,6 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_12d x0_s
         std::cout << "Average time per iteration: " << T_tot / this->params.CEM_iters << " [sec], " << this->params.CEM_iters/T_tot << " [Hz]" << std::endl;
         std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
     }
-
-    // std::cout << "6" << std::endl;
 
     // do a final sort to get the best solution
     Vector_1i_List idx(this->params.N_elite);
