@@ -71,6 +71,7 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 }
 
 
+// initialize the class variables
 void Controller::initialize_variables()
 {
     int n_leg = this->dynamics.n_leg;
@@ -80,10 +81,19 @@ void Controller::initialize_variables()
     this->L.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
     this->Z_vec_sample.resize(3 * N_u * n_leg);
     this->U_vec_sample.resize(3 * N_u * n_leg);
-
-    // trajectory bundles and samples
-    this->U_traj_samples.resize(this->params.K);
     this->U_traj_sample.resize(N_u);
+    this->U_traj_samples.resize(this->params.K);
+
+    // vectors and matrices for the distribution updates
+    this->mu.resize(3 * N_u * n_leg);
+    this->Sigma.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
+    this->U_elite_matrix.resize(3 * N_u * n_leg, this->params.N_elite);
+    this->U_elite_traj.resize(N_u);
+    this->U_elite_vec.resize(3 * N_u * n_leg);
+    this->eigval.resize(3 * N_u * n_leg);
+    this->eigvec.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
+    this->eigvec_inv.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
+    this->I = Matrix_d::Identity(3 * N_u * n_leg, 3 * N_u * n_leg);
 }
 
 void Controller::initialize_costs(YAML::Node config_file)
@@ -240,7 +250,7 @@ void Controller::initialize_distribution(YAML::Node config_file)
 
 
 // sample input trajectories from the distribution
-Vector_6d_Traj_Bundle Controller::sample_input_trajectory()
+void Controller::sample_input_trajectory()
 {
     // perform cholesky decomposition 
     Eigen::LLT<Matrix_d> llt(this->dist.cov);  
@@ -252,10 +262,8 @@ Vector_6d_Traj_Bundle Controller::sample_input_trajectory()
     }
 
     // U ~ N(mu, Sigma) <=> U = L * Z + mu; Z ~ N(0, I)
-    // initialize the input trajectory bundle
+    // Sample the input trajectories
     Vector_6d u;                                    
-
-    // loop over the number of samples
     for (int i = 0; i < this->params.K; i++) {
         
         // populate the Z vector; Z ~ N(0, I)
@@ -275,82 +283,71 @@ Vector_6d_Traj_Bundle Controller::sample_input_trajectory()
         // store the input trajectory
         U_traj_samples[i] = U_traj_sample;
     }
-
-    return U_traj_samples; // TODO: still need to return nothing here
 }
 
 
 // TODO: there is code optimziation work to be done here
 // compute mean and covariance from a bundle of control inputs
-void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_eilte)
+void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_elite)
 {
     // some useful ints to use
     int n_leg = this->dynamics.n_leg;
     int Nu = this->params.N_u;
 
-    // initialize the mean and covariance
-    Vector_d mean; // TODO: have this as a class variable
-    Matrix_d cov;  // TODO: have this as a class variable
-    mean.resize(3 * Nu * n_leg);
-    cov.resize(3 * Nu * n_leg, 3 * Nu * n_leg);
-
-    // used for computing the mean
-    Matrix_d U_data; // TODO: have this as a class variable
-    U_data.resize(3 * Nu * n_leg, this->params.N_elite);
+     // initialize the meanto zero
+    this->mu.setZero();
 
     // compute the mean
-    Vector_6d_Traj U_traj(Nu); // TODO: have this as a class variable
-    Vector_6d u;
-    Vector_d U_vec;
-    U_vec.resize(3 * Nu * n_leg);
+    Vector_6d u;    
     for (int i = 0; i < this->params.N_elite; i++) {
 
-        // vectorize the input trajectory
-        U_traj = U_eilte[i];
-        for (int j = 0; j < Nu; j++) {
-            u = U_traj[j];
-            U_vec.segment<6>(6 * j) = u;
-        }   
-        mean += U_vec;
+        // grab the i'th elite trajectory
+        this->U_elite_traj = U_elite[i];
 
-        // insert into data matrix to use later
-        U_data.col(i) = U_vec;
+        // vectorize the i'th elite trajectory
+        for (int j = 0; j < Nu; j++) {
+            u = this->U_elite_traj[j];
+            this->U_elite_vec.segment<6>(6 * j) = u;
+        }   
+
+        // update the mean
+        this->mu += this->U_elite_vec;
+
+        // insert the i'th elite trajectory into the data matrix
+        this->U_elite_matrix.col(i) = this->U_elite_vec;
     }
-    mean /= this->params.N_elite;
+    // compute the mean
+    this->mu /= this->params.N_elite;
 
     // compute the sample covariance (K-1 b/c Bessel correction)
-    cov = (1.0 / (this->params.N_elite-1)) * (U_data.colwise() - mean) * (U_data.colwise() - mean).transpose();
+    this->Sigma = (1.0 / (this->params.N_elite-1)) * (this->U_elite_matrix.colwise() - this->mu) * (this->U_elite_matrix.colwise() - this->mu).transpose();
     
     // compute the eigenvalue decomposition
-    Eigen::SelfAdjointEigenSolver<Matrix_d> eig(cov);
+    Eigen::SelfAdjointEigenSolver<Matrix_d> eig(this->Sigma);
     if (eig.info() == Eigen::NumericalIssue) {
         throw std::runtime_error("Covariance matrix is possibly not positive definite");
     }
-    Matrix_d eigvec = eig.eigenvectors();
-    Vector_d eigval = eig.eigenvalues();
-    Matrix_d eigvec_inv = eigvec.inverse();
-
-    // std::cout << "c" << std::endl;
+    this->eigvec = eig.eigenvectors();
+    this->eigval = eig.eigenvalues();
+    this->eigvec_inv = eigvec.inverse();
 
     // modify eigenvalues with epsilon if it gets too low
     for (int i = 0; i < eigval.size(); i++) {
-        eigval(i) = std::max(eigval(i), this->dist.epsilon);
+        this->eigval(i) = std::max(this->eigval(i), this->dist.epsilon);
     }
 
     // rebuild the covariance matrix with the eigenvalue decomposition, add epsilon to eigenvalues
-    cov = eigvec * eigval.asDiagonal() * eigvec_inv;
+    this->Sigma = this->eigvec * this->eigval.asDiagonal() * this->eigvec_inv;
 
     //  if stricly diagonal covariance option
     if (this->dist.diag_cov == true) {
-        // set the covariance to be diagonal, (Hadamard Product, cov * I = diag(cov))
-        cov = cov.cwiseProduct(Matrix_d::Identity(3 * Nu * n_leg, 3 * Nu * n_leg));
+        // set the covariance to be diagonal, (Hadamard Product is coeff-wise product, cov * I = diag(cov))
+        this->Sigma = this->Sigma.cwiseProduct(this->I);
     }
 
-    // std::cout << "d" << std::endl;
-
     // update the distribution
-    this->dist.mean = mean;
-    this->dist.cov = cov;    
+    this->dist.mean = mu;
+    this->dist.cov = Sigma;    
 }
 
 
@@ -558,8 +555,9 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0)
 {
     // generate bundle of input trajectories
-    Vector_6d_Traj_Bundle U_bundle(this->params.K);            // TODO: have this as a class variable
-    U_bundle = this->sample_input_trajectory();  
+    // Vector_6d_Traj_Bundle U_bundle(this->params.K);            // TODO: have this as a class variable
+    // U_bundle = this->sample_input_trajectory();  
+    this-> sample_input_trajectory(); 
 
     // initialize the containers for the solutions
     Solution_Bundle Sol_bundle(this->params.K); // TODO: have this as a class variable
@@ -580,10 +578,10 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
         cost = 0.0;
 
         // perform the rollout
-        sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k]);
+        sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, this->U_traj_samples[k]);
 
         // compute the cost
-        cost = this->cost_function(ref, sol, U_bundle[k]);
+        cost = this->cost_function(ref, sol, this->U_traj_samples[k]);
     
         // store the results (use critical sections to avoid race conditions if necessary)
         #pragma omp critical
@@ -596,7 +594,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
     // pack solutions into a tuple
     MC_Result mc;
     mc.S = Sol_bundle;
-    mc.U = U_bundle;
+    mc.U = this->U_traj_samples;
     mc.J = J;
 
     // return the solutions

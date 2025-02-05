@@ -48,11 +48,11 @@ class Controller
         // to initialize the parametric distribution
         void initialize_distribution(YAML::Node config_file);
 
-        // initialize the remaining class variables
+        // initialize the class variables
         void initialize_variables();
 
         // sample the input trajectories from the distribution
-        Vector_6d_Traj_Bundle sample_input_trajectory();
+        void sample_input_trajectory();
 
         // update the distribution parameters from a bundle of control inputs
         void update_distribution_params(const Vector_6d_Traj_Bundle& U_elite);
@@ -70,15 +70,6 @@ class Controller
         void sort_trajectories(const Solution_Bundle&  S,      const Vector_6d_Traj_Bundle& U,      const Vector_1d_List& J,
                                      Solution_Bundle&  S_elite,      Vector_6d_Traj_Bundle& U_elite,      Vector_1d_List& J_elite);
 
-        // sampling sectors and matrices
-        Matrix_d L;              // cholesky factor
-        Vector_d Z_vec_sample;   // standard normal vector
-        Vector_d U_vec_sample;   // multi-varaite gaussian vector
-        Vector_6d_Traj_Bundle U_traj_samples;  // sampled input trajectories
-        Vector_6d_Traj U_traj_sample;          // sampled input trajectory
-
-        // dsitribution update parameters
-
         // global reference (throughout the entire simulation)
         ReferenceGlobal ref;
 
@@ -94,4 +85,23 @@ class Controller
 
         // info 
         bool verbose;
+
+        // sampling sectors and matrices
+        Matrix_d L;              // cholesky factor
+        Vector_d Z_vec_sample;   // standard normal vector
+        Vector_d U_vec_sample;   // multi-varaite gaussian vector
+        Vector_6d_Traj U_traj_sample;          // sampled input trajectory
+        Vector_6d_Traj_Bundle U_traj_samples;  // sampled input trajectories
+
+        // for updating the distribution parameters
+        Vector_d mu;                 // mean
+        Matrix_d Sigma;              // covariance
+        Vector_6d_Traj U_elite_traj; // elite input trajectory
+        Vector_d U_elite_vec;        // elite input vector
+        Matrix_d U_elite_matrix;     // elite input matrix
+        Vector_d eigval;           // eigenvalues of covariance matrix
+        Matrix_d eigvec;           // eigenvectors of covariance matrix
+        Matrix_d eigvec_inv;       // inverse of eigenvectors
+        Matrix_d I;  // identity matrix
+
 };
