@@ -145,10 +145,11 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     Vector_12d X_leg_ref;
 
     // set the leg reference trajectory
-    Reference ref;
+    ReferenceGlobal ref;
     ref.t_ref = time;
     ref.p_com_ref = p_com_ref;
     ref.X_leg_ref << X_leg_ref_L, X_leg_ref_R;
+    ref.N_ref = N_ref;
 
     // set the reference
     this->ref = ref;
@@ -221,12 +222,8 @@ void Controller::initialize_distribution(YAML::Node config_file)
 
 // TODO: there is code optimziation work to be done here
 // sample input trajectories from the distribution
-Vector_6d_Traj_Bundle Controller::sample_input_trajectory(int K)
+Vector_6d_Traj_Bundle Controller::sample_input_trajectory()
 {
-    // some useful ints to use
-    int n_leg = this->dynamics.n_leg;
-    int Nu = this->params.N_u;
-
     // perform cholesky decomposition 
     Eigen::LLT<Matrix_d> llt(this->dist.cov);  
     Matrix_d L = llt.matrixL();  
@@ -243,12 +240,12 @@ Vector_6d_Traj_Bundle Controller::sample_input_trajectory(int K)
 
     // U ~ N(mu, Sigma) <=> U = L * Z + mu; Z ~ N(0, I)
     // initialize the input trajectory bundle
-    Vector_6d_Traj_Bundle U_bundle(K);  // TODO: have this as a class variable
-    Vector_6d_Traj U_traj(Nu);
-    Vector_6d u;
+    Vector_6d_Traj_Bundle U_bundle(this->params.K); // TODO: have this as a class variable
+    Vector_6d_Traj U_traj(this->params.N_u);        // TODO: have this as a class variable
+    Vector_6d u;                                    // TODO: have this as a class variable
 
     // loop over the number of samples
-    for (int i = 0; i < K; i++) {
+    for (int i = 0; i < this->params.K; i++) {
         
         // populate the Z vector; Z ~ N(0, I)
         for (int j = 0; j < this->dist.mean.size(); j++) {
@@ -274,7 +271,7 @@ Vector_6d_Traj_Bundle Controller::sample_input_trajectory(int K)
 
 // TODO: there is code optimziation work to be done here
 // compute mean and covariance from a bundle of control inputs
-void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_bundle)
+void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_eilte)
 {
     // some useful ints to use
     int n_leg = this->dynamics.n_leg;
@@ -282,23 +279,23 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_bundl
 
     // initialize the mean and covariance
     Vector_d mean; // TODO: have this as a class variable
-    Matrix_d cov;
+    Matrix_d cov;  // TODO: have this as a class variable
     mean.resize(3 * Nu * n_leg);
     cov.resize(3 * Nu * n_leg, 3 * Nu * n_leg);
 
     // used for computing the mean
     Matrix_d U_data; // TODO: have this as a class variable
-    U_data.resize(3 * Nu * n_leg, this->params.K);
+    U_data.resize(3 * Nu * n_leg, this->params.N_elite);
 
     // compute the mean
-    Vector_6d_Traj U_traj(Nu);
+    Vector_6d_Traj U_traj(Nu); // TODO: have this as a class variable
     Vector_6d u;
     Vector_d U_vec;
     U_vec.resize(3 * Nu * n_leg);
-    for (int i = 0; i < this->params.K; i++) {
+    for (int i = 0; i < this->params.N_elite; i++) {
 
         // vectorize the input trajectory
-        U_traj = U_bundle[i];
+        U_traj = U_eilte[i];
         for (int j = 0; j < Nu; j++) {
             u = U_traj[j];
             U_vec.segment<6>(6 * j) = u;
@@ -308,10 +305,10 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_bundl
         // insert into data matrix to use later
         U_data.col(i) = U_vec;
     }
-    mean /= this->params.K;
+    mean /= this->params.N_elite;
 
     // compute the sample covariance (K-1 b/c Bessel correction)
-    cov = (1.0 / (this->params.K-1)) * (U_data.colwise() - mean) * (U_data.colwise() - mean).transpose();
+    cov = (1.0 / (this->params.N_elite-1)) * (U_data.colwise() - mean) * (U_data.colwise() - mean).transpose();
     
     // compute the eigenvalue decomposition
     Eigen::SelfAdjointEigenSolver<Matrix_d> eig(cov);
@@ -321,6 +318,8 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_bundl
     Matrix_d eigvec = eig.eigenvectors();
     Vector_d eigval = eig.eigenvalues();
     Matrix_d eigvec_inv = eigvec.inverse();
+
+    // std::cout << "c" << std::endl;
 
     // modify eigenvalues with epsilon if it gets too low
     for (int i = 0; i < eigval.size(); i++) {
@@ -336,390 +335,361 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_bundl
         cov = cov.cwiseProduct(Matrix_d::Identity(3 * Nu * n_leg, 3 * Nu * n_leg));
     }
 
+    // std::cout << "d" << std::endl;
+
     // update the distribution
     this->dist.mean = mean;
     this->dist.cov = cov;    
 }
 
 
-// // generate a reference trajectory for the predictive control to track
-// Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_com)
-// {
-//     // pass reference to the dynamics
-//     Vector_4d_Traj X_com_ref(this->params.N_x);
-//     Vector_8d_Traj X_leg_ref(this->params.N_x);
-//     Vector_2i_Traj D_ref(this->params.N_x);
+// TODO: there is code optimziation work to be done here
+// generate a reference trajectory for the predictive control to track
+ReferenceLocal Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0_com)
+{
+    // pass reference to the dynamics
+    Vector_6d_Traj X_com_ref(this->params.N_x);  // TODO: have this as a class variable
+    Vector_12d_Traj X_leg_ref(this->params.N_x); // TODO: have this as a class variable
 
-//     // FIXME: when on single thread this segfaults. WHY?
-//     // get the "global time" reference trajectory
-//     Vector_1d_Traj t_ref_global = this->t_ref;
-//     Vector_2d_Traj p_com_ref_global = this->p_com_ref;
-//     int N_ref = t_ref_global.size();
-
-//     // build the COM reference trajectory
-//     Vector_4d xi_com_ref;
-//     Vector_2d pi_com_ref, p0_com_ref, pf_com_ref;
-//     Vector_2d vi_com_ref;
-//     double t, t0, tf;
-//     for (int i = 0; i < this->params.N_x; i++) {
+    // build the COM reference trajectory
+    Vector_6d xi_com_ref;
+    Vector_3d pi_com_ref, p0_com_ref, pf_com_ref;
+    Vector_3d vi_com_ref;
+    double t, t0, tf;
+    for (int i = 0; i < this->params.N_x; i++) {
     
-//         // compute the time given the global reference
-//         t = i * this->params.dt_x + t_sim;
+        // compute the time given the global reference
+        t = i * this->params.dt_x + t_sim;
 
-//         // find where t is in the time reference
-//         auto it = std::upper_bound(t_ref.begin(), t_ref.end(), t);
-//         int idx = std::distance(t_ref.begin(), it) - 1; // return -1 if before the first element
-//                                                         // return N_ref - 1 if after the last element
+        // find where t is in the time reference
+        auto it = std::upper_bound(this->ref.t_ref.begin(), this->ref.t_ref.end(), t);
+        int idx = std::distance(this->ref.t_ref.begin(), it) - 1; // return -1 if before the first element
+                                                                  // return N_ref - 1 if after the last element
 
-//         // beyond last element
-//         if (idx == N_ref - 1) {
-//             // set to last point with zero velocity
-//             pi_com_ref = p_com_ref_global[N_ref - 1];
-//             vi_com_ref << 0.0, 0.0;
-//         }
-//         else{
-//             // linear interpolation
-//             t0 = t_ref_global[idx];
-//             tf = t_ref_global[idx + 1];
-//             p0_com_ref = p_com_ref_global[idx];
-//             pf_com_ref = p_com_ref_global[idx + 1];
-//             vi_com_ref = (pf_com_ref - p0_com_ref) / (tf - t0);
-//             pi_com_ref = p0_com_ref + vi_com_ref * (t - t0);
-//         }
+        // beyond last element
+        if (idx == this->ref.N_ref - 1) {
+            // set to last point with zero velocity
+            pi_com_ref = this->ref.p_com_ref[this->ref.N_ref - 1];
+            vi_com_ref << 0.0, 0.0, 0.0;
+        }
+        else{
+            // linear interpolation
+            t0 = this->ref.t_ref[idx];
+            tf = this->ref.t_ref[idx + 1];
+            p0_com_ref = this->ref.p_com_ref[idx];
+            pf_com_ref = this->ref.p_com_ref[idx + 1];
+            vi_com_ref = (pf_com_ref - p0_com_ref) / (tf - t0);
+            pi_com_ref = p0_com_ref + vi_com_ref * (t - t0);
+        }
 
-//         // build the reference
-//         xi_com_ref << pi_com_ref, vi_com_ref;
+        // build the reference
+        xi_com_ref << pi_com_ref, vi_com_ref;
 
-//         // insert into trajectory
-//         X_com_ref[i] = xi_com_ref;
-//     }
+        // insert into trajectory
+        X_com_ref[i] = xi_com_ref;
+    }
 
-//     // build the LEG reference trajectory
-//     Vector_4d xi_leg_left_ref, xi_leg_right_ref;
-//     Vector_8d x_leg_ref;
-//     xi_leg_left_ref <<  this->r_des,  this->theta_des, 0.0, 0.0;
-//     xi_leg_right_ref << this->r_des, -this->theta_des, 0.0, 0.0;
-//     x_leg_ref << xi_leg_left_ref, xi_leg_right_ref;
-//     for (int i = 0; i < this->params.N_x; i++) {
-//         // insert into trajectory
-//         X_leg_ref[i] = x_leg_ref;
-//     }
+    // build the LEG reference trajectory
+    for (int i = 0; i < this->params.N_x; i++) {
+        // insert into trajectory
+        X_leg_ref[i] = this->ref.X_leg_ref;
+    }
 
-//     // build the domain reference trajectory
-//     Vector_2i d_ref;
-//     Vector_2i d;
-//     d_ref << 1, 1;                  // both feet in stance
-//     d << 1, 0;                      // both feet in stance
-//     double T_cycle = this->T_cycle; // time for SSP
-//     double T_SSP = this->T_SSP;     // time for SSP
-//     double T_reset = 0.0;           // time for reset
-//     for (int i = 0; i < this->params.N_x; i++) {
+    // insert the references
+    ReferenceLocal ref_horizon; // TODO: have this as a class variable
+    ref_horizon.X_com_ref = X_com_ref;
+    ref_horizon.X_leg_ref = X_leg_ref;
+
+    return ref_horizon;
+}
+
+
+// evaluate log barrier function cost on legs
+double Controller::cost_log_barrier(const Vector_12d& x_leg) {   
+    
+    // want to compute the cost of the log barrier function
+    double J_log = 0.0;
+
+    // leg state constraints
+    double r_min = this->dynamics.params.r_min;
+    double r_max = this->dynamics.params.r_max;
+    double theta_x_min = this->dynamics.params.theta_x_min;
+    double theta_x_max = this->dynamics.params.theta_x_max;
+    double theta_y_min = this->dynamics.params.theta_y_min;
+    double theta_y_max = this->dynamics.params.theta_y_max;
+    double rdot_lim = this->dynamics.params.rdot_lim;
+    double thetadot_lim = this->dynamics.params.thetadot_lim;
+
+    // compute the costs
+    Vector_6d xi_leg;
+    double r, theta_x, theta_y, rdot, thetadot_x, thetadot_y;
+    for (int i = 0; i < this->dynamics.n_leg; i++) {
         
-//         // global time
-//         t = i * this->params.dt_x;
+        // unpack the leg state
+        xi_leg = x_leg.segment<6>(6 * i);
+        r = xi_leg(0);
+        theta_x = xi_leg(1);
+        theta_y = xi_leg(2);
+        rdot = xi_leg(3);
+        thetadot_x = xi_leg(4);
+        thetadot_x = xi_leg(5);
 
-//         // in one domain
-//         if ((t - T_reset) < T_SSP) {
-//             D_ref[i] = d;
-//         }
-//         // reset the domain
-//         else{
-//             d = d_ref - d;
-//             D_ref[i] = d;
-//             T_reset = t;
-//         }
-//     }
+        // compare the state to the limits (this alternative is a simple heuristic for barrier-like behavior)
+        J_log += (r < r_min || r > r_max) ? this->params.J_barrier : 0;
+        J_log += (theta_x < theta_x_min || theta_x > theta_x_max) ? this->params.J_barrier : 0;
+        if (i == 0) {
+            J_log += (theta_y < theta_y_min || theta_y > theta_y_max) ? this->params.J_barrier : 0;
+        }
+        else if (i == 1) {
+            J_log += (theta_y > -theta_y_min || theta_y < -theta_y_max) ? this->params.J_barrier : 0;
+        }
+        J_log += (std::abs(rdot) > rdot_lim) ? this->params.J_barrier : 0;
+        J_log += (std::abs(thetadot_x) > thetadot_lim) ? this->params.J_barrier : 0;
+        J_log += (std::abs(thetadot_y) > thetadot_lim) ? this->params.J_barrier : 0;
+    }
 
-//     // insert the references
-//     Reference ref;
-//     ref.X_com_ref = X_com_ref;
-//     ref.X_leg_ref = X_leg_ref;
-//     ref.D_ref = D_ref;
-
-//     return ref;
-// }
+    return J_log;
+}
 
 
-// // evaluate log barrier function cost on legs
-// double Controller::cost_log_barrier(Vector_8d x_leg) {   
+// TODO: there is code optimziation work to be done here. MAJOR source of inefficiency
+// evaluate the cost function given a solution
+double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol, const Vector_6d_Traj& U)
+{
+    // number of knot points 
+    int Nx = this->params.N_x; // number of state knots
+    int Nu = this->params.N_u; // number of control knots
+
+    // ************************************ COM COST ************************************
+
+    // build the COM trajectory
+    Vector_6d_Traj X_com(Nx);
+    for (int i = 0; i < Nx; i++) {
+        X_com[i] = Sol.x_sys_t[i].head<6>();
+    }
+
+    // compute the COM cost
+    Vector_6d ei_com;
+    double J_com = 0.0;
+    // integrated cost
+    for (int i = 0; i < Nx-1; i++) {
+        ei_com = X_com[i] - ref.X_com_ref[i];
+        J_com += ei_com.transpose() * this->params.Q_com * ei_com;
+    }
+    //terminal cost
+    ei_com = X_com[Nx-1] - ref.X_com_ref[Nx-1];
+    J_com += ei_com.transpose() * this->params.Qf_com * ei_com;
+
+    // ************************************ LEG COST ************************************
+
+    // compute the LEG cost
+    Vector_12d ei_leg;
+    double J_legs = 0.0;
+    // integrated cost
+    for (int i = 0; i < Nx-1; i++) {
+        ei_leg = Sol.x_leg_t[i] - ref.X_leg_ref[i];
+        J_legs += ei_leg.transpose() * this->params.Q_leg * ei_leg;
+    }
+    // terminal cost
+    ei_leg = Sol.x_leg_t[Nx-1] - ref.X_leg_ref[Nx-1];
+    J_legs += ei_leg.transpose() * this->params.Qf_leg * ei_leg;
+
+    // log barrier function cost
+    double J_legs_barrier = 0.0;
     
-//     // want to compute the cost of the log barrier function
-//     double J_log = 0.0;
+    // compute the log barrier function cost
+    if (this->params.log_barrier_enabled) {
+        for (int i = 0; i < Nx; i++) {
+            J_legs_barrier += this->cost_log_barrier(Sol.x_leg_t[i]);
+        }
+        J_legs += J_legs_barrier;
+    }
+    // if not enabled, set to zero
+    else {
+        J_legs_barrier = 0.0;
+        J_legs += J_legs_barrier;
+    }
 
-//     // leg state constraints
-//     double r_min = this->dynamics.params.r_min;
-//     double r_max = this->dynamics.params.r_max;
-//     double theta_min = this->dynamics.params.theta_min;
-//     double theta_max = this->dynamics.params.theta_max;
-//     double rdot_lim = this->dynamics.params.rdot_lim;
-//     double thetadot_lim = this->dynamics.params.thetadot_lim;
+    // ************************************ INPUT COST ************************************
 
-//     // compute the costs
-//     Vector_4d xi_leg;
-//     double r, theta, rdot, thetadot;
-//     // double r_cost, rdot_cost, theta_cost, thetadot_cost;
-//     for (int i = 0; i < this->dynamics.n_leg; i++) {
-//         // unpack the leg state
-//         xi_leg = x_leg.segment<4>(4 * i);
-//         r = xi_leg(0);
-//         theta = xi_leg(1);
-//         rdot = xi_leg(2);
-//         thetadot = xi_leg(3);
+    // penalize the velocity input (smaller velocities)
+    Vector_6d ui;
+    double J_input = 0.0;
+    for (int i = 0; i < Nu; i++) {        
+        // left and right leg input vector
+        ui << U[i];
 
-//         // compare the state to the limits (this alternative is a simple heuristic for barrier-like behavior)
-//         J_log += (r < r_min || r > r_max) ? this->params.J_barrier : 0;
-//         J_log += (rdot < -rdot_lim || rdot > rdot_lim) ? this->params.J_barrier : 0;
-//         J_log += (theta < theta_min || theta > theta_max) ? this->params.J_barrier : 0;
-//         J_log += (thetadot < -thetadot_lim || thetadot > thetadot_lim) ? this->params.J_barrier : 0;
+        // compute quadratic cost
+        J_input += ui.transpose() * this->params.R * ui;
+    }
+
+    // penalize the rate of change of the input (smaller accelerations)
+    Vector_6d u_delta;
+    for (int i = 0; i < Nu - 1; i++) {
+        // left and right leg input vector
+        u_delta = (U[i + 1] - U[i]) / this->params.dt_u;
+
+        // compute quadratic cost
+        J_input += (u_delta).transpose() * this->params.R_rate * (u_delta);
+    }
+
+    // ************************************ TOTAL COST ************************************
+
+    // total cost
+    double J_total; 
+    J_total = J_com + J_legs + J_input;
+
+    return J_total;
+}
+
+
+// perform open loop rollouts
+MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0)
+{
+    // generate bundle of input trajectories
+    Vector_6d_Traj_Bundle U_bundle(this->params.K);            // TODO: have this as a class variable
+    U_bundle = this->sample_input_trajectory();  
+
+    // initialize the containers for the solutions
+    Solution_Bundle Sol_bundle(this->params.K); // TODO: have this as a class variable
+    Vector_1d_List J(this->params.K);
+
+    // generate the reference trajectory
+    ReferenceLocal ref;
+    ref = this->generate_reference_trajectory(t_sim, x0_sys.head<6>());
+
+    // loop over the input trajectories
+    Solution sol;
+    this->dynamics.resizeSolution(sol, this->params.T_x);
+    double cost = 0.0;
+    #pragma omp parallel for private(sol, cost) // TODO: ok, here, how do I handle parallized regions if I want to be computationally efficeint?
+    for (int k = 0; k < this->params.K; k++) {
         
-//         // NOTE: blindly doing the below is bad since it is almost certain that I will pass the boundary and get a huge cost (seg faults)
-//         //       I am not doign a gradient based method so I can't see the high cost function approaching
-//         // // compute the costs
-//         // r_cost = -r_weight * std::log(r - r_min) - r_weight * std::log(r_max - r);
-//         // rdot_cost = -rdot_weight * std::log(rdot + rdot_lim) - rdot_weight * std::log(rdot_lim - rdot);
-//         // theta_cost = -theta_weight * std::log(theta - theta_min) - theta_weight * std::log(theta_max - theta);
-//         // thetadot_cost = -thetadot_weight * std::log(thetadot + thetadot_lim) - thetadot_weight * std::log(thetadot_lim - thetadot);
-//         // J_log += r_cost + rdot_cost + theta_cost + thetadot_cost;
-//     }
+        // initialize the cost
+        cost = 0.0;
 
-//     return J_log;
-// }
+        // perform the rollout
+        sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k]);
 
-
-// // evaluate the cost function given a solution
-// double Controller::cost_function(const Reference& ref, const Solution& Sol, const Vector_4d_Traj& U)
-// {
-//     // trajectory length 
-//     int N = this->params.N_x;
-//     int Nu = this->params.N_u;
-
-//     // ************************************ COM COST ************************************
-
-//     // build the COM trajectory
-//     Vector_4d_Traj X_com(N);
-//     for (int i = 0; i < N; i++) {
-//         X_com[i] = Sol.x_sys_t[i].head<4>();
-//     }
-
-//     // compute the COM cost
-//     Vector_4d ei_com;
-//     double J_com = 0.0;
-//     // integrated cost
-//     for (int i = 0; i < N-1; i++) {
-//         ei_com = X_com[i] - ref.X_com_ref[i];
-//         J_com += ei_com.transpose() * this->params.Q_com * ei_com;
-//     }
-//     //terminal cost
-//     ei_com = X_com[N-1] - ref.X_com_ref[N-1];
-//     J_com += ei_com.transpose() * this->params.Qf_com * ei_com;
-
-//     // ************************************ LEG COST ************************************
-
-//     // compute the LEG cost
-//     Vector_8d ei_leg;
-//     double J_legs = 0.0;
-//     // integrated cost
-//     for (int i = 0; i < N-1; i++) {
-//         ei_leg = Sol.x_leg_t[i] - ref.X_leg_ref[i];
-//         J_legs += ei_leg.transpose() * this->params.Q_leg * ei_leg;
-//     }
-//     // terminal cost
-//     ei_leg = Sol.x_leg_t[N-1] - ref.X_leg_ref[N-1];
-//     J_legs += ei_leg.transpose() * this->params.Qf_leg * ei_leg;
-
-//     // log barrier function cost
-//     double J_legs_barrier = 0.0;
-//     if (this->params.log_barrier_enabled) {
-//         for (int i = 0; i < N; i++) {
-//             J_legs_barrier += this->cost_log_barrier(Sol.x_leg_t[i]);
-//         }
-//         J_legs += J_legs_barrier;
-//     }
-//     else {
-//         J_legs_barrier = 0.0;
-//         J_legs += J_legs_barrier;
-//     }
-
-//     // ************************************ INPUT COST ************************************
-
-//     // penalize the velocity input (want it to be closer to zero)
-//     Vector_4d ui;
-//     double J_input = 0.0;
-//     for (int i = 0; i < Nu; i++) {
-//         // left and right leg input vector
-//         ui << U[i];
-
-//         // compute quadratic cost
-//         J_input += ui.transpose() * this->params.R * ui;
-//     }
-
-//     // penalize the rate of change of the input (smaller rates of change)
-//     Vector_4d u_delta;
-//     for (int i = 0; i < Nu - 1; i++) {
-//         // left and right leg input vector
-//         u_delta = (U[i + 1] - U[i]) / this->params.dt_u;
-
-//         // compute quadratic cost
-//         J_input += (u_delta).transpose() * this->params.R_rate * (u_delta);
-//     }
-
-//     // ************************************ TOTAL COST ************************************
-
-//     // total cost
-//     double J_total; 
-//     J_total = J_com + J_legs + J_input;
-
-//     return J_total;
-// }
-
-
-// // perform open loop rollouts
-// MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_feet, Domain d0, int K)
-// {
-//     // generate bundle of input trajectories
-//     Vector_4d_Traj_Bundle U_bundle(K);
-//     U_bundle = this->sample_input_trajectory(K);
-
-//     // initialize the containers for the solutions
-//     Solution_Bundle Sol_bundle(K);
-//     Vector_1d_List J(K);
-
-//     // generate the reference trajectory
-//     Reference ref;
-//     ref = this->generate_reference_trajectory(t_sim, x0_sys.head<4>());
-
-//     // loop over the input trajectories
-//     Solution sol;
-//     this->dynamics.resizeSolution(sol, this->params.T_x);
-//     double cost = 0.0;
-//     #pragma omp parallel for private(sol, cost)
-//     for (int k = 0; k < K; k++) {
-        
-//         // initialize the cost
-//         cost = 0.0;
-
-//         // perform the rollout
-//         sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k]);
-
-//         // compute the cost
-//         cost = this->cost_function(ref, sol, U_bundle[k]);
+        // compute the cost
+        cost = this->cost_function(ref, sol, U_bundle[k]);
     
-//         // store the results (use critical sections to avoid race conditions if necessary)
-//         #pragma omp critical
-//         {
-//             Sol_bundle[k] = sol;
-//             J[k] = cost;
-//         }
-//     }
+        // store the results (use critical sections to avoid race conditions if necessary)
+        #pragma omp critical
+        {
+            Sol_bundle[k] = sol;
+            J[k] = cost;
+        }
+    }
 
-//     // pack solutions into a tuple
-//     MC_Result mc;
-//     mc.S = Sol_bundle;
-//     mc.U = U_bundle;
-//     mc.J = J;
+    // pack solutions into a tuple
+    MC_Result mc;
+    mc.S = Sol_bundle;
+    mc.U = U_bundle;
+    mc.J = J;
 
-//     // return the solutions
-//     return mc;
-// }
-
-
-// // select solutions based on cost
-// void Controller::sort_trajectories(const Solution_Bundle&  S,       const Vector_4d_Traj_Bundle& U,        const Vector_1d_Traj& J,
-//                                    Solution_Bundle& S_elite, Vector_4d_Traj_Bundle& U_elite, Vector_1d_Traj& J_elite)
-// {
-//     int K = this->params.K;
-//     int N_elite = this->params.N_elite;
-
-//     // Create an index vector
-//     Vector_1i_List idx(K);
-//     std::iota(idx.begin(), idx.end(), 0);
-
-//     // Use nth_element to bring the top N_elite elements to the front in O(n) time
-//     std::nth_element(idx.begin(), idx.begin() + N_elite, idx.end(),
-//                      [&J](int i1, int i2) { return J[i1] < J[i2]; });
-
-//     // Populate elite solutions
-//     for (int i = 0; i < N_elite; i++) {
-//         S_elite[i] = S[idx[i]];
-//         U_elite[i] = U[idx[i]];
-//         J_elite[i] = J[idx[i]];
-//     }
-// }
+    // return the solutions
+    return mc;
+}
 
 
-// // perform sampling predictive control of your choice here
-// RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sys, Vector_4d p0_foot, Domain d0)
-// {
-//     // Monte Carlo Result to return
-//     MC_Result mc;
+// select solutions based on cost
+void Controller::sort_trajectories(const Solution_Bundle&  S,      const Vector_6d_Traj_Bundle& U,      const Vector_1d_List& J,
+                                         Solution_Bundle&  S_elite,      Vector_6d_Traj_Bundle& U_elite,      Vector_1d_List& J_elite)
+{
+    // Create an index vector
+    Vector_1i_List idx(this->params.K);
+    std::iota(idx.begin(), idx.end(), 0);
 
-//     // monte carlo variables
-//     Solution_Bundle S(this->params.N_elite), S_elite(this->params.N_elite);
-//     Vector_4d_Traj_Bundle U(this->params.N_elite), U_elite(this->params.N_elite);
-//     Vector_1d_List J(this->params.N_elite), J_elite(this->params.N_elite);
+    // Use nth_element to bring the top N_elite elements to the front in O(n) time
+    std::nth_element(idx.begin(), idx.begin() + this->params.N_elite, idx.end(),
+                     [&J](int i1, int i2) { return J[i1] < J[i2]; });
 
-//     // perform the CEM iterations
-//     auto t0_total = std::chrono::high_resolution_clock::now();
-//     for (int i = 0; i < this->params.CEM_iters; i++) {
+    // Populate elite solutions
+    for (int i = 0; i < this->params.N_elite; i++) {
+        S_elite[i] = S[idx[i]];
+        U_elite[i] = U[idx[i]];
+        J_elite[i] = J[idx[i]];
+    }
+}
 
-//         // perform monte carlo simulation
-//         auto t0 = std::chrono::high_resolution_clock::now();
-//         mc = this->monte_carlo(t_sim, x0_sys, p0_foot, d0, this->params.K);
 
-//         // store monte carlo results
-//         S = mc.S;
-//         U = mc.U;
-//         J = mc.J;
+// TODO: there is code optimziation work to be done here
+// perform sampling predictive control of your choice here
+RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_12d x0_sys, Vector_6d p0_foot, Domain d0)
+{
+    // Monte Carlo Result to return
+    MC_Result mc;
 
-//         // sort the cost vector in ascending order
-//         this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
+    // monte carlo variables
+    Solution_Bundle S(this->params.N_elite), S_elite(this->params.N_elite);
+    Vector_6d_Traj_Bundle U(this->params.N_elite), U_elite(this->params.N_elite);
+    Vector_1d_List J(this->params.N_elite), J_elite(this->params.N_elite);
 
-//         // update the distribution parameters
-//         this->update_distribution_params(U_elite);
-//         auto tf = std::chrono::high_resolution_clock::now();
+    // perform the CEM iterations
+    auto t0_total = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < this->params.CEM_iters; i++) {
 
-//         // print some info
-//         if (this->verbose == true) 
-//         {
-//             std::cout << "-----------------------------------" << std::endl;
-//             std::cout << "CEM Iteration: " << i+1 << std::endl;
-//             std::cout << "-----------------------------------" << std::endl;
-//             std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
-//             std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
-//             std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
-//             std::cout << std::endl;
-//         }
+        // perform monte carlo simulation
+        auto t0 = std::chrono::high_resolution_clock::now();
+        mc = this->monte_carlo(t_sim, x0_sys, p0_foot, d0);
 
-//     }
-//     auto tf_total = std::chrono::high_resolution_clock::now();
-//     double T_tot = std::chrono::duration<double>(tf_total - t0_total).count();
+        // store monte carlo results
+        S = mc.S;
+        U = mc.U;
+        J = mc.J;
 
-//     if (this->verbose == true) 
-//     {
-//         std::cout << "CEM complete" << std::endl;
-//         std::cout << "Total time: " << T_tot << " sec" << std::endl;
-//         std::cout << "Average time per iteration: " << T_tot / this->params.CEM_iters << " [sec], " << this->params.CEM_iters/T_tot << " [Hz]" << std::endl;
-//         std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
-//     }
+        // sort the cost vector in ascending order
+        this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
 
-//     // do a final sort to get the best solution
-//     Vector_1i_List idx(this->params.N_elite);
-//     std::iota(idx.begin(), idx.end(), 0);
+        // update the distribution parameters
+        this->update_distribution_params(U_elite);
+        auto tf = std::chrono::high_resolution_clock::now();
 
-//     // get only the best solution
-//     std::nth_element(idx.begin(), idx.begin() + 1, idx.end(),
-//                      [&J_elite](int i1, int i2) { return J_elite[i1] < J_elite[i2]; });
+        // print some info
+        if (this->verbose == true) 
+        {
+            std::cout << "-----------------------------------" << std::endl;
+            std::cout << "CEM Iteration: " << i+1 << std::endl;
+            std::cout << "-----------------------------------" << std::endl;
+            std::cout << "Time for iteration: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+            std::cout << "Smallest cost: " << J_elite[0] << std::endl;   
+            std::cout << "Norm of covariance: " << this->dist.cov.norm() << ", Theoretical min: " << this->min_cov_norm << std::endl;
+            std::cout << std::endl;
+        }
 
-//     // get the best solution
-//     Solution S_opt;
-//     Vector_4d_Traj U_opt;
-//     S_opt = S_elite[idx[0]];
-//     U_opt = U_elite[idx[0]];
+    }
+    auto tf_total = std::chrono::high_resolution_clock::now();
+    double T_tot = std::chrono::duration<double>(tf_total - t0_total).count();
+
+    if (this->verbose == true) 
+    {
+        std::cout << "CEM complete" << std::endl;
+        std::cout << "Total time: " << T_tot << " sec" << std::endl;
+        std::cout << "Average time per iteration: " << T_tot / this->params.CEM_iters << " [sec], " << this->params.CEM_iters/T_tot << " [Hz]" << std::endl;
+        std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
+    }
+
+    // std::cout << "6" << std::endl;
+
+    // do a final sort to get the best solution
+    Vector_1i_List idx(this->params.N_elite);
+    std::iota(idx.begin(), idx.end(), 0);
+
+    // get only the best solution
+    std::nth_element(idx.begin(), idx.begin() + 1, idx.end(),
+                     [&J_elite](int i1, int i2) { return J_elite[i1] < J_elite[i2]; });
+
+    // get the best solution
+    Solution S_opt;
+    Vector_6d_Traj U_opt;
+    S_opt = S_elite[idx[0]];
+    U_opt = U_elite[idx[0]];
     
-//     // return the best solution
-//     RHC_Result rhc;
-//     rhc.S = S_opt;
-//     rhc.U = U_opt;
+    // return the best solution
+    RHC_Result rhc;
+    rhc.S = S_opt;
+    rhc.U = U_opt;
 
-//     return rhc;
-// }
+    return rhc;
+}

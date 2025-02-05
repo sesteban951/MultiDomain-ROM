@@ -12,8 +12,10 @@ Dynamics::Dynamics(YAML::Node config_file)
     this->params.l0 = config_file["SYS_PARAMS"]["l0"].as<double>();
     this->params.r_min = config_file["SYS_PARAMS"]["r_min"].as<double>();
     this->params.r_max = config_file["SYS_PARAMS"]["r_max"].as<double>();
-    this->params.theta_min = config_file["SYS_PARAMS"]["theta_min"].as<double>();
-    this->params.theta_max = config_file["SYS_PARAMS"]["theta_max"].as<double>();
+    this->params.theta_x_min = config_file["SYS_PARAMS"]["theta_x_min"].as<double>();
+    this->params.theta_x_max = config_file["SYS_PARAMS"]["theta_x_max"].as<double>();
+    this->params.theta_y_min = config_file["SYS_PARAMS"]["theta_y_min"].as<double>();
+    this->params.theta_y_max = config_file["SYS_PARAMS"]["theta_y_max"].as<double>();
     this->params.rdot_lim = config_file["SYS_PARAMS"]["rdot_lim"].as<double>();
     this->params.thetadot_lim = config_file["SYS_PARAMS"]["thetadot_lim"].as<double>();
     this->params.torque_ankle = config_file["SYS_PARAMS"]["torque_ankle"].as<bool>();

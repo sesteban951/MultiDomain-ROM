@@ -66,8 +66,10 @@ struct SystemParams
     double l0;                // nominal rest length [m]
     double r_min;             // minimum rest length [m]
     double r_max;             // maximum rest length [m]
-    double theta_min;         // minimum leg angle from vertical [rad]
-    double theta_max;         // maximum leg angle from vertical [rad]
+    double theta_x_min;       // minimum leg angle from vertical [rad]
+    double theta_x_max;       // maximum leg angle from vertical [rad]
+    double theta_y_min;       // minimum leg angle from vertical [rad]
+    double theta_y_max;       // maximum leg angle from vertical [rad]
     double rdot_lim;          // maximum leg extension velocity [m/s]
     double thetadot_lim;      // maximum leg angle velocity [rad/s]
     bool torque_ankle;        // enable ankle torque 
@@ -126,11 +128,18 @@ struct Solution
 };
 
 // Reference type
-struct Reference
+struct ReferenceGlobal  // throughout the entire simulation
 {
     Vector_1d_Traj t_ref;     // time reference
     Vector_3d_Traj p_com_ref; // com position reference
     Vector_12d X_leg_ref;     // leg state reference
+    int N_ref;                // number of reference points
+};
+
+struct ReferenceLocal  // throughtout a horizon
+{
+    Vector_6d_Traj  X_com_ref; // com position reference
+    Vector_12d_Traj X_leg_ref;     // leg state reference
 };
 
 // ***********************************************************************************
