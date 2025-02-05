@@ -94,6 +94,10 @@ void Controller::initialize_variables()
     this->eigvec.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
     this->eigvec_inv.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
     this->I = Matrix_d::Identity(3 * N_u * n_leg, 3 * N_u * n_leg);
+
+    // references
+    this->ref_horizon.X_com_ref.resize(this->params.N_x);
+    this->ref_horizon.X_leg_ref.resize(this->params.N_x);
 }
 
 void Controller::initialize_costs(YAML::Node config_file)
@@ -181,7 +185,7 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     ref.N_ref = N_ref;
 
     // set the reference
-    this->ref = ref;
+    this->ref_sim = ref;
 }
 
 
@@ -353,12 +357,8 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_elite
 
 // TODO: there is code optimziation work to be done here
 // generate a reference trajectory for the predictive control to track
-ReferenceLocal Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0_com)
+void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0_com)
 {
-    // pass reference to the dynamics
-    Vector_6d_Traj X_com_ref(this->params.N_x);  // TODO: have this as a class variable
-    Vector_12d_Traj X_leg_ref(this->params.N_x); // TODO: have this as a class variable
-
     // build the COM reference trajectory
     Vector_6d xi_com_ref;
     Vector_3d pi_com_ref, p0_com_ref, pf_com_ref;
@@ -370,22 +370,22 @@ ReferenceLocal Controller::generate_reference_trajectory(double t_sim, const Vec
         t = i * this->params.dt_x + t_sim;
 
         // find where t is in the time reference
-        auto it = std::upper_bound(this->ref.t_ref.begin(), this->ref.t_ref.end(), t);
-        int idx = std::distance(this->ref.t_ref.begin(), it) - 1; // return -1 if before the first element
-                                                                  // return N_ref - 1 if after the last element
+        auto it = std::upper_bound(this->ref_sim.t_ref.begin(), this->ref_sim.t_ref.end(), t);
+        int idx = std::distance(this->ref_sim.t_ref.begin(), it) - 1; // return -1 if before the first element
+                                                                      // return N_ref - 1 if after the last element
 
         // beyond last element
-        if (idx == this->ref.N_ref - 1) {
+        if (idx == this->ref_sim.N_ref - 1) {
             // set to last point with zero velocity
-            pi_com_ref = this->ref.p_com_ref[this->ref.N_ref - 1];
+            pi_com_ref = this->ref_sim.p_com_ref[this->ref_sim.N_ref - 1];
             vi_com_ref << 0.0, 0.0, 0.0;
         }
         else{
             // linear interpolation
-            t0 = this->ref.t_ref[idx];
-            tf = this->ref.t_ref[idx + 1];
-            p0_com_ref = this->ref.p_com_ref[idx];
-            pf_com_ref = this->ref.p_com_ref[idx + 1];
+            t0 = this->ref_sim.t_ref[idx];
+            tf = this->ref_sim.t_ref[idx + 1];
+            p0_com_ref = this->ref_sim.p_com_ref[idx];
+            pf_com_ref = this->ref_sim.p_com_ref[idx + 1];
             vi_com_ref = (pf_com_ref - p0_com_ref) / (tf - t0);
             pi_com_ref = p0_com_ref + vi_com_ref * (t - t0);
         }
@@ -394,21 +394,14 @@ ReferenceLocal Controller::generate_reference_trajectory(double t_sim, const Vec
         xi_com_ref << pi_com_ref, vi_com_ref;
 
         // insert into trajectory
-        X_com_ref[i] = xi_com_ref;
+        this->ref_horizon.X_com_ref[i] = xi_com_ref;
     }
 
     // build the LEG reference trajectory
     for (int i = 0; i < this->params.N_x; i++) {
         // insert into trajectory
-        X_leg_ref[i] = this->ref.X_leg_ref;
+        this->ref_horizon.X_leg_ref[i] = this->ref_sim.X_leg_ref;
     }
-
-    // insert the references
-    ReferenceLocal ref_horizon; // TODO: have this as a class variable
-    ref_horizon.X_com_ref = X_com_ref;
-    ref_horizon.X_leg_ref = X_leg_ref;
-
-    return ref_horizon;
 }
 
 
@@ -554,9 +547,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 // perform open loop rollouts
 MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0)
 {
-    // generate bundle of input trajectories
-    // Vector_6d_Traj_Bundle U_bundle(this->params.K);            // TODO: have this as a class variable
-    // U_bundle = this->sample_input_trajectory();  
+    // generate new bundle of input trajectories
     this-> sample_input_trajectory(); 
 
     // initialize the containers for the solutions
@@ -564,8 +555,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
     Vector_1d_List J(this->params.K);
 
     // generate the reference trajectory
-    ReferenceLocal ref;
-    ref = this->generate_reference_trajectory(t_sim, x0_sys.head<6>());
+    this->generate_reference_trajectory(t_sim, x0_sys.head<6>());
 
     // loop over the input trajectories
     Solution sol;
@@ -581,7 +571,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
         sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, this->U_traj_samples[k]);
 
         // compute the cost
-        cost = this->cost_function(ref, sol, this->U_traj_samples[k]);
+        cost = this->cost_function(this->ref_horizon, sol, this->U_traj_samples[k]);
     
         // store the results (use critical sections to avoid race conditions if necessary)
         #pragma omp critical

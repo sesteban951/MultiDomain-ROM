@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.0, 0.6, -0.1, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
 
 SIM:
-    duration: 1.0         # simulation duration, [s]
+    duration: 4.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY

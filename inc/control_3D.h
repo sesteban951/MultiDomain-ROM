@@ -58,7 +58,7 @@ class Controller
         void update_distribution_params(const Vector_6d_Traj_Bundle& U_elite);
 
         // generate a reference trajectory for the predictive control to track
-        ReferenceLocal generate_reference_trajectory(double t_sim, const Vector_6d& x0_com);
+        void generate_reference_trajectory(double t_sim, const Vector_6d& x0_com);
 
         // evaluate log barrier function cost on legs
         double cost_log_barrier(const Vector_12d& x_leg);
@@ -70,8 +70,9 @@ class Controller
         void sort_trajectories(const Solution_Bundle&  S,      const Vector_6d_Traj_Bundle& U,      const Vector_1d_List& J,
                                      Solution_Bundle&  S_elite,      Vector_6d_Traj_Bundle& U_elite,      Vector_1d_List& J_elite);
 
-        // global reference (throughout the entire simulation)
-        ReferenceGlobal ref;
+        // reference types
+        ReferenceGlobal ref_sim;    // global reference (throughout the entire simulation)
+        ReferenceLocal ref_horizon; // local reference (for the horizon)
 
         // random number generator
         std::mt19937 rand_generator;
