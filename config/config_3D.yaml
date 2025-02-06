@@ -21,7 +21,7 @@ REFERENCE:
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
     # Desired COM states as knot points
-    px_des: [0.0, 4.0] 
+    px_des: [0.0, 3.0] 
     py_des: [0.0, 0.0] 
     pz_des: [0.55, 0.55]
     time: [0.0, 3.0]
@@ -35,14 +35,14 @@ COST:
     # Quadratic cost weights
     Q_com_diags:  [7.0, 7.0, 8.0, 0.5, 0.5, 0.7]    # COM: px, py, pz, vx, vy, vz
     Qf_com_diags: [10.0, 10.0, 9.0, 0.7, 0.7, 0.9]  # COM: px, py, pz, vx, vy, vz
-    Q_leg_diags:  [6.0, 4.0, 4.0, 0.1, 0.1, 0.05]   # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
+    Q_leg_diags:  [8.0, 4.0, 4.0, 0.1, 0.1, 0.05]   # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
     Qf_leg_diags: [8.0, 6.0, 6.0, 0.2, 0.2, 0.1]    # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
-    R_diags: [1.0, 1.0, 1.0]            # diagonal elements of the control cost matrix
-    R_rate_diags: [0.1, 0.1, 0.1]       # diagonal elements of the control cost matrix
+    R_diags: [0.5, 0.5, 0.5]            # diagonal elements of the control cost matrix
+    R_rate_diags: [0.05, 0.05, 0.05]       # diagonal elements of the control cost matrix
 
     # log barriers (weights > 0)
-    log_barrier_enabled: False
-    J_barrier: 5
+    limits_enabled: False
+    w_limits: 50
 
 ####################################################################
 # CONTROL PARAMETERS
@@ -52,9 +52,9 @@ CTRL_PARAMS:
     N_x: 80         # number of time steps
     N_u: 4          # number of control points
     dt_x: 0.01      # time step, [s]
-    K: 100           # number of rollouts
-    N_elite: 10      # number of elite samples
-    CEM_iters: 5    # number of CEM iterations
+    K: 25           # number of rollouts
+    N_elite: 5      # number of elite samples
+    CEM_iters: 10    # number of CEM iterations
 
 
 ####################################################################
@@ -89,7 +89,7 @@ SYS_PARAMS:
 DIST_PARAMS:
     mu: [0.0, 0.0, 0.0]         # initial means [l0dot_vel, thetadot_vel]
     sigma: [0.5, 1.57, 1.57]    # initial standard deviations
-    epsilon: 0.01               # minimum eigenvalue for covariance matrix
+    epsilon: 0.01                # minimum eigenvalue for covariance matrix
     diag_cov: False             # strictly enforce diagonal covariance matrix
     seed_enabled: False         # enable random seed
     seed: 1                     # random seed

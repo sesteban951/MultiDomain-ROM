@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.6, -0.1]  # COMMANDS: l0_command, thetadot_command (single integrator state)
 
 SIM:
-    duration: 10.0         # simulation duration, [s]
+    duration: 1.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -16,11 +16,11 @@ SIM:
 REFERENCE:
     
     # Desire Leg states
-    r_des: 0.6          # desired leg length [m]
+    r_des: 0.7          # desired leg length [m]
     theta_des: 0.0      # desired leg angle [m]
 
     # Desired COM states as knot points
-    px_des: [0.0, 5.0, 0.0] 
+    px_des: [0.0, 2.0, 0.0] 
     pz_des: [0.55, 0.55, 0.55]
     time: [0.0, 4.0, 8.0]
 
@@ -60,11 +60,11 @@ COST:
 
 CTRL_PARAMS:
     N_x: 80          # number of time steps
-    N_u: 5          # number of control points
+    N_u: 5           # number of control points
     dt_x: 0.01       # time step, [s]
     K: 75          # number of rollouts
     N_elite: 5     # number of elite samples
-    CEM_iters: 5     # number of CEM iterations
+    CEM_iters: 4     # number of CEM iterations
 
 
 ####################################################################
