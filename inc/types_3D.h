@@ -93,13 +93,12 @@ struct ControlParams
     int CEM_iters;            // number of CEM iterations
     Matrix_6d Q_com;          // diagonal elements of com Q matrix
     Matrix_6d Qf_com;         // diagonal elements of com Qf matrix
-    Matrix_12d Q_leg;          // diagonal elements of leg Q matrix
-    Matrix_12d Qf_leg;         // diagonal elements of leg Qf matrix
+    Matrix_12d Q_leg;         // diagonal elements of leg Q matrix
+    Matrix_12d Qf_leg;        // diagonal elements of leg Qf matrix
     Matrix_6d R;              // diagonal elements of R matrix
     Matrix_6d R_rate;         // diagonal elements of R rate matrix
-    double gait_cycle_weight; // weight for gait cycle cost
-    bool log_barrier_enabled; // enable log barrier function
-    double J_barrier;         // barrier function cost
+    bool limits_enabled;      // enable kineamtic limits cost
+    double w_limits;          // kinematic limits cost
 };
 
 // Distribution struct

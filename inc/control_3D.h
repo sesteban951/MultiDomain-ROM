@@ -61,7 +61,7 @@ class Controller
         void generate_reference_trajectory(double t_sim, const Vector_6d& x0_com);
 
         // evaluate log barrier function cost on legs
-        double cost_log_barrier(const Vector_12d& x_leg);
+        double cost_limits(const Vector_12d& x_leg);
 
         // evaluate the cost function given a solution
         double cost_function(const ReferenceLocal& ref, const Solution& Sol, const Vector_6d_Traj& U);

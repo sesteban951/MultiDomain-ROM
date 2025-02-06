@@ -21,6 +21,14 @@ d = load(data_folder + 'domain.csv');
 config_file = '../config/config_3D.yaml';
 config = yaml.loadFile(config_file);
 
+% some kineamtic limits and velocities
+r_min = config.SYS_PARAMS.r_min;
+r_max = config.SYS_PARAMS.r_max;
+theta_x_min = config.SYS_PARAMS.theta_x_min;
+theta_x_max = config.SYS_PARAMS.theta_x_max;
+theta_y_min = config.SYS_PARAMS.theta_y_min;
+theta_y_max = config.SYS_PARAMS.theta_y_max;
+
 % extract some variables
 interp = config.SYS_PARAMS.interp;
 
@@ -144,6 +152,8 @@ if animate == 0
     plot(t, x_leg_commands_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,1), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     plot(t, x_leg_commands_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(r_min, '--', 'Min');
+    yline(r_max, '--', 'Max');
     xlabel('Time [sec]');
     ylabel('$r$ [m]', 'Interpreter', 'latex');
     title('LEG Length');

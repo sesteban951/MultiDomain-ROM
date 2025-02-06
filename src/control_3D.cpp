@@ -140,8 +140,8 @@ void Controller::initialize_costs(YAML::Node config_file)
     this->params.R_rate = R_rate_diags.asDiagonal();
 
     // log barrier function
-    this->params.log_barrier_enabled = config_file["COST"]["log_barrier_enabled"].as<bool>();
-    this->params.J_barrier = config_file["COST"]["J_barrier"].as<double>();
+    this->params.limits_enabled = config_file["COST"]["limits_enabled"].as<bool>();
+    this->params.w_limits = config_file["COST"]["w_limits"].as<double>();
 }
 
 
@@ -290,7 +290,6 @@ void Controller::sample_input_trajectory()
 }
 
 
-// TODO: there is code optimziation work to be done here
 // compute mean and covariance from a bundle of control inputs
 void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_elite)
 {
@@ -355,7 +354,6 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_elite
 }
 
 
-// TODO: there is code optimziation work to be done here
 // generate a reference trajectory for the predictive control to track
 void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0_com)
 {
@@ -406,10 +404,10 @@ void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0
 
 
 // evaluate log barrier function cost on legs
-double Controller::cost_log_barrier(const Vector_12d& x_leg) {   
+double Controller::cost_limits(const Vector_12d& x_leg) {   
     
     // want to compute the cost of the log barrier function
-    double J_log = 0.0;
+    double J_limits = 0.0;
 
     // leg state constraints
     double r_min = this->dynamics.params.r_min;
@@ -420,6 +418,7 @@ double Controller::cost_log_barrier(const Vector_12d& x_leg) {
     double theta_y_max = this->dynamics.params.theta_y_max;
     double rdot_lim = this->dynamics.params.rdot_lim;
     double thetadot_lim = this->dynamics.params.thetadot_lim;
+    double w_limits = this->params.w_limits;
 
     // compute the costs
     Vector_6d xi_leg;
@@ -435,21 +434,30 @@ double Controller::cost_log_barrier(const Vector_12d& x_leg) {
         thetadot_x = xi_leg(4);
         thetadot_x = xi_leg(5);
 
-        // compare the state to the limits (this alternative is a simple heuristic for barrier-like behavior)
-        J_log += (r < r_min || r > r_max) ? this->params.J_barrier : 0;
-        J_log += (theta_x < theta_x_min || theta_x > theta_x_max) ? this->params.J_barrier : 0;
-        if (i == 0) {
-            J_log += (theta_y < theta_y_min || theta_y > theta_y_max) ? this->params.J_barrier : 0;
+        // compute kinematic limits cost
+        J_limits += (r < r_min) ? w_limits * (r - r_min) * (r - r_min) :
+                    (r > r_max) ? w_limits * (r - r_max) * (r - r_max) : 0.0;
+        if (i == 0) {       // Left leg
+            J_limits += (theta_x < theta_x_min) ? w_limits * (theta_x - theta_x_min) * (theta_x - theta_x_min) :
+                        (theta_x > theta_x_max) ? w_limits * (theta_x - theta_x_max) * (theta_x - theta_x_max) : 0.0;
         }
-        else if (i == 1) {
-            J_log += (theta_y > -theta_y_min || theta_y < -theta_y_max) ? this->params.J_barrier : 0;
+        else if (i == 1) {  // Right leg
+            J_limits += (theta_x < -theta_x_max) ? w_limits * (theta_x + theta_x_max) * (theta_x + theta_x_max) :
+                        (theta_x > -theta_x_min) ? w_limits * (theta_x + theta_x_min) * (theta_x + theta_x_min) : 0.0;
         }
-        J_log += (std::abs(rdot) > rdot_lim) ? this->params.J_barrier : 0;
-        J_log += (std::abs(thetadot_x) > thetadot_lim) ? this->params.J_barrier : 0;
-        J_log += (std::abs(thetadot_y) > thetadot_lim) ? this->params.J_barrier : 0;
+        J_limits += (theta_y < theta_y_min) ? w_limits * (theta_y - theta_y_min) * (theta_y - theta_y_min) :
+                    (theta_y > theta_y_max) ? w_limits * (theta_y - theta_y_max) * (theta_y - theta_y_max) : 0.0;
+
+        // compute the velocity limits cost
+        J_limits += (rdot < -rdot_lim) ? w_limits * (rdot + rdot_lim) * (rdot + rdot_lim) :
+                    (rdot >  rdot_lim) ? w_limits * (rdot - rdot_lim) * (rdot - rdot_lim) : 0.0;
+        J_limits += (thetadot_x < -thetadot_lim) ? w_limits * (thetadot_x + thetadot_lim) * (thetadot_x + thetadot_lim) :
+                    (thetadot_x >  thetadot_lim) ? w_limits * (thetadot_x - thetadot_lim) * (thetadot_x - thetadot_lim) : 0.0;
+        J_limits += (thetadot_y < -thetadot_lim) ? w_limits * (thetadot_y + thetadot_lim) * (thetadot_y + thetadot_lim) :
+                    (thetadot_y >  thetadot_lim) ? w_limits * (thetadot_y - thetadot_lim) * (thetadot_y - thetadot_lim) : 0.0;
     }
 
-    return J_log;
+    return J_limits;
 }
 
 
@@ -469,7 +477,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
         X_com[i] = Sol.x_sys_t[i].head<6>();
     }
 
-    // compute the COM cost
+    // compute the COM cost  TODO: Consider using a giant vector and matrix multiplication
     Vector_6d ei_com;
     double J_com = 0.0;
     // integrated cost
@@ -486,7 +494,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     // compute the LEG cost
     Vector_12d ei_leg;
     double J_legs = 0.0;
-    // integrated cost
+    // integrated cost   TODO: Consider using a giant vector and matrix multiplication
     for (int i = 0; i < Nx-1; i++) {
         ei_leg = Sol.x_leg_t[i] - ref.X_leg_ref[i];
         J_legs += ei_leg.transpose() * this->params.Q_leg * ei_leg;
@@ -495,25 +503,19 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     ei_leg = Sol.x_leg_t[Nx-1] - ref.X_leg_ref[Nx-1];
     J_legs += ei_leg.transpose() * this->params.Qf_leg * ei_leg;
 
-    // log barrier function cost
-    double J_legs_barrier = 0.0;
+    // ************************************ KINEMATIC LIMITS COST ************************************
     
-    // compute the log barrier function cost
-    if (this->params.log_barrier_enabled) {
+    // compute the kinematic limit vioalation cost
+    double J_limits = 0.0;
+    if (this->params.limits_enabled) {
         for (int i = 0; i < Nx; i++) {
-            J_legs_barrier += this->cost_log_barrier(Sol.x_leg_t[i]);
+            J_limits += this->cost_limits(Sol.x_leg_t[i]);
         }
-        J_legs += J_legs_barrier;
-    }
-    // if not enabled, set to zero
-    else {
-        J_legs_barrier = 0.0;
-        J_legs += J_legs_barrier;
     }
 
     // ************************************ INPUT COST ************************************
 
-    // penalize the velocity input (smaller velocities)
+    // penalize the velocity input (smaller velocities) TODO: Consider using a giant vector and matrix multiplication
     Vector_6d ui;
     double J_input = 0.0;
     for (int i = 0; i < Nu; i++) {        
@@ -536,11 +538,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 
     // ************************************ TOTAL COST ************************************
 
-    // total cost
-    double J_total; 
-    J_total = J_com + J_legs + J_input;
-
-    return J_total;
+    return J_com + J_legs + J_limits + J_input;
 }
 
 
@@ -548,19 +546,30 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0)
 {
     // generate new bundle of input trajectories
+    auto t0 = std::chrono::high_resolution_clock::now();
     this-> sample_input_trajectory(); 
+    auto tf = std::chrono::high_resolution_clock::now();
+    if (this->verbose == true) {
+        std::cout << "Time to sample input trajectories: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+    }
 
     // initialize the containers for the solutions
     Solution_Bundle Sol_bundle(this->params.K); // TODO: have this as a class variable
     Vector_1d_List J(this->params.K);
 
     // generate the reference trajectory
+    t0 = std::chrono::high_resolution_clock::now();
     this->generate_reference_trajectory(t_sim, x0_sys.head<6>());
+    tf = std::chrono::high_resolution_clock::now();
+    if (this->verbose == true) {
+        std::cout << "Time to generate reference trajectory: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+    }
 
     // loop over the input trajectories
     Solution sol;
     this->dynamics.resizeSolution(sol, this->params.T_x);
     double cost = 0.0;
+    t0 = std::chrono::high_resolution_clock::now();
     #pragma omp parallel for private(sol, cost) // TODO: ok, here, how do I handle parallized regions if I want to be computationally efficeint?
     for (int k = 0; k < this->params.K; k++) {
         
@@ -568,17 +577,36 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
         cost = 0.0;
 
         // perform the rollout
+        auto t1 = std::chrono::high_resolution_clock::now();
         sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, this->U_traj_samples[k]);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        if (this->verbose == true) {
+            // std::cout << "Time to perform rollout: " << std::chrono::duration<double, std::milli>(t2 - t1).count() << " ms" << std::endl;
+        }
 
         // compute the cost
+        t1 = std::chrono::high_resolution_clock::now();
         cost = this->cost_function(this->ref_horizon, sol, this->U_traj_samples[k]);
+        t2 = std::chrono::high_resolution_clock::now();
+        if (this->verbose == true) {
+            // std::cout << "Time to compute cost: " << std::chrono::duration<double, std::milli>(t2 - t1).count() << " ms" << std::endl;
+        }
     
         // store the results (use critical sections to avoid race conditions if necessary)
+        t1 = std::chrono::high_resolution_clock::now();
         #pragma omp critical
         {
             Sol_bundle[k] = sol;
             J[k] = cost;
         }
+        t2 = std::chrono::high_resolution_clock::now();
+        if (this->verbose == true) {
+            // std::cout << "Time to store results: " << std::chrono::duration<double, std::milli>(t2 - t1).count() << " ms" << std::endl;
+        }
+    }
+    tf = std::chrono::high_resolution_clock::now();
+    if (this->verbose == true) {
+        std::cout << "Time to perform rollouts: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
     }
 
     // pack solutions into a tuple
@@ -632,6 +660,10 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_12d x0_s
         // perform monte carlo simulation
         auto t0 = std::chrono::high_resolution_clock::now();
         mc = this->monte_carlo(t_sim, x0_sys, p0_foot, d0);
+        auto tf = std::chrono::high_resolution_clock::now();
+        if (this->verbose == true) {
+            std::cout << "Time to perform Monte Carlo: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+        }
 
         // store monte carlo results
         S = mc.S;
@@ -639,11 +671,20 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_12d x0_s
         J = mc.J;
 
         // sort the cost vector in ascending order
+        t0 = std::chrono::high_resolution_clock::now();
         this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
+        tf = std::chrono::high_resolution_clock::now();
+        if (this->verbose == true) {
+            std::cout << "Time to sort trajectories: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+        }
 
         // update the distribution parameters
+        t0 = std::chrono::high_resolution_clock::now();
         this->update_distribution_params(U_elite);
-        auto tf = std::chrono::high_resolution_clock::now();
+        tf = std::chrono::high_resolution_clock::now();
+        if (this->verbose == true) {
+            std::cout << "Time to update distribution parameters: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
+        }
 
         // print some info
         if (this->verbose == true) 

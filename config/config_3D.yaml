@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.0, 0.6, -0.1, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
 
 SIM:
-    duration: 4.0         # simulation duration, [s]
+    duration: 10.0         # simulation duration, [s]
 
 ####################################################################
 # REFERENCE TRAJECTORY
@@ -40,9 +40,9 @@ COST:
     R_diags: [0.5, 0.5, 0.5]            # diagonal elements of the control cost matrix
     R_rate_diags: [0.05, 0.05, 0.05]       # diagonal elements of the control cost matrix
 
-    # log barriers (weights > 0)
-    limits_enabled: False
-    w_limits: 50
+    # kineamtic limits and velocities cost
+    limits_enabled: True
+    w_limits: 50.0
 
 ####################################################################
 # CONTROL PARAMETERS
@@ -68,10 +68,10 @@ SYS_PARAMS:
     b: 75.0                 # damping coeff, [Ns/m]
     l0: 0.65                # nominal rest length, [m]
     r_min: 0.5              # min leg length, [m]
-    r_max: 0.7              # max leg length, [m]
-    theta_x_min: -1.0         # min leg angle, x-dir [rad]
+    r_max: 0.65              # max leg length, [m]
+    theta_x_min:  0.1         # min leg angle, x-dir [rad]
     theta_x_max:  1.0         # max leg angle, x-dir [rad]
-    theta_y_min:  0.1         # min leg angle, y-dir [rad]
+    theta_y_min: -1.0         # min leg angle, y-dir [rad]
     theta_y_max:  1.0         # max leg angle, y-dir [rad]
     rdot_lim: 1.0           # max leg velocity [m/s]
     thetadot_lim: 3.14      # max angle velocity [rad/s]
@@ -101,8 +101,8 @@ DIST_PARAMS:
 THREADING:
 
     # CPU Threading
-    enabled: False     # enable threading
-    num_threads: 8     # number of thread to use in parallel
+    enabled: True     # enable threading
+    num_threads: 4     # number of thread to use in parallel
     nested: False      # nested parallelism
 
 
