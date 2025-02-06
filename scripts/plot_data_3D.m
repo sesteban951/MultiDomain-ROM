@@ -31,6 +31,7 @@ theta_y_max = config.SYS_PARAMS.theta_y_max;
 
 % extract some variables
 interp = config.SYS_PARAMS.interp;
+friction_coeff = config.SYS_PARAMS.friction_coeff;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -95,126 +96,79 @@ tau_R = tau(:,4:6);
 d_L = d(:,1);
 d_R = d(:,2);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% friction cones
+lambda_x_L = lambd_L(:,1);
+lambda_y_L = lambd_L(:,2);
+lambda_z_L = lambd_L(:,3);
+lambda_x_R = lambd_R(:,1);
+lambda_y_R = lambd_R(:,2);
+lambda_z_R = lambd_R(:,3);
+
+z_max = max([lambda_z_L; lambda_z_R]);
+height = z_max;
+r = friction_coeff * z_max;
+num_pts = 100;
+theta = linspace(0, 2*pi, num_pts);
+x_cone = r * cos(theta);
+y_cone = r * sin(theta);
+z_cone = height * ones(1, num_pts);
+
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if animate == 0
     % plot all states
-    figure('Name', 'COM States', 'WindowState', 'maximized');
+    fig = figure('Name', 'sim_data', 'WindowState', 'maximized');
+    tabgroup = uitabgroup(fig);
+
+    tab1 = uitab(tabgroup, 'Title', 'States');
+    axes('Parent', tab1);
 
     % COM STATES
-    subplot(3,9,1);
+    subplot(4,6,1);
     hold on; grid on;
     plot(t, p_com(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$p_x$ [m]', 'Interpreter', 'latex');
     title('COM x-pos');
 
-    subplot(3,9,2);
+    subplot(4,6,2);
     hold on; grid on;
     plot(t, p_com(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$p_y$ [m]', 'Interpreter', 'latex');
     title('COM y-pos');
 
-    subplot(3,9,3); 
+    subplot(4,6,3); 
     hold on; grid on;
     plot(t, p_com(:,3), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$p_z$ [m/s]', 'Interpreter', 'latex');
     title('COM z-pos');
 
-    subplot(3,9,10);
+    subplot(4,6,7);
     hold on; grid on;
     plot(t, v_com(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$v_x$ [m/s]', 'Interpreter', 'latex');
     title('COM x-vel');
 
-    subplot(3,9,11);
+    subplot(4,6,8);
     hold on; grid on;
     plot(t, v_com(:,2), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$v_y$ [m/s]', 'Interpreter', 'latex');
     title('COM y-vel');
 
-    subplot(3,9,12);
+    subplot(4,6,9);
     hold on; grid on;
     plot(t, v_com(:,3), 'LineWidth', 2);
     xlabel('Time [sec]');
     ylabel('$v_z$ [m/s]', 'Interpreter', 'latex');
     title('COM z-vel');
 
-    % LEG STATES
-    subplot(3,9,4);
-    hold on; grid on;
-    plot(t, x_leg_L(:,1), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, x_leg_commands_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
-    plot(t, x_leg_R(:,1), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, x_leg_commands_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
-    yline(r_min, '--', 'Min');
-    yline(r_max, '--', 'Max');
-    xlabel('Time [sec]');
-    ylabel('$r$ [m]', 'Interpreter', 'latex');
-    title('LEG Length');
-    % legend('$r_L$', '$\hat{r}_L$', '$r_R$', '$\hat{r}_R$', 'Interpreter', 'latex');
-
-    subplot(3,9,5);
-    hold on; grid on;
-    plot(t, x_leg_L(:,2), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, x_leg_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
-    plot(t, x_leg_R(:,2), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, x_leg_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
-    xlabel('Time [sec]');
-    ylabel('$\theta_x$ [rad]', 'Interpreter', 'latex');
-    title('LEG Angle x-axis');
-    % legend('$\theta_{x,L}$', '$\hat{\theta}_{x,L}$', '$\theta_{x,R}$', '$\hat{\theta}_{x,R}$', 'Interpreter', 'latex');
-
-    subplot(3,9,6);
-    hold on; grid on;
-    plot(t, x_leg_L(:,3), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, x_leg_commands_L(:,3), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
-    plot(t, x_leg_R(:,3), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, x_leg_commands_R(:,3), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
-    xlabel('Time [sec]');
-    ylabel('$\theta_y$ [rad]', 'Interpreter', 'latex');
-    title('LEG Angle y-axis');
-    % legend('$\theta_{y,L}$', '$\hat{\theta}_{y,L}$', '$\theta_{y,R}$', '$\hat{\theta}_{y,R}$', 'Interpreter', 'latex');
-
-    subplot(3,9,13);
-    hold on; grid on;
-    plot(t, x_leg_L(:,4), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, u_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
-    plot(t, x_leg_R(:,4), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, u_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
-    xlabel('Time [sec]');
-    ylabel('$\dot{r}$ [m/s]', 'Interpreter', 'latex');
-    title('LEG Length vel');
-    % legend('$\dot{r}_L$', '$\hat{\dot{r}}_L$', '$\dot{r}_R$', '$\hat{\dot{r}}_R$', 'Interpreter', 'latex');
-
-    subplot(3,9,14);
-    hold on; grid on;
-    plot(t, x_leg_L(:,5), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, u_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
-    plot(t, x_leg_R(:,5), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, u_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
-    xlabel('Time [sec]');
-    ylabel('$\dot{\theta}_x$ [rad/s]', 'Interpreter', 'latex');
-    title('LEG Vel x-axis');
-    % legend('$\dot{\theta}_{x,L}$', '$\hat{\dot{\theta}}_{x,L}$', '$\dot{\theta}_{x,R}$', '$\hat{\dot{\theta}}_{x,R}$', 'Interpreter', 'latex');
-
-    subplot(3,9,15);
-    hold on; grid on;
-    plot(t, x_leg_L(:,6), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
-    plot(t, u_L(:,3), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
-    plot(t, x_leg_R(:,6), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
-    plot(t, u_R(:,3), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
-    xlabel('Time [sec]');
-    ylabel('$\dot{\theta}_y$ [rad/s]', 'Interpreter', 'latex');
-    title('LEG Vel y-axis');
-    % legend('$\dot{\theta}_{y,L}$', '$\hat{\dot{\theta}}_{y,L}$', '$\dot{\theta}_{y,R}$', '$\hat{\dot{\theta}}_{y,R}$', 'Interpreter', 'latex');
-
     % FOOT STATES
-    subplot(3,9,7);
+    subplot(4,6,4);
     hold on; grid on;
     plot(t, x_foot_L(:,1), 'LineWidth', 2);
     plot(t, x_foot_R(:,1), 'LineWidth', 2);
@@ -223,7 +177,7 @@ if animate == 0
     title('FOOT x-pos');
     % legend('L', 'R');
 
-    subplot(3,9,8);
+    subplot(4,6,5);
     hold on; grid on;
     plot(t, x_foot_L(:,2), 'LineWidth', 2);
     plot(t, x_foot_R(:,2), 'LineWidth', 2);
@@ -232,7 +186,7 @@ if animate == 0
     title('FOOT y-pos');
     % legend('L', 'R');
 
-    subplot(3,9,9);
+    subplot(4,6,6);
     hold on; grid on;
     plot(t, x_foot_L(:,3), 'LineWidth', 2);
     plot(t, x_foot_R(:,3), 'LineWidth', 2);
@@ -241,7 +195,7 @@ if animate == 0
     title('FOOT z-pos');
     % legend('L', 'R');
 
-    subplot(3,9,16);
+    subplot(4,6,10);
     hold on; grid on;
     plot(t, x_foot_L(:,4), 'LineWidth', 2);
     plot(t, x_foot_R(:,4), 'LineWidth', 2);
@@ -250,7 +204,7 @@ if animate == 0
     title('FOOT x-vel');
     % legend('L', 'R');
 
-    subplot(3,9,17);
+    subplot(4,6,11);
     hold on; grid on;
     plot(t, x_foot_L(:,5), 'LineWidth', 2);
     plot(t, x_foot_R(:,5), 'LineWidth', 2);
@@ -259,7 +213,7 @@ if animate == 0
     title('FOOT y-vel');
     % legend('L', 'R');
 
-    subplot(3,9,18);
+    subplot(4,6,12);
     hold on; grid on;
     plot(t, x_foot_L(:,6), 'LineWidth', 2);
     plot(t, x_foot_R(:,6), 'LineWidth', 2);
@@ -268,8 +222,92 @@ if animate == 0
     title('FOOT z-vel');
     % legend('L', 'R');
 
+    % LEG STATES
+    subplot(4,6,13);
+    hold on; grid on;
+    plot(t, x_leg_L(:,1), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    % plot(t, x_leg_commands_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,1), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    % plot(t, x_leg_commands_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(r_min, '--', 'Min');
+    yline(r_max, '--', 'Max');
+    xlabel('Time [sec]');
+    ylabel('$r$ [m]', 'Interpreter', 'latex');
+    title('LEG Length');
+    % legend('$r_L$', '$\hat{r}_L$', '$r_R$', '$\hat{r}_R$', 'Interpreter', 'latex');
+
+    subplot(4,6,14);
+    hold on; grid on;
+    plot(t, x_leg_L(:,2), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    % plot(t, x_leg_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,2), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    % plot(t, x_leg_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    xlabel('Time [sec]');
+    ylabel('$\theta_x$ [rad]', 'Interpreter', 'latex');
+    title('LEG Angle x-axis');
+    % legend('$\theta_{x,L}$', '$\hat{\theta}_{x,L}$', '$\theta_{x,R}$', '$\hat{\theta}_{x,R}$', 'Interpreter', 'latex');
+
+    subplot(4,6,15);
+    hold on; grid on;
+    plot(t, x_leg_L(:,3), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    % plot(t, x_leg_commands_L(:,3), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,3), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    % plot(t, x_leg_commands_R(:,3), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    xlabel('Time [sec]');
+    ylabel('$\theta_y$ [rad]', 'Interpreter', 'latex');
+    title('LEG Angle y-axis');
+    % legend('$\theta_{y,L}$', '$\hat{\theta}_{y,L}$', '$\theta_{y,R}$', '$\hat{\theta}_{y,R}$', 'Interpreter', 'latex');
+
+    subplot(4,6,[19:20]);
+    hold on; grid on;
+    plot(t, x_leg_L(:,4), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    % plot(t, u_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,4), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    % plot(t, u_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    xlabel('Time [sec]');
+    ylabel('$\dot{r}$ [m/s]', 'Interpreter', 'latex');
+    title('LEG Length vel');
+    % legend('$\dot{r}_L$', '$\hat{\dot{r}}_L$', '$\dot{r}_R$', '$\hat{\dot{r}}_R$', 'Interpreter', 'latex');
+
+    subplot(4,6,[21:22]);
+    hold on; grid on;
+    plot(t, x_leg_L(:,5), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    % plot(t, u_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,5), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    % plot(t, u_R(:,2), 'LineWideth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    xlabel('Time [sec]');
+    ylabel('$\dot{\theta}_x$ [rad/s]', 'Interpreter', 'latex');
+    title('LEG Vel x-axis');
+    % legend('$\dot{\theta}_{x,L}$', '$\hat{\dot{\theta}}_{x,L}$', '$\dot{\theta}_{x,R}$', '$\hat{\dot{\theta}}_{x,R}$', 'Interpreter', 'latex');
+
+    subplot(4,6,[23:24]);
+    hold on; grid on;
+    plot(t, x_leg_L(:,6), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
+    % plot(t, u_L(:,3), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
+    plot(t, x_leg_R(:,6), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    % plot(t, u_R(:,3), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    xlabel('Time [sec]');
+    ylabel('$\dot{\theta}_y$ [rad/s]', 'Interpreter', 'latex');
+    title('LEG Vel y-axis');
+    % legend('$\dot{\theta}_{y,L}$', '$\hat{\dot{\theta}}_{y,L}$', '$\dot{\theta}_{y,R}$', '$\hat{\dot{\theta}}_{y,R}$', 'Interpreter', 'latex');
+
+    % DOMAIN
+    subplot(4,6,[16:18]);
+    hold on; grid on;
+    stairs(t, d_L, 'LineWidth', 2);
+    stairs(t, d_R, 'LineWidth', 1.5);
+    xlabel('Time [sec]');
+    title('Domain');
+    ylim([-0.5, 1.5]);
+    yticks([0, 1]);
+    yticklabels({'F', 'G'});
+    % legend('L', 'R');
+
+    tab2 = uitab(tabgroup, 'Title', 'Inputs');
+    axes('Parent', tab2);
+
     % INPUT
-    subplot(3,9,19); 
+    subplot(3,1,1); 
     hold on; grid on;
     if interp == 'Z'
         stairs(t, u_L(:,1), 'LineWidth', 2);
@@ -281,9 +319,9 @@ if animate == 0
     xlabel('Time [sec]');
     ylabel('$\hat{\dot{l_0}}$', 'interpreter', 'latex');
     title('LEG l_0 ');
-    % legend('L', 'R');
+    legend('L', 'R');
 
-    subplot(3,9,20);
+    subplot(3,1,2); 
     hold on; grid on;
     if interp == 'Z'
         stairs(t, u_L(:,2), 'LineWidth', 2);
@@ -295,8 +333,9 @@ if animate == 0
     xlabel('Time [sec]');
     ylabel('$\hat{\dot{\theta}}_x$', 'interpreter', 'latex');
     title('LEG angle x');
+    legend('L', 'R');
 
-    subplot(3,9,21);
+    subplot(3,1,3); 
     hold on; grid on;
     if interp == 'Z'
         stairs(t, u_L(:,3), 'LineWidth', 2);
@@ -308,28 +347,91 @@ if animate == 0
     xlabel('Time [sec]');
     ylabel('$\hat{\dot{\theta}}_y$', 'interpreter', 'latex');
     title('LEG angle y');
-
-    % LAMBDA LEG FORCES
-    subplot(3,9,[22:24]);
-    hold on; grid on;
-    plot(t, lambd_L_norm, 'LineWidth', 2);
-    plot(t, lambd_R_norm, 'LineWidth', 2);
-    xlabel('Time [sec]');
-    ylabel('$\|\lambda\|$', 'interpreter', 'latex');
-    title('Leg Force');
     legend('L', 'R');
 
-    % DOMAIN
-    subplot(3,9,[25:27]);
+    % FORCES AND TORQUES
+    tab3 = uitab(tabgroup, 'Title', 'Forces and Torques');
+    axes('Parent', tab3);
+
+    subplot(2, 3, 1)
     hold on; grid on;
-    stairs(t, d_L, 'LineWidth', 2);
-    stairs(t, d_R, 'LineWidth', 1.5);
+    plot(t, lambd_L(:,1), 'LineWidth', 2);
+    plot(t, lambd_R(:,1), 'LineWidth', 2);
     xlabel('Time [sec]');
-    title('Domain');
-    ylim([-0.5, 1.5]);
-    yticks([0, 1]);
-    yticklabels({'F', 'G'});
-    legend('L', 'R');
+    ylabel('$\lambda_x$', 'Interpreter', 'latex');
+    title('Lambda x-axis');
+
+    subplot(2, 3, 2)
+    hold on; grid on;
+    plot(t, lambd_L(:,2), 'LineWidth', 2);
+    plot(t, lambd_R(:,2), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\lambda_y$', 'Interpreter', 'latex');
+    title('Lambda y-axis');
+
+    subplot(2, 3, 3)
+    hold on; grid on;
+    plot(t, lambd_L(:,3), 'LineWidth', 2);
+    plot(t, lambd_R(:,3), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\lambda_z$', 'Interpreter', 'latex');
+    title('Lambda z-axis');
+
+    subplot(2, 3, 4)
+    hold on; grid on;
+    plot(t, tau_L(:,1), 'LineWidth', 2);
+    plot(t, tau_R(:,1), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\tau_x$', 'Interpreter', 'latex');
+    title('Torque x-axis');
+
+    subplot(2, 3, 5)
+    hold on; grid on;
+    plot(t, tau_L(:,2), 'LineWidth', 2);
+    plot(t, tau_R(:,2), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\tau_y$', 'Interpreter', 'latex');
+    title('Torque y-axis');
+
+    subplot(2, 3, 6)
+    hold on; grid on;
+    plot(t, tau_L(:,3), 'LineWidth', 2);
+    plot(t, tau_R(:,3), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\tau_z$', 'Interpreter', 'latex');
+    title('Torque z-axis');
+
+    % FRICITON CONES
+    tab4 = uitab(tabgroup, 'Title', 'Friction Cones');
+    axes('Parent', tab4);
+
+    subplot(1,2,1);
+    hold on; grid on; axis equal;
+    quiver3(0, 0, 0, 0.4*r, 0, 0, 'r', 'LineWidth', 2);
+    quiver3(0, 0, 0, 0, 0.4*r, 0, 'g', 'LineWidth', 2);
+    quiver3(0, 0, 0, 0, 0, 0.4*r, 'b', 'LineWidth', 2);
+    fill3(x_cone, y_cone, z_cone, 'b', 'FaceAlpha', 0.3);
+    fill3([0, x_cone], [0, y_cone], [0, z_cone], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    plot3(lambda_x_L, lambda_y_L, lambda_z_L, 'LineWidth', 2, 'Color', 'b');
+    xlabel('$\lambda_x$', 'Interpreter', 'latex');
+    ylabel('$\lambda_y$', 'Interpreter', 'latex');
+    zlabel('$\lambda_z$', 'Interpreter', 'latex');
+    title('Left Leg Friction Cone');
+    view(45, 30);
+
+    subplot(1,2,2);
+    hold on; grid on; axis equal;
+    quiver3(0, 0, 0, 0.4*r, 0, 0, 'r', 'LineWidth', 2);
+    quiver3(0, 0, 0, 0, 0.4*r, 0, 'g', 'LineWidth', 2);
+    quiver3(0, 0, 0, 0, 0, 0.4*r, 'b', 'LineWidth', 2);
+    fill3(x_cone, y_cone, z_cone, 'r', 'FaceAlpha', 0.3);
+    fill3([0, x_cone], [0, y_cone], [0, z_cone], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    plot3(lambda_x_R, lambda_y_R, lambda_z_R, 'LineWidth', 2, 'Color', 'r');
+    xlabel('$\lambda_x$', 'Interpreter', 'latex');
+    ylabel('$\lambda_y$', 'Interpreter', 'latex');
+    zlabel('$\lambda_z$', 'Interpreter', 'latex');
+    title('Right Leg Friction Cone');
+    view(45, 30);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
