@@ -33,10 +33,10 @@ t_interval = [t(1) t(end)];
 % plotting / animation
 animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
+perspective = '';    % 'T'op, 'F'ront, 'S'ide
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
-plot_des = 0;  % plot the desired trajectory
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -359,8 +359,19 @@ if animate == 1
     surf(X, Y, Z, 'FaceAlpha', 0.5, 'FaceColor', [0.8, 0.8, 0.8], 'EdgeColor', [0.7, 0.7, 0.7]);
 
     % set the view
-    azimuth = 45;
-    elevation = 30;
+    if perspective == 'T'      % (T) top view
+        azimuth = 0;
+        elevation = 90;
+    elseif perspective == 'S'  % (S) side view
+        azimuth = 0;
+        elevation = 0;
+    elseif perspective == 'F'  % (F) front view
+        azimuth = 90;
+        elevation = 0;
+    else
+        azimuth = 45;
+        elevation = 25;
+    end
     view(azimuth, elevation);
 
     % play the animation 
@@ -410,7 +421,7 @@ if animate == 1
                 foot_pts_R = [foot_pts_R; foot_R];
             end
             if plot_com == 1
-                pt_pos = plot3(px, py, pz, 'k.', 'MarkerSize', 5);
+                pt_pos = plot3(px_com, py_com, pz_com, 'k.', 'MarkerSize', 5);
                 com_pts = [com_pts; pt_pos];
             end
 
