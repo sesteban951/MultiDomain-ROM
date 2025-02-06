@@ -21,9 +21,9 @@ REFERENCE:
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
     # Desired COM states as knot points
-    px_des: [0.0, 1.0] 
-    py_des: [0.0, 0.0] 
-    pz_des: [0.55, 0.55]
+    px_des: [0.0, 4.0] 
+    py_des: [0.0,  0.0] 
+    pz_des: [0.55,  0.55]
     time: [0.0, 3.0]
 
 
@@ -79,8 +79,8 @@ SYS_PARAMS:
     theta_y_max:  1.0         # max leg angle, y-dir [rad]
     rdot_lim: 1.0           # max leg velocity [m/s]
     thetadot_lim: 3.14      # max angle velocity [rad/s]
-    torque_ankle: True     # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
-    torque_ankle_lim: 3    # ankle torque limit, [Nm]
+    torque_ankle: False     # whether or not to enable the ankle torque # TODO: think about how having torque on both legs when both are in stance
+    torque_ankle_lim: 5    # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
     friction_coeff: 0.8     # friction coefficient

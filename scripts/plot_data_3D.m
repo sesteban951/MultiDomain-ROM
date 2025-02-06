@@ -21,6 +21,9 @@ d = load(data_folder + 'domain.csv');
 config_file = '../config/config_3D.yaml';
 config = yaml.loadFile(config_file);
 
+% some time parameters
+dt = config.CTRL_PARAMS.dt_x;
+
 % some kineamtic limits and velocities
 r_min = config.SYS_PARAMS.r_min;
 r_max = config.SYS_PARAMS.r_max;
@@ -40,10 +43,10 @@ t_interval = [t(1) t(end)];
 % t_interval = [0 0.25];
 
 % plotting / animation
-animate = 1;   % animation = 1; plot states = 0
+animate = 0;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
 perspective = '';    % 'T'op, 'F'ront, 'S'ide
-replays = 2;   % how many times to replay the animation
+replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
 
@@ -77,6 +80,8 @@ x_foot_R = x_foot(:,7:12);
 % inputs
 u_L = u(:,1:3);
 u_R = u(:,4:6);
+udot_L = diff(u_L) / dt;
+udot_R = diff(u_R) / dt;
 
 % lambda leg forces
 lambd_L = lambd(:,1:3);
@@ -307,7 +312,7 @@ if animate == 0
     axes('Parent', tab2);
 
     % INPUT
-    subplot(3,1,1); 
+    subplot(3,2,1); 
     hold on; grid on;
     if interp == 'Z'
         stairs(t, u_L(:,1), 'LineWidth', 2);
@@ -317,11 +322,11 @@ if animate == 0
         plot(t, u_R(:,1), 'LineWidth', 2);
     end
     xlabel('Time [sec]');
-    ylabel('$\hat{\dot{l_0}}$', 'interpreter', 'latex');
+    ylabel('$\dot{l_0}$', 'interpreter', 'latex');
     title('LEG l_0 ');
     legend('L', 'R');
 
-    subplot(3,1,2); 
+    subplot(3,2,3); 
     hold on; grid on;
     if interp == 'Z'
         stairs(t, u_L(:,2), 'LineWidth', 2);
@@ -331,11 +336,11 @@ if animate == 0
         plot(t, u_R(:,2), 'LineWidth', 2);
     end
     xlabel('Time [sec]');
-    ylabel('$\hat{\dot{\theta}}_x$', 'interpreter', 'latex');
+    ylabel('$\dot{\theta}_x$', 'interpreter', 'latex');
     title('LEG angle x');
     legend('L', 'R');
 
-    subplot(3,1,3); 
+    subplot(3,2,5); 
     hold on; grid on;
     if interp == 'Z'
         stairs(t, u_L(:,3), 'LineWidth', 2);
@@ -345,8 +350,35 @@ if animate == 0
         plot(t, u_R(:,3), 'LineWidth', 2);
     end
     xlabel('Time [sec]');
-    ylabel('$\hat{\dot{\theta}}_y$', 'interpreter', 'latex');
+    ylabel('$\dot{\theta}_y$', 'interpreter', 'latex');
     title('LEG angle y');
+    legend('L', 'R');
+
+    subplot(3,2,2);
+    hold on; grid on;
+    plot(udot_L(:,1), 'LineWidth', 2);
+    plot(udot_R(:,1), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\ddot{l_0}$', 'interpreter', 'latex');
+    title('LEG l_0 accel');
+    legend('L', 'R');
+
+    subplot(3,2,4);
+    hold on; grid on;
+    plot(udot_L(:,2), 'LineWidth', 2);
+    plot(udot_R(:,2), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\ddot{\theta}_x$', 'interpreter', 'latex');
+    title('LEG angle x accel');
+    legend('L', 'R');
+
+    subplot(3,2,6);
+    hold on; grid on;
+    plot(udot_L(:,3), 'LineWidth', 2);
+    plot(udot_R(:,3), 'LineWidth', 2);
+    xlabel('Time [sec]');
+    ylabel('$\ddot{\theta}_y$', 'interpreter', 'latex');
+    title('LEG angle y accel');
     legend('L', 'R');
 
     % FORCES AND TORQUES
