@@ -42,7 +42,7 @@ t_interval = [t(1) t(end)];
 animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
 perspective = '';    % 'T'op, 'F'ront, 'S'ide
-replays = 3;   % how many times to replay the animation
+replays = 2;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
 
@@ -100,7 +100,6 @@ d_R = d(:,2);
 if animate == 0
     % plot all states
     figure('Name', 'COM States', 'WindowState', 'maximized');
-
 
     % COM STATES
     subplot(3,9,1);

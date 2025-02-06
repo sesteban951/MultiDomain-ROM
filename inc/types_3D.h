@@ -23,6 +23,7 @@ using Leg_Idx = int;
 
 // Fixed size arrays
 using Vector_2i = Eigen::Matrix<int, 2, 1>;
+using Vector_2d = Eigen::Matrix<double, 2, 1>;
 using Vector_3d = Eigen::Matrix<double, 3, 1>;
 using Vector_6d = Eigen::Matrix<double, 6, 1>;
 using Vector_8d = Eigen::Matrix<double, 8, 1>;
@@ -76,6 +77,7 @@ struct SystemParams
     double torque_ankle_lim;  // enable ankle torque 
     double torque_ankle_kp;   // proportional gain for ankle torque
     double torque_ankle_kd;   // derivative gain for ankle torque
+    double friction_coeff;    // friction coefficient
     char interp;              // control interpolation type
 };
 
@@ -99,6 +101,8 @@ struct ControlParams
     Matrix_6d R_rate;         // diagonal elements of R rate matrix
     bool limits_enabled;      // enable kineamtic limits cost
     double w_limits;          // kinematic limits cost
+    bool friction_enabled;    // enable friction cone cost
+    double w_friction;        // friction cone cost
 };
 
 // Distribution struct

@@ -22,6 +22,7 @@ Dynamics::Dynamics(YAML::Node config_file)
     this->params.torque_ankle_lim = config_file["SYS_PARAMS"]["torque_ankle_lim"].as<double>();
     this->params.torque_ankle_kp = config_file["SYS_PARAMS"]["torque_ankle_kp"].as<double>();
     this->params.torque_ankle_kd = config_file["SYS_PARAMS"]["torque_ankle_kd"].as<double>();
+    this->params.friction_coeff = config_file["SYS_PARAMS"]["friction_coeff"].as<double>();
     this->params.interp = config_file["SYS_PARAMS"]["interp"].as<char>();
 }
 

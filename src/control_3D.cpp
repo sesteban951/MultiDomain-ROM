@@ -139,9 +139,13 @@ void Controller::initialize_costs(YAML::Node config_file)
     this->params.R = R_diags.asDiagonal();
     this->params.R_rate = R_rate_diags.asDiagonal();
 
-    // log barrier function
+    // kinematic limits cost
     this->params.limits_enabled = config_file["COST"]["limits_enabled"].as<bool>();
     this->params.w_limits = config_file["COST"]["w_limits"].as<double>();
+
+    // frcition cone cost
+    this->params.friction_enabled = config_file["COST"]["friction_enabled"].as<bool>();
+    this->params.w_friction = config_file["COST"]["w_friction"].as<double>();
 }
 
 
@@ -471,22 +475,16 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 
     // ************************************ COM COST ************************************
 
-    // build the COM trajectory
-    Vector_6d_Traj X_com(Nx);
-    for (int i = 0; i < Nx; i++) {
-        X_com[i] = Sol.x_sys_t[i].head<6>();
-    }
-
     // compute the COM cost  TODO: Consider using a giant vector and matrix multiplication
     Vector_6d ei_com;
     double J_com = 0.0;
     // integrated cost
     for (int i = 0; i < Nx-1; i++) {
-        ei_com = X_com[i] - ref.X_com_ref[i];
+        ei_com = Sol.x_sys_t[i].head<6>() - ref.X_com_ref[i];
         J_com += ei_com.transpose() * this->params.Q_com * ei_com;
     }
     //terminal cost
-    ei_com = X_com[Nx-1] - ref.X_com_ref[Nx-1];
+    ei_com = Sol.x_sys_t[Nx-1].head<6>() - ref.X_com_ref[Nx-1];
     J_com += ei_com.transpose() * this->params.Qf_com * ei_com;
 
     // ************************************ LEG COST ************************************
@@ -536,9 +534,62 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
         J_input += (u_delta).transpose() * this->params.R_rate * (u_delta);
     }
 
+    // ************************************ FRICTION COST ************************************
+
+    // compute the friction cone cost
+    // lambda_t in {lambda in R^3 | lambda_z >= 0, ||lambda_xy|| <= mu * lambda_z}
+    double J_friction = 0.0;
+    
+    // TODO: something is broken here
+    if (this->params.friction_enabled) {
+
+        // usefule variables
+        Domain d;
+        Vector_6d lambdas;
+        Vector_3d lam;
+        double lam_z, lam_xy_norm;
+        double coeff = this->dynamics.params.friction_coeff;
+        double w_friction = this->params.w_friction;
+        
+        // loop through the trajectory
+        for (int i = 0; i < Nx; i++) {
+            
+            // grab the current domain at time t
+            d = Sol.domain_t[i];
+
+            // if a leg is in stance, compute the friction cost
+            if (d[0] == Contact::STANCE || d[1] == Contact::STANCE) {    
+                
+                // get the lambda vector at time t
+                lambdas = Sol.lambda_t[i];
+
+                // for each leg compute the friction cone violation cost
+                for (int j = 0; j < this->dynamics.n_leg; j++) {
+
+                    if (d[j] == Contact::STANCE) {
+                        // get the i'th leg lambda vector
+                        lam = lambdas.segment<3>(3 * j);
+                        lam_z = lam(2);
+                        lam_xy_norm = lam.head<2>().norm();
+
+                        // check that lambda_z >= 0
+                        J_friction += (lam_z < 0.0) ? this->params.w_friction * lam_z * lam_z : 0.0;
+
+                        // check that ||lambda_xy|| <= mu * lambda_z
+                        J_friction += (lam_xy_norm > coeff * lam_z) ? w_friction * (lam_xy_norm - coeff * lam_z) * (lam_xy_norm - coeff * lam_z) : 0.0;
+                    }
+                }
+            }
+        }
+    }
+
+    // ************************************ TORQUE COST ************************************
+
+    // TODO: add a torque cost
+
     // ************************************ TOTAL COST ************************************
 
-    return J_com + J_legs + J_limits + J_input;
+    return J_com + J_legs + J_limits + J_input + J_friction;
 }
 
 
