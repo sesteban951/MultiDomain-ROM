@@ -543,7 +543,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     // TODO: something is broken here
     if (this->params.friction_enabled) {
 
-        // usefule variables
+        // useful variables
         Domain d;
         Vector_6d lambdas;
         Vector_3d lam;
@@ -572,11 +572,11 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
                         lam_z = lam(2);
                         lam_xy_norm = lam.head<2>().norm();
 
-                        // check that lambda_z >= 0
-                        J_friction += (lam_z < 0.0) ? this->params.w_friction * lam_z * lam_z : 0.0;
-
-                        // check that ||lambda_xy|| <= mu * lambda_z
-                        J_friction += (lam_xy_norm > coeff * lam_z) ? w_friction * (lam_xy_norm - coeff * lam_z) * (lam_xy_norm - coeff * lam_z) : 0.0;
+                        // check that lambda_z >= 0 (negative is possible due to coarse switching surface approximation)
+                        if (lam_z > 0.0) {
+                            // check that ||lambda_xy|| <= mu * lambda_z
+                            J_friction += (lam_xy_norm > coeff * lam_z) ? w_friction * (lam_xy_norm - coeff * lam_z) * (lam_xy_norm - coeff * lam_z) : 0.0;                            
+                        }
                     }
                 }
             }
@@ -585,7 +585,8 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 
     // ************************************ TORQUE COST ************************************
 
-    // TODO: add a torque cost
+    // Ankle torque cost
+    
 
     // ************************************ TOTAL COST ************************************
 

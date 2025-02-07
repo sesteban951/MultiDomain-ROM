@@ -42,11 +42,11 @@ COST:
 
     # kineamtic limits and velocities cost
     limits_enabled: False
-    w_limits: 50.0
+    w_limits: 10.0
 
     # friction cone cost
     friction_enabled: False
-    w_friction: 5.0
+    w_friction: 0.01
 
 ####################################################################
 # CONTROL PARAMETERS
@@ -56,8 +56,8 @@ CTRL_PARAMS:
     N_x: 80         # number of time steps
     N_u: 4          # number of control points
     dt_x: 0.01      # time step, [s]
-    K: 25           # number of rollouts
-    N_elite: 5      # number of elite samples
+    K: 50           # number of rollouts
+    N_elite: 10      # number of elite samples
     CEM_iters: 10    # number of CEM iterations
 
 
