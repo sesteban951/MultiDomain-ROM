@@ -45,7 +45,7 @@ t_interval = [t(1) t(end)];
 % plotting / animation
 animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
-perspective = '';    % 'T'op, 'F'ront, 'S'ide
+perspective = 'T';    % 'T'op, 'F'ront, 'S'ide
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
@@ -257,6 +257,8 @@ if animate == 0
     plot(t, x_leg_L(:,3), 'LineWidth', 2, 'Color', [0 0.4470 0.7410]);
     % plot(t, x_leg_commands_L(:,3), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,3), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
+    yline(theta_y_min, '--', 'Min');
+    yline(theta_y_max, '--', 'Max');
     % plot(t, x_leg_commands_R(:,3), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
     xlabel('Time [sec]');
     ylabel('$\theta_y$ [rad]', 'Interpreter', 'latex');

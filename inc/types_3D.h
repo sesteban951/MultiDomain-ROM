@@ -114,6 +114,7 @@ struct GaussianDistribution
     bool diag_cov;      // choose to enfoce diagonal covariance
     bool seed_enabled;  // enable random number generator seed
     int seed;           // random number generator seed
+    bool saturate;      // saturate the control inputs
 };
 
 // dynamics solution struct (flow result)

@@ -242,9 +242,12 @@ void Controller::initialize_distribution(YAML::Node config_file)
     // set if covariance should be strictly diagonal
     this->dist.diag_cov = config_file["DIST_PARAMS"]["diag_cov"].as<bool>();
 
-    // set the random 
+    // set the random seed
     this->dist.seed_enabled = config_file["DIST_PARAMS"]["seed_enabled"].as<bool>();
     this->dist.seed = config_file["DIST_PARAMS"]["seed"].as<int>();
+
+    // set if the control inputs should be saturated
+    this->dist.saturate = config_file["DIST_PARAMS"]["saturate"].as<bool>();
 
     // create random device
     std::random_device rand_device;
@@ -278,6 +281,10 @@ void Controller::sample_input_trajectory()
         throw std::runtime_error("Covariance matrix is possibly not positive definite");
     }
 
+    // for saturating hte inputs
+    double rdot_lim = this->dynamics.params.rdot_lim;
+    double thetadot_lim = this->dynamics.params.thetadot_lim;
+
     // U ~ N(mu, Sigma) <=> U = L * Z + mu; Z ~ N(0, I)
     // Sample the input trajectories
     Vector_6d u;                                    
@@ -293,7 +300,21 @@ void Controller::sample_input_trajectory()
 
         // unvectorize U_vec into U_traj
         for (int k = 0; k < this->params.N_u; k++) {
+            
+            // grab the k'th control input
             u = this->U_vec_sample.segment<6>(6 * k);
+
+            // limit the input to the bounds
+            if (this->dist.saturate == true) {
+                u(0) = std::max(-rdot_lim, std::min(rdot_lim, u(0)));
+                u(1) = std::max(-thetadot_lim, std::min(thetadot_lim, u(1)));
+                u(2) = std::max(-thetadot_lim, std::min(thetadot_lim, u(2)));
+                u(3) = std::max(-rdot_lim, std::min(rdot_lim, u(3)));
+                u(4) = std::max(-thetadot_lim, std::min(thetadot_lim, u(4)));
+                u(5) = std::max(-thetadot_lim, std::min(thetadot_lim, u(5)));
+            }
+
+            // insert into the trajectory
             this->U_traj_sample[k] = u;
         }
 
