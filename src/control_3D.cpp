@@ -82,7 +82,6 @@ void Controller::initialize_variables()
     this->Z_vec_sample.resize(3 * N_u * n_leg);
     this->U_vec_sample.resize(3 * N_u * n_leg);
     this->U_traj_sample.resize(N_u);
-    this->U_traj_samples.resize(this->params.K);
 
     // vectors and matrices for the distribution updates
     this->mu.resize(3 * N_u * n_leg);
@@ -98,6 +97,16 @@ void Controller::initialize_variables()
     // references
     this->ref_horizon.X_com_ref.resize(this->params.N_x);
     this->ref_horizon.X_leg_ref.resize(this->params.N_x);
+
+    // Monte Carlo results
+    this->S_mc.resize(this->params.K);
+    this->U_mc.resize(this->params.K);
+    this->J_mc.resize(this->params.K);
+
+    // Receding Horizon results
+    this->S_elite.resize(this->params.N_elite);
+    this->U_elite.resize(this->params.N_elite);
+    this->J_elite.resize(this->params.N_elite);
 }
 
 void Controller::initialize_costs(YAML::Node config_file)
@@ -289,7 +298,7 @@ void Controller::sample_input_trajectory()
         }
 
         // store the input trajectory
-        U_traj_samples[i] = U_traj_sample;
+        this->U_mc[i] = U_traj_sample;
     }
 }
 
@@ -465,7 +474,6 @@ double Controller::cost_limits(const Vector_12d& x_leg) {
 }
 
 
-// TODO: there is code optimziation work to be done here. MAJOR source of inefficiency
 // evaluate the cost function given a solution
 double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol, const Vector_6d_Traj& U)
 {
@@ -475,7 +483,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 
     // ************************************ COM COST ************************************
 
-    // compute the COM cost  TODO: Consider using a giant vector and matrix multiplication
+    // compute the COM cost
     Vector_6d ei_com;
     double J_com = 0.0;
     // integrated cost
@@ -492,7 +500,6 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     // compute the LEG cost
     Vector_12d ei_leg;
     double J_legs = 0.0;
-    // integrated cost   TODO: Consider using a giant vector and matrix multiplication
     for (int i = 0; i < Nx-1; i++) {
         ei_leg = Sol.x_leg_t[i] - ref.X_leg_ref[i];
         J_legs += ei_leg.transpose() * this->params.Q_leg * ei_leg;
@@ -513,7 +520,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 
     // ************************************ INPUT COST ************************************
 
-    // penalize the velocity input (smaller velocities) TODO: Consider using a giant vector and matrix multiplication
+    // penalize the velocity input (smaller velocities)
     Vector_6d ui;
     double J_input = 0.0;
     for (int i = 0; i < Nu; i++) {        
@@ -539,8 +546,6 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     // compute the friction cone cost
     // lambda_t in {lambda in R^3 | lambda_z >= 0, ||lambda_xy|| <= mu * lambda_z}
     double J_friction = 0.0;
-    
-    // TODO: something is broken here
     if (this->params.friction_enabled) {
 
         // useful variables
@@ -570,11 +575,11 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
                         // get the i'th leg lambda vector
                         lam = lambdas.segment<3>(3 * j);
                         lam_z = lam(2);
-                        lam_xy_norm = lam.head<2>().norm();
 
                         // check that lambda_z >= 0 (negative is possible due to coarse switching surface approximation)
                         if (lam_z > 0.0) {
                             // check that ||lambda_xy|| <= mu * lambda_z
+                            lam_xy_norm = lam.head<2>().norm();
                             J_friction += (lam_xy_norm > coeff * lam_z) ? w_friction * (lam_xy_norm - coeff * lam_z) * (lam_xy_norm - coeff * lam_z) : 0.0;                            
                         }
                     }
@@ -583,10 +588,9 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
         }
     }
 
-    // ************************************ TORQUE COST ************************************
+    // ************************************ GAIT COST ************************************
 
-    // Ankle torque cost
-    
+    // TODO: implement gait cost
 
     // ************************************ TOTAL COST ************************************
 
@@ -595,7 +599,7 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 
 
 // perform open loop rollouts
-MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0)
+void Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0)
 {
     // generate new bundle of input trajectories
     auto t0 = std::chrono::high_resolution_clock::now();
@@ -604,10 +608,6 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
     if (this->verbose == true) {
         std::cout << "Time to sample input trajectories: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
     }
-
-    // initialize the containers for the solutions
-    Solution_Bundle Sol_bundle(this->params.K); // TODO: have this as a class variable
-    Vector_1d_List J(this->params.K);
 
     // generate the reference trajectory
     t0 = std::chrono::high_resolution_clock::now();
@@ -622,7 +622,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
     this->dynamics.resizeSolution(sol, this->params.T_x);
     double cost = 0.0;
     t0 = std::chrono::high_resolution_clock::now();
-    #pragma omp parallel for private(sol, cost) // TODO: ok, here, how do I handle parallized regions if I want to be computationally efficeint?
+    #pragma omp parallel for private(sol, cost) 
     for (int k = 0; k < this->params.K; k++) {
         
         // initialize the cost
@@ -630,7 +630,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
 
         // perform the rollout
         auto t1 = std::chrono::high_resolution_clock::now();
-        sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, this->U_traj_samples[k]);
+        sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, this->U_mc[k]);
         auto t2 = std::chrono::high_resolution_clock::now();
         if (this->verbose == true) {
             // std::cout << "Time to perform rollout: " << std::chrono::duration<double, std::milli>(t2 - t1).count() << " ms" << std::endl;
@@ -638,7 +638,7 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
 
         // compute the cost
         t1 = std::chrono::high_resolution_clock::now();
-        cost = this->cost_function(this->ref_horizon, sol, this->U_traj_samples[k]);
+        cost = this->cost_function(this->ref_horizon, sol, this->U_mc[k]);
         t2 = std::chrono::high_resolution_clock::now();
         if (this->verbose == true) {
             // std::cout << "Time to compute cost: " << std::chrono::duration<double, std::milli>(t2 - t1).count() << " ms" << std::endl;
@@ -648,8 +648,8 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
         t1 = std::chrono::high_resolution_clock::now();
         #pragma omp critical
         {
-            Sol_bundle[k] = sol;
-            J[k] = cost;
+            this->S_mc[k] = sol;
+            this->J_mc[k] = cost;
         }
         t2 = std::chrono::high_resolution_clock::now();
         if (this->verbose == true) {
@@ -661,20 +661,11 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_
         std::cout << "Time to perform rollouts: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
     }
 
-    // pack solutions into a tuple
-    MC_Result mc;
-    mc.S = Sol_bundle;
-    mc.U = this->U_traj_samples;
-    mc.J = J;
-
-    // return the solutions
-    return mc;
 }
 
 
 // select solutions based on cost
-void Controller::sort_trajectories(const Solution_Bundle&  S,      const Vector_6d_Traj_Bundle& U,      const Vector_1d_List& J,
-                                         Solution_Bundle&  S_elite,      Vector_6d_Traj_Bundle& U_elite,      Vector_1d_List& J_elite)
+void Controller::sort_trajectories()
 {
     // Create an index vector
     Vector_1i_List idx(this->params.K);
@@ -682,13 +673,13 @@ void Controller::sort_trajectories(const Solution_Bundle&  S,      const Vector_
 
     // Use nth_element to bring the top N_elite elements to the front in O(n) time
     std::nth_element(idx.begin(), idx.begin() + this->params.N_elite, idx.end(),
-                     [&J](int i1, int i2) { return J[i1] < J[i2]; });
+                    [this](int i1, int i2) { return this->J_mc[i1] < this->J_mc[i2]; });
 
     // Populate elite solutions
     for (int i = 0; i < this->params.N_elite; i++) {
-        S_elite[i] = S[idx[i]];
-        U_elite[i] = U[idx[i]];
-        J_elite[i] = J[idx[i]];
+        this->S_elite[i] = this->S_mc[idx[i]];
+        this->U_elite[i] = this->U_mc[idx[i]];
+        this->J_elite[i] = this->J_mc[idx[i]];
     }
 }
 
@@ -700,31 +691,21 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_12d x0_s
     // Monte Carlo Result to return
     MC_Result mc;
 
-    // monte carlo variables
-    Solution_Bundle S(this->params.N_elite), S_elite(this->params.N_elite);
-    Vector_6d_Traj_Bundle U(this->params.N_elite), U_elite(this->params.N_elite);
-    Vector_1d_List J(this->params.N_elite), J_elite(this->params.N_elite);
-
     // perform the CEM iterations
     auto t0_total = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < this->params.CEM_iters; i++) {
 
         // perform monte carlo simulation
         auto t0 = std::chrono::high_resolution_clock::now();
-        mc = this->monte_carlo(t_sim, x0_sys, p0_foot, d0);
+        this->monte_carlo(t_sim, x0_sys, p0_foot, d0);
         auto tf = std::chrono::high_resolution_clock::now();
         if (this->verbose == true) {
             std::cout << "Time to perform Monte Carlo: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
         }
 
-        // store monte carlo results
-        S = mc.S;
-        U = mc.U;
-        J = mc.J;
-
         // sort the cost vector in ascending order
         t0 = std::chrono::high_resolution_clock::now();
-        this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
+        this->sort_trajectories();
         tf = std::chrono::high_resolution_clock::now();
         if (this->verbose == true) {
             std::cout << "Time to sort trajectories: " << std::chrono::duration<double, std::milli>(tf - t0).count() << " ms" << std::endl;
@@ -765,21 +746,15 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_12d x0_s
     // do a final sort to get the best solution
     Vector_1i_List idx(this->params.N_elite);
     std::iota(idx.begin(), idx.end(), 0);
-
+    
     // get only the best solution
     std::nth_element(idx.begin(), idx.begin() + 1, idx.end(),
-                     [&J_elite](int i1, int i2) { return J_elite[i1] < J_elite[i2]; });
+                    [this](int i1, int i2) { return this->J_elite[i1] < this->J_elite[i2]; });
 
-    // get the best solution
-    Solution S_opt;
-    Vector_6d_Traj U_opt;
-    S_opt = S_elite[idx[0]];
-    U_opt = U_elite[idx[0]];
-    
     // return the best solution
     RHC_Result rhc;
-    rhc.S = S_opt;
-    rhc.U = U_opt;
+    rhc.S = this->S_elite[idx[0]];
+    rhc.U = this->U_elite[idx[0]];
 
     return rhc;
 }
