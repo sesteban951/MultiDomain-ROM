@@ -62,10 +62,7 @@ Controller::Controller(YAML::Node config_file) : dynamics(config_file)
 
     // log barrier function
     this->params.log_barrier_enabled = config_file["COST"]["log_barrier_enabled"].as<bool>();
-    this->params.r_weight = config_file["COST"]["r_weight"].as<double>();
-    this->params.theta_weight = config_file["COST"]["theta_weight"].as<double>();
-    this->params.rdot_weight = config_file["COST"]["rdot_weight"].as<double>();
-    this->params.thetadot_weight = config_file["COST"]["thetadot_weight"].as<double>();
+    this->params.J_barrier = config_file["COST"]["J_barrier"].as<double>();
 
     // compute u(t) dt (N of the integration is not necessarily equal to the number of control points)
     double T = (this->params.N_x-1) * this->params.dt_x;
@@ -122,8 +119,6 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     // reference parameters
     this->r_des = config_file["REFERENCE"]["r_des"].as<double>();
     this->theta_des = config_file["REFERENCE"]["theta_des"].as<double>();
-    this->vx_des = config_file["REFERENCE"]["vx_des_"].as<double>();
-    this->pz_des = config_file["REFERENCE"]["pz_des_"].as<double>();
 
     // set the desired COM trajectory
     Vector_1d_Traj time = config_file["REFERENCE"]["time"].as<std::vector<double>>();
@@ -387,13 +382,6 @@ Reference Controller::generate_reference_trajectory(double t_sim, Vector_4d x0_c
         // build the reference
         xi_com_ref << pi_com_ref, vi_com_ref;
 
-        // build the COM reference (only for hardcoded references)
-        // t = i * this->params.dt_x;
-        // xi_com_ref << x0_com(0) + this->vx_des * t, 
-        //               this->pz_des, 
-        //               this->vx_des, 
-        //               0.0;
-
         // insert into trajectory
         X_com_ref[i] = xi_com_ref;
     }
@@ -450,12 +438,6 @@ double Controller::cost_log_barrier(Vector_8d x_leg) {
     // want to compute the cost of the log barrier function
     double J_log = 0.0;
 
-    // log barrier function parameters
-    double r_weight = this->params.r_weight;
-    double rdot_weight = this->params.rdot_weight;
-    double theta_weight = this->params.theta_weight;
-    double thetadot_weight = this->params.thetadot_weight;
-
     // leg state constraints
     double r_min = this->dynamics.params.r_min;
     double r_max = this->dynamics.params.r_max;
@@ -467,7 +449,7 @@ double Controller::cost_log_barrier(Vector_8d x_leg) {
     // compute the costs
     Vector_4d xi_leg;
     double r, theta, rdot, thetadot;
-    double r_cost, rdot_cost, theta_cost, thetadot_cost;
+    // double r_cost, rdot_cost, theta_cost, thetadot_cost;
     for (int i = 0; i < this->dynamics.n_leg; i++) {
         // unpack the leg state
         xi_leg = x_leg.segment<4>(4 * i);
@@ -475,16 +457,20 @@ double Controller::cost_log_barrier(Vector_8d x_leg) {
         theta = xi_leg(1);
         rdot = xi_leg(2);
         thetadot = xi_leg(3);
-        
-        // compare the state to the limits
 
+        // compare the state to the limits (this alternative is a simple heuristic for barrier-like behavior)
+        J_log += (r < r_min || r > r_max) ? this->params.J_barrier : 0;
+        J_log += (rdot < -rdot_lim || rdot > rdot_lim) ? this->params.J_barrier : 0;
+        J_log += (theta < theta_min || theta > theta_max) ? this->params.J_barrier : 0;
+        J_log += (thetadot < -thetadot_lim || thetadot > thetadot_lim) ? this->params.J_barrier : 0;
+        
+        // NOTE: blindly doing the below is bad since it is almost certain that I will pass the boundary and get a huge cost (seg faults)
+        //       I am not doign a gradient based method so I can't see the high cost function approaching
         // // compute the costs
         // r_cost = -r_weight * std::log(r - r_min) - r_weight * std::log(r_max - r);
         // rdot_cost = -rdot_weight * std::log(rdot + rdot_lim) - rdot_weight * std::log(rdot_lim - rdot);
         // theta_cost = -theta_weight * std::log(theta - theta_min) - theta_weight * std::log(theta_max - theta);
         // thetadot_cost = -thetadot_weight * std::log(thetadot + thetadot_lim) - thetadot_weight * std::log(thetadot_lim - thetadot);
-
-        // add to the total cost
         // J_log += r_cost + rdot_cost + theta_cost + thetadot_cost;
     }
 
@@ -539,6 +525,11 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
         for (int i = 0; i < N; i++) {
             J_legs_barrier += this->cost_log_barrier(Sol.x_leg_t[i]);
         }
+        J_legs += J_legs_barrier;
+    }
+    else {
+        J_legs_barrier = 0.0;
+        J_legs += J_legs_barrier;
     }
 
     // ************************************ CONTACT CYCLE COST ************************************
@@ -587,7 +578,7 @@ double Controller::cost_function(const Reference& ref, const Solution& Sol, cons
 
     // total cost
     double J_total; 
-    J_total = J_com + J_legs + J_legs_barrier + J_input + J_cycle;
+    J_total = J_com + J_legs + J_input + J_cycle;
 
     return J_total;
 }
@@ -619,18 +610,11 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
         cost = 0.0;
 
         // perform the rollout
-	
-        // auto t0 = std::chrono::high_resolution_clock::now();
         sol = this->dynamics.RK3_rollout(this->params.T_x, this->params.T_u, x0_sys, p0_feet, d0, U_bundle[k]);
-        // auto tf = std::chrono::high_resolution_clock::now();
-            // std::cout << "Time for rollout: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
 
         // compute the cost
-        // t0 = std::chrono::high_resolution_clock::now();
         cost = this->cost_function(ref, sol, U_bundle[k]);
-        // tf = std::chrono::high_resolution_clock::now();
-            // std::cout << "Time for cost: " << std::chrono::duration<double, std::micro>(tf - t0).count() << " micros" << std::endl;
-
+    
         // store the results (use critical sections to avoid race conditions if necessary)
         #pragma omp critical
         {
@@ -638,13 +622,6 @@ MC_Result Controller::monte_carlo(double t_sim, Vector_8d x0_sys, Vector_4d p0_f
             J[k] = cost;
         }
     }
-
-    // print out all the costs
-        // std::cout << "Costs: ";
-        // for (int i = 0; i < K; i++) {
-        //     std::cout << J[i] << ", ";
-        // }
-        // std::cout << std::endl;
 
     // pack solutions into a tuple
     MC_Result mc;
@@ -698,10 +675,7 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
 
         // perform monte carlo simulation
         auto t0 = std::chrono::high_resolution_clock::now();
-        auto ts = std::chrono::high_resolution_clock::now();
         mc = this->monte_carlo(t_sim, x0_sys, p0_foot, d0, this->params.K);
-        auto te = std::chrono::high_resolution_clock::now();
-        // std::cout << "Time for monte carlo: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
 
         // store monte carlo results
         S = mc.S;
@@ -709,16 +683,10 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
         J = mc.J;
 
         // sort the cost vector in ascending order
-        ts = std::chrono::high_resolution_clock::now();
         this->sort_trajectories(S, U, J, S_elite, U_elite, J_elite);
-        te = std::chrono::high_resolution_clock::now();
-        // std::cout << "Time for sort: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
 
         // update the distribution parameters
-        ts = std::chrono::high_resolution_clock::now();
         this->update_distribution_params(U_elite);
-        te = std::chrono::high_resolution_clock::now();
-        // std::cout << "Time for update: " << std::chrono::duration<double, std::micro>(te - ts).count() << " micros" << std::endl;
         auto tf = std::chrono::high_resolution_clock::now();
 
         // print some info
@@ -745,10 +713,24 @@ RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_8d x0_sy
         std::cout << "Average Rollout time: " << T_tot / (this->params.CEM_iters * this->params.K) * 1000000.0 << " [us]" << std::endl << std::endl;
     }
 
+    // do a final sort to get the best solution
+    Vector_1i_List idx(this->params.N_elite);
+    std::iota(idx.begin(), idx.end(), 0);
+
+    // get only the best solution
+    std::nth_element(idx.begin(), idx.begin() + 1, idx.end(),
+                     [&J_elite](int i1, int i2) { return J_elite[i1] < J_elite[i2]; });
+
+    // get the best solution
+    Solution S_opt;
+    Vector_4d_Traj U_opt;
+    S_opt = S_elite[idx[0]];
+    U_opt = U_elite[idx[0]];
+    
     // return the best solution
     RHC_Result rhc;
-    rhc.S = S_elite[0];
-    rhc.U = U_elite[0];
+    rhc.S = S_opt;
+    rhc.U = U_opt;
 
     return rhc;
 }

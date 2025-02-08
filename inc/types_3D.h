@@ -24,13 +24,12 @@ using Leg_Idx = int;
 // Fixed size arrays
 using Vector_2i = Eigen::Matrix<int, 2, 1>;
 using Vector_2d = Eigen::Matrix<double, 2, 1>;
-using Vector_4d = Eigen::Matrix<double, 4, 1>;
+using Vector_3d = Eigen::Matrix<double, 3, 1>;
 using Vector_6d = Eigen::Matrix<double, 6, 1>;
 using Vector_8d = Eigen::Matrix<double, 8, 1>;
 using Vector_12d = Eigen::Matrix<double, 12, 1>;
 
-using Matrix_2d = Eigen::Matrix<double, 2, 2>;
-using Matrix_4d = Eigen::Matrix<double, 4, 4>;
+using Matrix_3d = Eigen::Matrix<double, 3, 3>;
 using Matrix_6d = Eigen::Matrix<double, 6, 6>;
 using Matrix_8d = Eigen::Matrix<double, 8, 8>;
 using Matrix_12d = Eigen::Matrix<double, 12, 12>;
@@ -43,8 +42,7 @@ using Matrix_d = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 using Vector_1i_Traj = std::vector<int>;
 using Vector_1d_Traj = std::vector<double>;
 using Vector_2i_Traj = std::vector<Vector_2i>;
-using Vector_2d_Traj = std::vector<Vector_2d>;
-using Vector_4d_Traj = std::vector<Vector_4d>;
+using Vector_3d_Traj = std::vector<Vector_3d>;
 using Vector_6d_Traj = std::vector<Vector_6d>;
 using Vector_8d_Traj = std::vector<Vector_8d>;
 using Vector_12d_Traj = std::vector<Vector_12d>;
@@ -69,14 +67,17 @@ struct SystemParams
     double l0;                // nominal rest length [m]
     double r_min;             // minimum rest length [m]
     double r_max;             // maximum rest length [m]
-    double theta_min;         // minimum leg angle from vertical [rad]
-    double theta_max;         // maximum leg angle from vertical [rad]
+    double theta_x_min;       // minimum leg angle from vertical [rad]
+    double theta_x_max;       // maximum leg angle from vertical [rad]
+    double theta_y_min;       // minimum leg angle from vertical [rad]
+    double theta_y_max;       // maximum leg angle from vertical [rad]
     double rdot_lim;          // maximum leg extension velocity [m/s]
     double thetadot_lim;      // maximum leg angle velocity [rad/s]
     bool torque_ankle;        // enable ankle torque 
     double torque_ankle_lim;  // enable ankle torque 
     double torque_ankle_kp;   // proportional gain for ankle torque
     double torque_ankle_kd;   // derivative gain for ankle torque
+    double friction_coeff;    // friction coefficient
     char interp;              // control interpolation type
 };
 
@@ -92,15 +93,16 @@ struct ControlParams
     int K;                    // number of parallel 
     int N_elite;              // number of elite control sequences
     int CEM_iters;            // number of CEM iterations
-    Matrix_4d Q_com;          // diagonal elements of com Q matrix
-    Matrix_4d Qf_com;         // diagonal elements of com Qf matrix
-    Matrix_8d Q_leg;          // diagonal elements of leg Q matrix
-    Matrix_8d Qf_leg;         // diagonal elements of leg Qf matrix
-    Matrix_4d R;              // diagonal elements of R matrix
-    Matrix_4d R_rate;         // diagonal elements of R rate matrix
-    double gait_cycle_weight; // weight for gait cycle cost
-    bool log_barrier_enabled; // enable log barrier function
-    double J_barrier;         // barrier function cost
+    Matrix_6d Q_com;          // diagonal elements of com Q matrix
+    Matrix_6d Qf_com;         // diagonal elements of com Qf matrix
+    Matrix_12d Q_leg;         // diagonal elements of leg Q matrix
+    Matrix_12d Qf_leg;        // diagonal elements of leg Qf matrix
+    Matrix_6d R;              // diagonal elements of R matrix
+    Matrix_6d R_rate;         // diagonal elements of R rate matrix
+    bool limits_enabled;      // enable kineamtic limits cost
+    double w_limits;          // kinematic limits cost
+    bool friction_enabled;    // enable friction cone cost
+    double w_friction;        // friction cone cost
 };
 
 // Distribution struct
@@ -112,28 +114,36 @@ struct GaussianDistribution
     bool diag_cov;      // choose to enfoce diagonal covariance
     bool seed_enabled;  // enable random number generator seed
     int seed;           // random number generator seed
+    bool saturate;      // saturate the control inputs
 };
 
 // dynamics solution struct (flow result)
 struct Solution
 {
-    Vector_1d_Traj t;        // time trajectory
-    Vector_8d_Traj x_sys_t;  // system state trajectory
-    Vector_8d_Traj x_leg_t;  // leg state trajectory
-    Vector_8d_Traj x_foot_t; // foot state trajectory
-    Vector_4d_Traj u_t;      // interpolated control input trajectory
-    Vector_4d_Traj lambda_t; // leg force trajectory
-    Vector_2d_Traj tau_t;    // ankle torque trajectory
-    Domain_Traj domain_t;    // domain trajectory
-    bool viability;          // viability of the trajectory
+    Vector_1d_Traj t;         // time trajectory
+    Vector_12d_Traj x_sys_t;  // system state trajectory
+    Vector_12d_Traj x_leg_t;  // leg state trajectory
+    Vector_12d_Traj x_foot_t; // foot state trajectory
+    Vector_6d_Traj u_t;       // interpolated control input trajectory
+    Vector_6d_Traj lambda_t;  // leg force trajectory
+    Vector_6d_Traj tau_t;     // ankle torque trajectory
+    Domain_Traj domain_t;     // domain trajectory
+    bool viability;           // viability of the trajectory
 };
 
 // Reference type
-struct Reference
+struct ReferenceGlobal  // throughout the entire simulation
 {
-    Vector_4d_Traj X_com_ref; // reference trajectory
-    Vector_8d_Traj X_leg_ref; // reference trajectory
-    Vector_2i_Traj D_ref;     // reference trajectory
+    Vector_1d_Traj t_ref;     // time reference
+    Vector_3d_Traj p_com_ref; // com position reference
+    Vector_12d X_leg_ref;     // leg state reference
+    int N_ref;                // number of reference points
+};
+
+struct ReferenceLocal  // throughtout a horizon
+{
+    Vector_6d_Traj  X_com_ref; // com position reference
+    Vector_12d_Traj X_leg_ref;     // leg state reference
 };
 
 // ***********************************************************************************
@@ -141,8 +151,7 @@ struct Reference
 // ***********************************************************************************
 
 // Bundle of Trajectories
-using Vector_2d_Traj_Bundle = std::vector<Vector_2d_Traj>;
-using Vector_4d_Traj_Bundle = std::vector<Vector_4d_Traj>;
+using Vector_3d_Traj_Bundle = std::vector<Vector_3d_Traj>;
 using Vector_6d_Traj_Bundle = std::vector<Vector_6d_Traj>;
 using Vector_8d_Traj_Bundle = std::vector<Vector_8d_Traj>;
 using Vector_12d_Traj_Bundle = std::vector<Vector_12d_Traj>;
@@ -157,20 +166,22 @@ using Solution_Bundle = std::vector<Solution>;
 // dynamics integration step result
 struct Dynamics_Result
 {
-    Vector_8d xdot;    // state derivative
-    Vector_4d lambdas; // leg force
-    Vector_2d taus;    // ankle torque
+    Vector_12d xdot;    // state derivative
+    Vector_6d lambdas; // leg force
+    Vector_6d taus;    // ankle torque
 };
 
+// monte carlo simulation result
 struct MC_Result
 {
     Solution_Bundle S;       // Solutions
-    Vector_4d_Traj_Bundle U; // Control Inputs  
+    Vector_6d_Traj_Bundle U; // Control Inputs  
     Vector_1d_List J;        // Costs
 };
 
+// result of the sampling predictive control
 struct RHC_Result
 {
     Solution S;       // Solution
-    Vector_4d_Traj U; // Optimal Control Inputs  
+    Vector_6d_Traj U; // Optimal Control Inputs  
 };

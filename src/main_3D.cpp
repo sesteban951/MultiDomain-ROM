@@ -8,116 +8,44 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "../inc/types.h"
-#include "../inc/dynamics.h"
-#include "../inc/control.h"
+#include "../inc/types_3D.h"
+#include "../inc/dynamics_3D.h"
+#include "../inc/control_3D.h"
 
 int main()
 {
     // load parameters from yaml file
-    std::string config_file_path = "../config/config.yaml";   
+    std::string config_file_path = "../config/config_3D.yaml";
     YAML::Node config_file = YAML::LoadFile(config_file_path);
     
     // create dynamics object
     Dynamics dynamics(config_file);
-
     Controller controller(config_file);
 
     // initial conditions
-    Vector_8d x0_sys;
-    Vector_2d p0_left, p0_right;
-    Vector_4d p0_feet;
+    Vector_12d x0_sys;
+    Vector_3d p0_left, p0_right;
+    Vector_6d p0_feet;
 
     std::vector<double> x0_temp = config_file["STATE"]["x0"].as<std::vector<double>>();
     x0_sys << x0_temp[0],    // px_com
-              x0_temp[1],    // pz_com
-              x0_temp[2],    // vx_com
-              x0_temp[3],    // vz_com
-              x0_temp[4],    // l0_command (left)
-              x0_temp[5],    // theta_command (left)
-              x0_temp[6],    // l0dot_command (left)
-              x0_temp[7];    // thetadot_command (left)
-    p0_left << -0.1, 0.0;
-    p0_right << 0.1, 0.0;
+              x0_temp[1],    // py_com
+              x0_temp[2],    // pz_com
+              x0_temp[3],    // vx_com
+              x0_temp[4],    // vy_com
+              x0_temp[5],    // vz_com
+              x0_temp[6],    // l0_command (left)
+              x0_temp[7],    // thetadot_x_command (left)
+              x0_temp[8],    // thetadot_y_command (left)
+              x0_temp[9],    // l0_command (right)
+              x0_temp[10],   // thetadot_x_command (right)
+              x0_temp[11];   // thetadot_y_command (right)
+    p0_left <<  0.0,  0.1, 0.0;
+    p0_right << 0.0, -0.1, 0.0;
     p0_feet << p0_left, p0_right;
     Domain d0(2, Contact::SWING);
 
-    ////////////////////////////////// Function testing //////////////////////////////////
-
-    // // Vector_4d u_const;
-    // Vector_4d u_const;
-    // Vector_2d u_L, u_R;
-    // u_L << 0.0, 0.0;
-    // u_R << 0.0, -0.0;
-    // u_const << u_L, u_R;
-
-    // // example rollout of the dynamics
-    // int N = 140;
-    // Vector_1d_Traj T_x(N);
-    // for (int i = 0; i < N; i++) {
-    //     T_x[i] = i * 0.01;
-    // }
-
-    // int Nu = 70;
-    // Vector_1d_Traj T_u(Nu);
-    // Vector_4d_Traj U(Nu);
-    // for (int i = 0; i < Nu; i++) {
-    //     T_u[i] = i * 0.02;
-    //     U[i] = u_const;
-    // }
-
-    // // query the dynamics
-    // Dynamics_Result res = dynamics.dynamics(x0_sys, u_const, p0_feet, d0);
-    // Vector_8d xdot = res.xdot;
-    // std::cout << "xdot: " << xdot.transpose() << std::endl;
-
-    // // leg state
-    // Vector_8d x_leg = dynamics.compute_leg_state(x0_sys, u_const, p0_feet, d0);
-    // std::cout << "x_leg: " << x_leg.transpose() << std::endl;
-
-    // // foot state
-    // Vector_8d x_foot = dynamics.compute_foot_state(x0_sys, x_leg, p0_feet, d0);
-    // std::cout << "x_foot: " << x_foot.transpose() << std::endl;
-    
-    // // allocate solution conatiners
-    // Solution sol;
-    // dynamics.resizeSolution(sol, T_x);
-
-    // // do the rollouts
-    // dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U, sol);
-    // std::cout << "Rollout complete." << std::endl;
-    
-    // // generate inputs
-    // Vector_4d_Traj_Bundle U_bundle = controller.sample_input_trajectory(1000);
-
-    // // update the distribution parameters
-    // controller.update_distribution_params(U_bundle);
-    // controller.update_distribution_params(U_bundle);
-    // std::cout << "updated distribution." << std::endl;
-
-    // // Do a rollout of the dynamics
-    // U = U_bundle[0];
-    // dynamics.RK3_rollout(T_x, T_u, x0_sys, p0_feet, d0, U, sol);
-    // std::cout << "Rollout complete." << std::endl;
-
-    // generate a reference trajectory
-    // Reference ref = controller.generate_reference_trajectory(x0_sys.head<4>());
-
-    // // test cost function
-    // double J = controller.cost_function(X_ref, sol, U);
-    // std::cout << "cost: " << J << std::endl;
-
-    // test the monte carlo simulation
-    // Solution sol;
-    // dynamics.resizeSolution(sol, controller.params.T_x);
-    // MC_Result mc = controller.monte_carlo(0.0, x0_sys, p0_feet, d0, controller.params.K);
-    // std::cout << "Monte Carlo complete." << std::endl;
-
-    // do a simulation
-    // RHC_Result rhc_res = controller.sampling_predictive_control(0.0, x0_sys, p0_feet, d0);
-    // Solution sol = rhc_res.S;
-
-    ////////////////////////////////// Nominal testing //////////////////////////////////
+    ////////////////////////////////// Simulation testing //////////////////////////////////
 
     // compute time stuff
     double duration = config_file["SIM"]["duration"].as<double>();
@@ -144,17 +72,17 @@ int main()
     Solution sol_rhc;
     controller.dynamics.resizeSolution(sol_rhc, controller.params.T_x);
 
-    // to time time stuff
+    // for timing stuff
     double T_rhc = 0.0;
-    double T_total = 0.0;
+    double T_tot = 0.0;
 
     // run the simulation
     RHC_Result rhc_res;
-    Vector_4d_Traj U_opt(Nu), U_opt_(Nu);
-    Vector_d U_opt_vec(2 * Nu * controller.dynamics.n_leg);
-    Vector_8d xk_sys = x0_sys;
-    Vector_4d pk_feet = p0_feet;
-    Vector_8d xk_feet;
+    Vector_6d_Traj U_opt(Nu), U_opt_(Nu);
+    Vector_d U_opt_vec(3 * Nu * controller.dynamics.n_leg);
+    Vector_12d xk_sys = x0_sys;
+    Vector_6d pk_feet = p0_feet;
+    Vector_12d xk_feet;
     Domain dk = d0;
     double t_sim;
     auto t0_tot = std::chrono::high_resolution_clock::now();
@@ -173,7 +101,7 @@ int main()
 
         for (int i = 0; i < controller.params.N_u; i++) {
             U_opt_[i] = U_opt[i];
-            U_opt_vec.segment<4>(4*i) = U_opt_[i];
+            U_opt_vec.segment<6>(6*i) = U_opt_[i];
         }
 
         // integrate the dynamics
@@ -197,14 +125,19 @@ int main()
         xk_feet = sol_rhc.x_foot_t[1];
         pk_feet(0) = xk_feet(0);
         pk_feet(1) = xk_feet(1);
-        pk_feet(2) = xk_feet(4);
-        pk_feet(3) = xk_feet(5);
+        pk_feet(2) = xk_feet(2);
+        pk_feet(3) = xk_feet(6);
+        pk_feet(4) = xk_feet(7);
+        pk_feet(5) = xk_feet(8);
     }
     auto tf_tot = std::chrono::high_resolution_clock::now();
 
     // print some info
-    double T_tot = std::chrono::duration<double>(tf_tot - t0_tot).count();
-    std::cout << "Total time: " << T_tot << " [sec]" << std::endl;
+    T_tot = std::chrono::duration<double>(tf_tot - t0_tot).count();
+    std::cout << "\nTotal time: " << T_tot << " sec" << std::endl;
+
+    double rt_ratio = (dt * N_sim) / T_tot;
+    std::cout << "Real-time ratio: " << rt_ratio *100 << "%" << std::endl;
 
     double T_rhc_avg = (T_rhc / N_sim) * 1000.0;
     std::cout << "Average time for RHC: " << T_rhc_avg << " [ms], " << 1000.0 / T_rhc_avg << " [Hz]" << std::endl;
@@ -213,24 +146,24 @@ int main()
 
     // unpack the solution
     Vector_1d_Traj t = sol.t;
-    Vector_8d_Traj x_sys_t = sol.x_sys_t;
-    Vector_8d_Traj x_leg_t = sol.x_leg_t;
-    Vector_8d_Traj x_foot_t = sol.x_foot_t;
-    Vector_4d_Traj u_t = sol.u_t;
-    Vector_4d_Traj lambda_t = sol.lambda_t;
-    Vector_2d_Traj tau_t = sol.tau_t;
+    Vector_12d_Traj x_sys_t = sol.x_sys_t;
+    Vector_12d_Traj x_leg_t = sol.x_leg_t;
+    Vector_12d_Traj x_foot_t = sol.x_foot_t;
+    Vector_6d_Traj u_t = sol.u_t;
+    Vector_6d_Traj lambda_t = sol.lambda_t;
+    Vector_6d_Traj tau_t = sol.tau_t;
     Domain_Traj domain_t = sol.domain_t;
     bool viability = sol.viability;
 
     // save the solution to a file
-    std::string time_file = "../data/2D/time.csv";
-    std::string x_sys_file = "../data/2D/state_sys.csv";
-    std::string x_leg_file = "../data/2D/state_leg.csv";
-    std::string x_foot_file = "../data/2D/state_foot.csv";
-    std::string u_file = "../data/2D/input.csv";
-    std::string lambda_file = "../data/2D/lambda.csv";
-    std::string tau_file = "../data/2D/tau.csv";
-    std::string domain_file = "../data/2D/domain.csv";
+    std::string time_file = "../data/3D/time.csv";
+    std::string x_sys_file = "../data/3D/state_sys.csv";
+    std::string x_leg_file = "../data/3D/state_leg.csv";
+    std::string x_foot_file = "../data/3D/state_foot.csv";
+    std::string u_file = "../data/3D/input.csv";
+    std::string lambda_file = "../data/3D/lambda.csv";
+    std::string tau_file = "../data/3D/tau.csv";
+    std::string domain_file = "../data/3D/domain.csv";
 
     int N_ = t.size();
 
@@ -242,7 +175,7 @@ int main()
         file << t[i] << std::endl;
     }
     file.close();
-    std::cout << "Saved time trajectory." << std::endl;
+    std::cout << "\nSaved time trajectory." << std::endl;
 
     file.open(x_sys_file);
     for (int i = 0; i < N_; i++) {
@@ -292,19 +225,8 @@ int main()
         
         domain_t_ = domain_t[i];
 
-        if (domain_t_[0] == Contact::STANCE) {
-            domain_[0] = 1;
-        }
-        else {
-            domain_[0] = 0;
-        }
-
-        if (domain_t_[1] == Contact::STANCE) {
-            domain_[1] = 1;
-        }
-        else {
-            domain_[1] = 0;
-        }
+        domain_[0] = (domain_t_[0] == Contact::STANCE) ? 1 : 0;
+        domain_[1] = (domain_t_[1] == Contact::STANCE) ? 1 : 0;
 
         file << domain_.transpose() << std::endl;
     }
