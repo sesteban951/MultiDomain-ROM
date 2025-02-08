@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.0, 0.6, -0.1, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
 
 SIM:
-    duration: 4.0         # simulation duration, [s]
+    duration: 6.0         # simulation duration, [s]
 
 
 ####################################################################
@@ -17,12 +17,12 @@ SIM:
 REFERENCE:
     
     # Desire Leg states (velocities are assumed to be zero)
-    r_des: 0.55          # desired leg length [m]
-    theta_x_des: 0.05    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
+    r_des: 0.6          # desired leg length [m]
+    theta_x_des: 0.1    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
     # Desired COM states as knot points
-    px_des: [0.0, 0.0] 
+    px_des: [0.0, 3.0] 
     py_des: [0.0, 0.0] 
     pz_des: [0.55,  0.55]
     time: [0.0, 3.0]
@@ -31,8 +31,9 @@ REFERENCE:
     dynamic_cycle: False  # whether or not to use dynamic gait cycle based on COM velocity
     
     # static gait cycle parameters
-    T_cycle_static: 1.0   # gait cycle period, [s] (in P2 sense)
+    T_cycle_static: 0.5   # gait cycle period, [s] (in P2 sense)
     contact_static: 0.5   # ratio of the gait cycle where the leg is in contact with the ground
+    phase_static: 0.0     # phase offset of a leg with another leg (left is 0 by convention)
 
     # dynamic gait cycle parameters
     T_cycle_min: 0.5   # minimum gait cycle period, [s]
@@ -48,10 +49,10 @@ REFERENCE:
 
 COST:
     # Quadratic cost weights
-    Q_com_diags:  [7.0, 7.0, 8.0, 0.5, 0.5, 0.7]    # COM: px, py, pz, vx, vy, vz
-    Qf_com_diags: [10.0, 10.0, 9.0, 0.7, 0.7, 0.9]  # COM: px, py, pz, vx, vy, vz
+    Q_com_diags:  [9.0, 9.0, 10.0, 0.7, 0.7, 1.0]    # COM: px, py, pz, vx, vy, vz
+    Qf_com_diags: [10.0, 10.0, 12.0, 0.7, 0.7, 1.0]  # COM: px, py, pz, vx, vy, vz
     Q_leg_diags:  [8.0, 4.0, 4.0, 0.1, 0.1, 0.05]   # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
-    Qf_leg_diags: [8.0, 6.0, 6.0, 0.2, 0.2, 0.1]    # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
+    Qf_leg_diags: [10.0, 6.0, 6.0, 0.2, 0.2, 0.1]    # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
     R_diags: [0.5, 0.5, 0.5]            # diagonal elements of the control cost matrix
     R_rate_diags: [0.05, 0.05, 0.05]       # diagonal elements of the control cost matrix
 
@@ -65,7 +66,7 @@ COST:
 
     # gait cycle cost
     gait_enabled: True
-    w_gait: 1.0
+    w_gait: 10.0
 
 ####################################################################
 # CONTROL PARAMETERS

@@ -191,7 +191,7 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     Vector_12d X_leg_ref;
 
     // set the gait cycle references
-    double T_cycle_static, T_cycle_min, T_cycle_max, contact_static, contact_min, contact_max, phase_offset, v_max;
+    double T_cycle_static, T_cycle_min, T_cycle_max, contact_static, contact_min, contact_max, phase_static, v_max;
     bool dynamic_cycle = config_file["REFERENCE"]["dynamic_cycle"].as<bool>();
     T_cycle_static = config_file["REFERENCE"]["T_cycle_static"].as<double>();
     T_cycle_min = config_file["REFERENCE"]["T_cycle_min"].as<double>();
@@ -199,6 +199,7 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     contact_static = config_file["REFERENCE"]["contact_static"].as<double>();
     contact_min = config_file["REFERENCE"]["contact_min"].as<double>();
     contact_max = config_file["REFERENCE"]["contact_max"].as<double>();
+    phase_static = config_file["REFERENCE"]["phase_static"].as<double>();
     v_max = config_file["REFERENCE"]["v_max"].as<double>();
 
     // set the leg reference trajectory
@@ -213,6 +214,7 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     this->ref_sim.contact_static = contact_static;
     this->ref_sim.contact_min = contact_min;
     this->ref_sim.contact_max = contact_max;
+    this->ref_sim.phase_static = phase_static;
     this->ref_sim.v_max = v_max;
 
     // set the horizon reference
@@ -470,7 +472,7 @@ void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0
                 }
 
                 // right leg contact reference (assuming a 50% offset)
-                if (std::fmod(t / this->ref_sim.T_cycle_static - 0.5, 1.0) <= this->ref_sim.contact_static) {
+                if (std::fmod(t / this->ref_sim.T_cycle_static - this->ref_sim.phase_static, 1.0) <= this->ref_sim.contact_static) {
                     d_ref(1) = 1;
                 }
                 else {
@@ -681,7 +683,6 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
             }
         }
     }
-
 
     // ************************************ TOTAL COST ************************************
 

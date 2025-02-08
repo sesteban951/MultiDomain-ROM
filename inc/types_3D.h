@@ -148,6 +148,7 @@ struct ReferenceGlobal  // throughout the entire simulation
     double contact_static;    // contact ratio (% of the gait cycle where the leg is in contact)
     double contact_min;       // minimum contact ratio (dynamic gait)
     double contact_max;       // maximum contact ratio (dynamic gait)
+    double phase_static;      // phase offset (static gait)
     double v_max;             // maximum com velocity (dynamic gait)
 };
 
