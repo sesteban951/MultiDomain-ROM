@@ -45,7 +45,7 @@ t_interval = [t(1) t(end)];
 % plotting / animation
 animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
-perspective = 'T';    % 'T'op, 'F'ront, 'S'ide
+perspective = '';    % 'T'op, 'F'ront, 'S'ide
 replays = 3;   % how many times to replay the animation
 plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory

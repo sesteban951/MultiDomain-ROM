@@ -705,7 +705,6 @@ void Controller::sort_trajectories()
 }
 
 
-// TODO: there is code optimziation work to be done here
 // perform sampling predictive control of your choice here
 RHC_Result Controller::sampling_predictive_control(double t_sim, Vector_12d x0_sys, Vector_6d p0_foot, Domain d0)
 {

@@ -22,9 +22,6 @@ class Controller
         Controller(YAML::Node config_file);
         ~Controller(){};
 
-        // perform open loop rollouts
-        void monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0);
-
         // perform sampling predictive control
         RHC_Result sampling_predictive_control(double t, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0);
 
@@ -65,6 +62,9 @@ class Controller
 
         // evaluate the cost function given a solution
         double cost_function(const ReferenceLocal& ref, const Solution& Sol, const Vector_6d_Traj& U);
+
+        // perform open loop rollouts
+        void monte_carlo(double t_sim, Vector_12d x0_sys, Vector_6d p0_feet, Domain d0);
 
         // select solutions based on cost
         void sort_trajectories();
