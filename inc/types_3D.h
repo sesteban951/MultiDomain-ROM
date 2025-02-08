@@ -3,6 +3,7 @@
 // standard libraries
 #include <Eigen/Dense>
 #include <vector>
+#include <cmath>
 
 // ***********************************************************************************
 // Domain Class
@@ -103,6 +104,8 @@ struct ControlParams
     double w_limits;          // kinematic limits cost
     bool friction_enabled;    // enable friction cone cost
     double w_friction;        // friction cone cost
+    bool gait_enabled;        // enable gait cycle cost
+    double w_gait;            // gait cycle cost
 };
 
 // Distribution struct
@@ -138,12 +141,21 @@ struct ReferenceGlobal  // throughout the entire simulation
     Vector_3d_Traj p_com_ref; // com position reference
     Vector_12d X_leg_ref;     // leg state reference
     int N_ref;                // number of reference points
+    bool dynamic_cycle;       // dynamic gait cycle
+    double T_cycle_static;    // gait cycle total time (in P2 sense)
+    double T_cycle_min;       // minimum gait cycle time (dynamic gait)
+    double T_cycle_max;       // maximum gait cycle time (dynamic gait)
+    double contact_static;    // contact ratio (% of the gait cycle where the leg is in contact)
+    double contact_min;       // minimum contact ratio (dynamic gait)
+    double contact_max;       // maximum contact ratio (dynamic gait)
+    double v_max;             // maximum com velocity (dynamic gait)
 };
 
 struct ReferenceLocal  // throughtout a horizon
 {
-    Vector_6d_Traj  X_com_ref; // com position reference
-    Vector_12d_Traj X_leg_ref;     // leg state reference
+    Vector_6d_Traj  X_com_ref;    // com position reference
+    Vector_12d_Traj X_leg_ref;    // leg state reference
+    Vector_2i_Traj  domain_ref;   // domain reference
 };
 
 // ***********************************************************************************

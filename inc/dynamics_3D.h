@@ -2,7 +2,6 @@
 
 // standard includes
 #include <iostream>
-#include <cmath>
 
 // package includes
 #include "yaml-cpp/yaml.h"

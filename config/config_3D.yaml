@@ -9,6 +9,7 @@ STATE:
 SIM:
     duration: 4.0         # simulation duration, [s]
 
+
 ####################################################################
 # REFERENCE TRAJECTORY
 ####################################################################
@@ -21,10 +22,24 @@ REFERENCE:
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
     # Desired COM states as knot points
-    px_des: [0.0, 3.0] 
+    px_des: [0.0, 0.0] 
     py_des: [0.0, 0.0] 
     pz_des: [0.55,  0.55]
     time: [0.0, 3.0]
+
+    # gait cycle parameters
+    dynamic_cycle: False  # whether or not to use dynamic gait cycle based on COM velocity
+    
+    # static gait cycle parameters
+    T_cycle_static: 1.0   # gait cycle period, [s] (in P2 sense)
+    contact_static: 0.5   # ratio of the gait cycle where the leg is in contact with the ground
+
+    # dynamic gait cycle parameters
+    T_cycle_min: 0.5   # minimum gait cycle period, [s]
+    T_cycle_max: 1.2   # minimum gait cycle period, [s]
+    contact_min: 0.2   # minimum contact ratio (fast running)
+    contact_max: 1.0   # maximum contact ratio (fast running)
+    v_max: 2.0         # maximum COM velocity, [m/s]
 
 
 ####################################################################
@@ -47,6 +62,10 @@ COST:
     # friction cone cost
     friction_enabled: False
     w_friction: 0.01
+
+    # gait cycle cost
+    gait_enabled: True
+    w_gait: 1.0
 
 ####################################################################
 # CONTROL PARAMETERS
