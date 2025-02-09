@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.0, 0.6, -0.1, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
 
 SIM:
-    duration: 6.0         # simulation duration, [s]
+    duration: 15.0         # simulation duration, [s]
 
 
 ####################################################################
@@ -17,15 +17,15 @@ SIM:
 REFERENCE:
     
     # Desire Leg states (velocities are assumed to be zero)
-    r_des: 0.5          # desired leg length [m]
+    r_des: 0.6          # desired leg length [m]
     theta_x_des: 0.1    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
     # Desired COM states as knot points
-    px_des: [0.0, 3.0] 
+    px_des: [0.0, 7.5] 
     py_des: [0.0, 0.0] 
     pz_des: [0.55,  0.55]
-    time: [0.0, 3.0]
+    time: [0.0, 20.0]
 
     # gait cycle parameters
     dynamic_cycle: False  # whether or not to use dynamic gait cycle based on COM velocity
@@ -48,12 +48,12 @@ REFERENCE:
 ####################################################################
 
 CTRL_PARAMS:
-    N_x: 180         # number of time steps
+    N_x: 80         # number of time steps
     N_u: 5          # number of control poins
-    dt_x: 0.005      # time step, [s]
-    K: 25           # number of rollouts
+    dt_x: 0.01      # time step, [s]
+    K: 50           # number of rollouts
     N_elite: 5      # number of elite samples
-    CEM_iters: 10    # number of CEM iterations
+    CEM_iters: 20    # number of CEM iterations
 
 
 ####################################################################
@@ -66,12 +66,12 @@ COST:
     Qf_com_diags: [10.0, 10.0, 10.0, 0.7, 0.7, 0.8]  # COM: px, py, pz, vx, vy, vz
     Q_leg_diags:  [8.0, 4.0, 4.0, 0.1, 0.1, 0.05]   # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
     Qf_leg_diags: [10.0, 6.0, 6.0, 0.2, 0.2, 0.1]    # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
-    R_diags: [0.5, 0.5, 0.5]            # diagonal elements of the control cost matrix
-    R_rate_diags: [0.05, 0.05, 0.5]       # diagonal elements of the control cost matrix
+    R_diags: [0.1, 0.1, 0.1]            # diagonal elements of the control cost matrix
+    R_rate_diags: [0.01, 0.01, 0.01]       # diagonal elements of the control cost matrix
 
     # kineamtic limits and velocities cost
-    limits_enabled: False
-    w_limits: 1.0
+    limits_enabled: True
+    w_limits: 0.1
 
     # friction cone cost
     friction_enabled: False

@@ -34,7 +34,7 @@ d = d(idx,:);
 
 % frequency of the data
 dt_data = t(2) - t(1);
-hz = 50;
+hz = 100;
 nth_sample = round(1/(hz * dt_data));
 
 % downsample the data
@@ -50,11 +50,11 @@ d = downsample(d, nth_sample);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % plotting / animation
-animate = 1;   % animation = 1; plot states = 0
+animate = 0;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
-perspective = 'S';    % 'T'op, 'F'ront, 'S'ide
+perspective = '';    % 'T'op, 'F'ront, 'S'ide
 replays = 2;   % how many times to replay the animation
-plot_com = 1;  % plot the foot trajectory
+plot_com = 0;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -139,8 +139,9 @@ z_cone = height * ones(1, num_pts);
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if animate == 0
-    % plot all states
-    fig = figure('Name', 'sim_data', 'WindowState', 'maximized');
+
+    fig = figure('Name', 'States', 'WindowState', 'maximized');
+    set(gcf,'renderer','painters');
     tabgroup = uitabgroup(fig);
 
     tab1 = uitab(tabgroup, 'Title', 'States');
@@ -490,7 +491,8 @@ end
 % animate the com trajectory
 if animate == 1
 
-    figure('Name', 'Animation');
+    % Create the figure and set its position to the second monitor
+    fig = figure('Name', 'Animation');
     set(gcf,'renderer','painters');
 
     % plot the z,y,z axis
