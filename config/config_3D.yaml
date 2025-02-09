@@ -31,9 +31,9 @@ REFERENCE:
     dynamic_cycle: False  # whether or not to use dynamic gait cycle based on COM velocity
     
     # static gait cycle parameters
-    T_cycle_static: 0.5   # gait cycle period, [s] (in P2 sense)
+    T_cycle_static: 1.0   # gait cycle period, [s] (in P2 sense)
     contact_static: 0.5   # ratio of the gait cycle where the leg is in contact with the ground
-    phase_static: 0.0     # phase offset of a leg with another leg (left is 0 by convention)
+    phase_static: 0.5     # phase offset of a leg with another leg (left is 0 by convention)
 
     # dynamic gait cycle parameters
     T_cycle_min: 0.5   # minimum gait cycle period, [s]
@@ -54,7 +54,7 @@ COST:
     Q_leg_diags:  [8.0, 4.0, 4.0, 0.1, 0.1, 0.05]   # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
     Qf_leg_diags: [10.0, 6.0, 6.0, 0.2, 0.2, 0.1]    # LEG: r, theta_x, theta_y, rdot, thetadot_x, thetadot_y
     R_diags: [0.5, 0.5, 0.5]            # diagonal elements of the control cost matrix
-    R_rate_diags: [0.05, 0.05, 0.05]       # diagonal elements of the control cost matrix
+    R_rate_diags: [0.1, 0.1, 0.1]       # diagonal elements of the control cost matrix
 
     # kineamtic limits and velocities cost
     limits_enabled: False
@@ -65,8 +65,8 @@ COST:
     w_friction: 0.01
 
     # gait cycle cost
-    gait_enabled: True
-    w_gait: 10.0
+    gait_enabled: False
+    w_gait: 1.0
 
 ####################################################################
 # CONTROL PARAMETERS
@@ -88,7 +88,7 @@ CTRL_PARAMS:
 SYS_PARAMS:
     m: 35.0                 # COM mass,[kg] 
     g: 9.81                 # gravity, [m/s^2] 
-    k: 8000.0               # spring stiffness, [N/m]
+    k: 7500.0               # spring stiffness, [N/m]
     b: 75.0                 # damping coeff, [Ns/m]
     l0: 0.65                # nominal rest length, [m]
     r_min: 0.5              # min leg length, [m]
@@ -113,7 +113,7 @@ SYS_PARAMS:
 DIST_PARAMS:
     mu: [0.0, 0.0, 0.0]         # initial means [l0dot_vel, thetadot_vel]
     sigma: [0.5, 1.57, 1.57]    # initial standard deviations
-    epsilon: 0.01                # minimum eigenvalue for covariance matrix
+    epsilon: 0.008                # minimum eigenvalue for covariance matrix
     diag_cov: False             # strictly enforce diagonal covariance matrix
     seed_enabled: False         # enable random seed
     seed: 1                     # random seed

@@ -47,7 +47,7 @@ animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
 perspective = '';    % 'T'op, 'F'ront, 'S'ide
 replays = 2;   % how many times to replay the animation
-plot_com = 0;  % plot the foot trajectory
+plot_com = 1;  % plot the foot trajectory
 plot_foot = 0; % plot the foot trajectory
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
