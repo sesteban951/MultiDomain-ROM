@@ -11,10 +11,15 @@ cov_t = load(data_folder + 'covariance.csv');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% remove every other data point
-% t = t(1:2:end);
-% mean_t = mean_t(1:2:end,:);
-% cov_t = cov_t(1:2:end,:);
+% downsample
+dt_data = t(2) - t(1);
+hz = 30;
+nth_sample = round(1/(hz * dt_data));
+
+% downsample the data
+t = downsample(t, nth_sample);
+mean_t = downsample(mean_t, nth_sample);
+cov_t = downsample(cov_t, nth_sample);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -37,7 +42,9 @@ cov_cols = cov_rows;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-animate_mean = 0;
+animate_mean = 1;
+animate_cov = 0;
+animate_cov_individual = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -79,6 +86,27 @@ for i = 1:N_sim
 
     % store the covariance matrix
     cov(:,:,i) = Sigma;
+end
+
+%  builf the covariance matrices
+rdot_L_cov = zeros(N_u, N_u, N_sim);
+thetadot_x_L_cov = zeros(N_u, N_u, N_sim);
+thetadot_y_L_cov = zeros(N_u, N_u, N_sim);
+rdot_R_cov = zeros(N_u, N_u, N_sim);
+thetadot_x_R_cov = zeros(N_u, N_u, N_sim);
+thetadot_y_R_cov = zeros(N_u, N_u, N_sim);
+for i = 1:N_sim
+    Sigma = cov(:,:,i);
+    for j = 1:N_u
+        for k = 1:N_u
+            rdot_L_cov(j,k,i) = Sigma(6*(j-1)+1, 6*(k-1)+1);
+            thetadot_x_L_cov(j,k,i) = Sigma(6*(j-1)+2, 6*(k-1)+2);
+            thetadot_y_L_cov(j,k,i) = Sigma(6*(j-1)+3, 6*(k-1)+3);
+            rdot_R_cov(j,k,i) = Sigma(6*(j-1)+4, 6*(k-1)+4);
+            thetadot_x_R_cov(j,k,i) = Sigma(6*(j-1)+5, 6*(k-1)+5);
+            thetadot_y_R_cov(j,k,i) = Sigma(6*(j-1)+6, 6*(k-1)+6);
+        end
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -176,7 +204,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if animate_mean == 0
+if animate_cov == 1
     % Plot the first covariance matrix with heat map
     figure;
     colorbar;
@@ -190,6 +218,45 @@ if animate_mean == 0
         
         % Plot the covariance via heat map
         sigma_plot = imagesc(cov(:,:,idx));
+        colorbar;
+        caxis([c_min, c_max]); % Ensure the color limits stay the same
+
+        msg = sprintf('Time = %.3f [sec]', t(idx));
+        title(msg);
+        drawnow;
+        
+        idx = idx + 1;
+        while toc < t(idx)
+            % wait
+        end
+
+        if idx < length(t)
+            delete(sigma_plot);
+        end
+    end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Plot the individual covariance matrices
+    % Plot the first covariance matrix with heat map
+if animate_cov_individual == 1
+    figure;
+    colorbar;
+
+    data = thetadot_y_L_cov;
+
+    c_min = min(data(:,:,2:end), [], 'all');
+    c_max = max(data(:,:,2:end), [], 'all');
+    caxis([c_min, c_max]); % Set constant color limits
+
+
+    idx = 1;
+    tic;
+    while idx < length(t)
+            
+        % Plot the covariance via heat map
+        sigma_plot = imagesc(data(:,:,idx));
         colorbar;
         caxis([c_min, c_max]); % Ensure the color limits stay the same
 

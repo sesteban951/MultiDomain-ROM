@@ -156,6 +156,9 @@ int main()
         pk_feet(3) = xk_feet(6);
         pk_feet(4) = xk_feet(7);
         pk_feet(5) = xk_feet(8);
+
+        // set the mean to the last optimal computed input signal. TODO: think about this -- is this better?
+        controller.dist.mean = U_opt_vec;
     }
     auto tf_tot = std::chrono::high_resolution_clock::now();
 
