@@ -94,10 +94,6 @@ void Controller::initialize_variables()
     this->eigvec_inv.resize(3 * N_u * n_leg, 3 * N_u * n_leg);
     this->I = Matrix_d::Identity(3 * N_u * n_leg, 3 * N_u * n_leg);
 
-    // references
-    this->ref_horizon.X_com_ref.resize(this->params.N_x);
-    this->ref_horizon.X_leg_ref.resize(this->params.N_x);
-
     // Monte Carlo results
     this->S_mc.resize(this->params.K);
     this->U_mc.resize(this->params.K);
@@ -155,6 +151,10 @@ void Controller::initialize_costs(YAML::Node config_file)
     // frcition cone cost
     this->params.friction_enabled = config_file["COST"]["friction_enabled"].as<bool>();
     this->params.w_friction = config_file["COST"]["w_friction"].as<double>();
+
+    // gait cycel costs
+    this->params.gait_enabled = config_file["COST"]["gait_enabled"].as<bool>();
+    this->params.w_gait = config_file["COST"]["w_gait"].as<double>();
 }
 
 
@@ -189,18 +189,32 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     X_leg_ref_L << r_des,  theta_x_des, theta_y_des, 0.0, 0.0, 0.0;
     X_leg_ref_R << r_des, -theta_x_des, theta_y_des, 0.0, 0.0, 0.0;
     Vector_12d X_leg_ref;
-
+    
     // set the leg reference trajectory
-    ReferenceGlobal ref;
-    ref.t_ref = time;
-    ref.p_com_ref = p_com_ref;
-    ref.X_leg_ref << X_leg_ref_L, X_leg_ref_R;
-    ref.N_ref = N_ref;
+    this->ref_sim.t_ref = time;
+    this->ref_sim.p_com_ref = p_com_ref;
+    this->ref_sim.X_leg_ref << X_leg_ref_L, X_leg_ref_R;
+    this->ref_sim.N_ref = N_ref;
 
-    // set the reference
-    this->ref_sim = ref;
+    this->ref_sim.dynamic_cycle = config_file["REFERENCE"]["dynamic_cycle"].as<bool>();
+    this->ref_sim.T_cycle_static = config_file["REFERENCE"]["T_cycle_static"].as<double>();
+    this->ref_sim.contact_static = config_file["REFERENCE"]["contact_static"].as<double>();
+    this->ref_sim.phase_static = config_file["REFERENCE"]["phase_static"].as<double>();
+    this->ref_sim.v_min = config_file["REFERENCE"]["v_min"].as<double>();
+    this->ref_sim.v_max = config_file["REFERENCE"]["v_max"].as<double>();
+    this->ref_sim.T_coeffs = config_file["REFERENCE"]["T_coeffs"].as<Vector_1d_List>();
+    this->ref_sim.c_coeffs = config_file["REFERENCE"]["c_coeffs"].as<Vector_1d_List>();
+
+    // set the horizon reference
+    this->ref_horizon.X_com_ref.resize(this->params.N_x);
+    this->ref_horizon.X_leg_ref.resize(this->params.N_x);
+    this->ref_horizon.domain_ref.resize(this->params.N_x);
+
+    // default to static gait cycle params (but will modify if dynamic)
+    this->ref_horizon.T_cycle = this->ref_sim.T_cycle_static;
+    this->ref_horizon.contact_ratio = this->ref_sim.contact_static;
+    this->ref_horizon.phase = this->ref_sim.phase_static;
 }
-
 
 // construct the intial distribution
 void Controller::initialize_distribution(YAML::Node config_file)
@@ -387,6 +401,39 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_elite
     this->dist.cov = Sigma;    
 }
 
+void Controller::update_gait_cycle_params(const Vector_3d& v_com) {
+    // get the xy velocity
+    Vector_2d v_com_xy = v_com.segment<2>(0);
+    double v_norm = v_com_xy.norm();
+
+    double aT, bT, cT, aC, bC, cC, dC;
+    aT = this->ref_sim.T_coeffs[0];
+    bT = this->ref_sim.T_coeffs[1];
+    cT = this->ref_sim.T_coeffs[2];
+    aC = this->ref_sim.c_coeffs[0];
+    bC = this->ref_sim.c_coeffs[1];
+    cC = this->ref_sim.c_coeffs[2];
+    dC = this->ref_sim.c_coeffs[3];
+
+    // very low velocity, fix it
+    if (v_norm <= 0.02) {
+        this->ref_horizon.T_cycle = aT * std::pow(0.02, 2) + bT * 0.02 + cT;
+        this->ref_horizon.contact_ratio = 1.0;
+        this->ref_horizon.phase = 0.5;
+    }
+    // on spline domain
+    else if (v_norm > 0.02 && v_norm <= 2.0) {
+        this->ref_horizon.T_cycle = aT * std::pow(v_norm, 2) + bT * v_norm + cT;
+        this->ref_horizon.contact_ratio = aC * std::pow(v_norm, 3) + bC * std::pow(v_norm, 2) + cC * v_norm + dC;
+        this->ref_horizon.phase = 0.5;
+    }
+    // very high velocity, beyond the spline domain
+    else {
+        this->ref_horizon.T_cycle = aT * std::pow(2.0, 2) + bT * 2.0 + cT;
+        this->ref_horizon.contact_ratio = aC * std::pow(2.0, 3) + bC * std::pow(2.0, 2) + cC * 2.0 + dC;
+        this->ref_horizon.phase = 0.5;
+    }
+}
 
 // generate a reference trajectory for the predictive control to track
 void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0_com)
@@ -395,6 +442,7 @@ void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0
     Vector_6d xi_com_ref;
     Vector_3d pi_com_ref, p0_com_ref, pf_com_ref;
     Vector_3d vi_com_ref;
+    Vector_2i d_ref = Vector_2i::Zero();
     double t, t0, tf;
     for (int i = 0; i < this->params.N_x; i++) {
     
@@ -422,17 +470,41 @@ void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0
             pi_com_ref = p0_com_ref + vi_com_ref * (t - t0);
         }
 
-        // build the reference
+        // build the COM reference
         xi_com_ref << pi_com_ref, vi_com_ref;
 
-        // insert into trajectory
-        this->ref_horizon.X_com_ref[i] = xi_com_ref;
-    }
+        // build the domain reference
+        if (this->params.gait_enabled == true) {
 
-    // build the LEG reference trajectory
-    for (int i = 0; i < this->params.N_x; i++) {
-        // insert into trajectory
-        this->ref_horizon.X_leg_ref[i] = this->ref_sim.X_leg_ref;
+            // FIXME: There seems to be some sketchiness when I use the dynamic gait cycle.
+            // I need to keep track of where I currently am in the phase.
+
+            // if dynamic gait cycle update based on COM velocity
+            if (this->ref_sim.dynamic_cycle == true) {
+                this->update_gait_cycle_params(x0_com.segment<3>(3));               
+            }
+
+            // update the domain reference
+            if (std::fmod(t / this->ref_horizon.T_cycle, 1.0) <= this->ref_horizon.contact_ratio) {
+                d_ref(0) = 1;
+            }
+            else {
+                d_ref(0) = 0;
+            }
+
+            // right leg contact reference
+            if (std::fmod(t / this->ref_horizon.T_cycle - this->ref_horizon.phase, 1.0) <= this->ref_horizon.contact_ratio) {
+                d_ref(1) = 1;
+            }
+            else {
+                d_ref(1) = 0;
+            }
+        }
+
+        // insert values into horizon reference trajectory
+        this->ref_horizon.X_com_ref[i] = xi_com_ref;               // X_com_ref
+        this->ref_horizon.X_leg_ref[i] = this->ref_sim.X_leg_ref;  // X_com_ref
+        this->ref_horizon.domain_ref[i] = d_ref;                   // domain_ref
     }
 }
 
@@ -505,8 +577,8 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     // ************************************ COM COST ************************************
 
     // compute the COM cost
-    Vector_6d ei_com;
     double J_com = 0.0;
+    Vector_6d ei_com;
     // integrated cost
     for (int i = 0; i < Nx-1; i++) {
         ei_com = Sol.x_sys_t[i].head<6>() - ref.X_com_ref[i];
@@ -519,8 +591,8 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     // ************************************ LEG COST ************************************
 
     // compute the LEG cost
-    Vector_12d ei_leg;
     double J_legs = 0.0;
+    Vector_12d ei_leg;
     for (int i = 0; i < Nx-1; i++) {
         ei_leg = Sol.x_leg_t[i] - ref.X_leg_ref[i];
         J_legs += ei_leg.transpose() * this->params.Q_leg * ei_leg;
@@ -542,8 +614,8 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
     // ************************************ INPUT COST ************************************
 
     // penalize the velocity input (smaller velocities)
-    Vector_6d ui;
     double J_input = 0.0;
+    Vector_6d ui;
     for (int i = 0; i < Nu; i++) {        
         // left and right leg input vector
         ui << U[i];
@@ -611,11 +683,30 @@ double Controller::cost_function(const ReferenceLocal& ref, const Solution& Sol,
 
     // ************************************ GAIT COST ************************************
 
-    // TODO: implement gait cost
+    // compute the gait cost
+    double J_gait = 0.0;
+    if (this->params.gait_enabled) {
+        
+        // useful variables
+        Vector_2i d_ref, d;
+        for (int i = 0; i < Nx; i++) {
+            
+            // grab the current domain at time t
+            d_ref = ref.domain_ref[i];
+            
+            // convert to binary
+            d(0) = Sol.domain_t[i][0] == Contact::STANCE ? 1 : 0;
+            d(1) = Sol.domain_t[i][1] == Contact::STANCE ? 1 : 0;
+
+            if (d != d_ref) {
+                J_gait += this->params.w_gait;
+            }
+        }
+    }
 
     // ************************************ TOTAL COST ************************************
 
-    return J_com + J_legs + J_limits + J_input + J_friction;
+    return J_com + J_legs + J_limits + J_input + J_friction + J_gait;
 }
 
 

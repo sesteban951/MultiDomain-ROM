@@ -54,6 +54,8 @@ class Controller
         // update the distribution parameters from a bundle of control inputs
         void update_distribution_params(const Vector_6d_Traj_Bundle& U_elite);
 
+        void update_gait_cycle_params(const Vector_3d& v_com_xy);
+
         // generate a reference trajectory for the predictive control to track
         void generate_reference_trajectory(double t_sim, const Vector_6d& x0_com);
 

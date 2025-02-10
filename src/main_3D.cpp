@@ -47,6 +47,14 @@ int main()
 
     ////////////////////////////////// Simulation testing //////////////////////////////////
 
+    // for saving data during simulation
+    std::ofstream file_mean;
+    std::ofstream file_cov;
+    std::string mean_file = "../data/3D/mean.csv";
+    std::string cov_file = "../data/3D/covariance.csv";
+    file_mean.open(mean_file);
+    file_cov.open(cov_file);
+
     // compute time stuff
     double duration = config_file["SIM"]["duration"].as<double>();
     int N_sim = std::floor(duration / controller.params.dt_x);
@@ -84,9 +92,28 @@ int main()
     Vector_6d pk_feet = p0_feet;
     Vector_12d xk_feet;
     Domain dk = d0;
+    Vector_d Sigma_vec, Sigma_row;
+    int rows_Sigma = controller.dist.cov.rows();
+    int cols_Sigma = controller.dist.cov.cols();
+    Sigma_vec.resize(rows_Sigma * cols_Sigma);
+    Sigma_row.resize(cols_Sigma);
     double t_sim;
     auto t0_tot = std::chrono::high_resolution_clock::now();
     for (int k = 0; k < N_sim; k++) {
+
+        // vectorize the current covariance matrix
+        for (int i = 0; i < rows_Sigma; i++) {
+            Sigma_row = controller.dist.cov.row(i);
+            for (int j = 0; j < cols_Sigma; j++) {
+                Sigma_vec[i*cols_Sigma + j] = Sigma_row(j);
+            }
+        }
+
+        // // save the mean and covariance
+        file_mean << controller.dist.mean.transpose() << std::endl;
+        file_cov << Sigma_vec.transpose() << std::endl;
+
+        // compute the current time
         t_sim = k * dt;
         std::cout << "Sim time: " << t_sim << " sec" << std::endl;
 
@@ -121,7 +148,7 @@ int main()
 
         // update the state
         xk_sys = sol_rhc.x_sys_t[1];
-        dk = sol_rhc.domain_t[1];        
+        dk = sol_rhc.domain_t[1];
         xk_feet = sol_rhc.x_foot_t[1];
         pk_feet(0) = xk_feet(0);
         pk_feet(1) = xk_feet(1);
@@ -129,8 +156,15 @@ int main()
         pk_feet(3) = xk_feet(6);
         pk_feet(4) = xk_feet(7);
         pk_feet(5) = xk_feet(8);
+
+        // set the mean to the last optimal computed input signal. TODO: think about this -- is this better?
+        controller.dist.mean = U_opt_vec;
     }
     auto tf_tot = std::chrono::high_resolution_clock::now();
+
+    // close the files
+    file_mean.close();
+    file_cov.close();
 
     // print some info
     T_tot = std::chrono::duration<double>(tf_tot - t0_tot).count();
@@ -167,9 +201,10 @@ int main()
 
     int N_ = t.size();
 
-    // save the solution to a file
+    // file handle
     std::ofstream file;
 
+    // save the solution to a file
     file.open(time_file);
     for (int i = 0; i < N_; i++) {
         file << t[i] << std::endl;
