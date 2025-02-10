@@ -15,7 +15,7 @@
 int main()
 {
     // load parameters from yaml file
-    std::string config_file_path = "../config/config_3D.yaml";
+    std::string config_file_path = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/config/config_3D.yaml";
     YAML::Node config_file = YAML::LoadFile(config_file_path);
     
     // create dynamics object
@@ -50,8 +50,8 @@ int main()
     // for saving data during simulation
     std::ofstream file_mean;
     std::ofstream file_cov;
-    std::string mean_file = "../data/3D/mean.csv";
-    std::string cov_file = "../data/3D/covariance.csv";
+    std::string mean_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/mean.csv";
+    std::string cov_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/covariance.csv";
     file_mean.open(mean_file);
     file_cov.open(cov_file);
 
@@ -190,14 +190,14 @@ int main()
     bool viability = sol.viability;
 
     // save the solution to a file
-    std::string time_file = "../data/3D/time.csv";
-    std::string x_sys_file = "../data/3D/state_sys.csv";
-    std::string x_leg_file = "../data/3D/state_leg.csv";
-    std::string x_foot_file = "../data/3D/state_foot.csv";
-    std::string u_file = "../data/3D/input.csv";
-    std::string lambda_file = "../data/3D/lambda.csv";
-    std::string tau_file = "../data/3D/tau.csv";
-    std::string domain_file = "../data/3D/domain.csv";
+    std::string time_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/time.csv";
+    std::string x_sys_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/state_sys.csv";
+    std::string x_leg_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/state_leg.csv";
+    std::string x_foot_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/state_foot.csv";
+    std::string u_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/input.csv";
+    std::string lambda_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/lambda.csv";
+    std::string tau_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/tau.csv";
+    std::string domain_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/domain.csv";
 
     int N_ = t.size();
 
