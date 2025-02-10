@@ -34,7 +34,7 @@ d = d(idx,:);
 
 % frequency of the data
 dt_data = t(2) - t(1);
-hz = 100;
+hz = 40;
 nth_sample = round(1/(hz * dt_data));
 
 % downsample the data
@@ -52,10 +52,10 @@ d = downsample(d, nth_sample);
 % plotting / animation
 animate = 0;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
-perspective = '';    % 'T'op, 'F'ront, 'S'ide
-replays = 2;   % how many times to replay the animation
-plot_com = 0;  % plot the foot trajectory
-plot_foot = 0; % plot the foot trajectory
+perspective = 'S';    % 'T'op, 'F'ront, 'S'ide
+replays = 3;   % how many times to replay the animation
+plot_com = 1;  % plot the foot trajectory
+plot_foot = 1; % plot the foot trajectory
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -492,7 +492,7 @@ end
 if animate == 1
 
     % Create the figure and set its position to the second monitor
-    fig = figure('Name', 'Animation');
+    fig = figure('Name', 'Animation', 'WindowState', 'maximized');
     set(gcf,'renderer','painters');
 
     % plot the z,y,z axis

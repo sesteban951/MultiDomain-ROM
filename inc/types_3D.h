@@ -143,13 +143,12 @@ struct ReferenceGlobal  // throughout the entire simulation
     int N_ref;                // number of reference points
     bool dynamic_cycle;       // dynamic gait cycle
     double T_cycle_static;    // gait cycle total time (in P2 sense)
-    double T_cycle_min;       // minimum gait cycle time (dynamic gait)
-    double T_cycle_max;       // maximum gait cycle time (dynamic gait)
     double contact_static;    // contact ratio (% of the gait cycle where the leg is in contact)
-    double contact_min;       // minimum contact ratio (dynamic gait)
-    double contact_max;       // maximum contact ratio (dynamic gait)
     double phase_static;      // phase offset (static gait)
-    double v_max;             // maximum com velocity (dynamic gait)
+    double v_min;             // minimum com velocity for spline (dynamic gait)
+    double v_max;             // maximum com velocity for spline (dynamic gait)
+    Vector_1d_List T_coeffs;  // quadratic coefficients for gait period
+    Vector_1d_List c_coeffs;  // cubic coefficients for contact ratio
 };
 
 struct ReferenceLocal  // throughtout a horizon
@@ -157,6 +156,9 @@ struct ReferenceLocal  // throughtout a horizon
     Vector_6d_Traj  X_com_ref;    // com position reference
     Vector_12d_Traj X_leg_ref;    // leg state reference
     Vector_2i_Traj  domain_ref;   // domain reference
+    double T_cycle;               // gait cycle total time
+    double contact_ratio;         // contact ratio
+    double phase;                 // phase offset
 };
 
 // ***********************************************************************************

@@ -7,7 +7,7 @@ STATE:
          0.6, 0.1, 0.0, 0.6, -0.1, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
 
 SIM:
-    duration: 15.0         # simulation duration, [s]
+    duration: 8.0         # simulation duration, [s]
 
 
 ####################################################################
@@ -17,30 +17,29 @@ SIM:
 REFERENCE:
     
     # Desire Leg states (velocities are assumed to be zero)
-    r_des: 0.6          # desired leg length [m]
-    theta_x_des: 0.1    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
+    r_des: 0.55          # desired leg length [m]
+    theta_x_des: 0.15    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
     # Desired COM states as knot points
-    px_des: [0.0, 7.5] 
-    py_des: [0.0, 0.0] 
-    pz_des: [0.55,  0.55]
-    time: [0.0, 20.0]
-
-    # gait cycle parameters
-    dynamic_cycle: False  # whether or not to use dynamic gait cycle based on COM velocity
+    px_des: [0.0, 1.0, 3.0, 7.0] 
+    py_des: [0.0, 0.0, 0.0, 0.0] 
+    pz_des: [0.55, 0.55, 0.55, 0.55]
+    time: [0.0, 2.0, 4.0, 6.0]
+    
+    # whether or not to use dynamic gait cycle based on COM velocity
+    dynamic_cycle: True  
     
     # static gait cycle parameters
-    T_cycle_static: 1.0   # gait cycle period, [s] (in P2 sense)
+    T_cycle_static: 0.8   # gait cycle period, [s] (in P2 sense)
     contact_static: 0.5   # ratio of the gait cycle where the leg is in contact with the ground
     phase_static: 0.5     # phase offset of a leg with another leg (left is 0 by convention)
 
     # dynamic gait cycle parameters
-    T_cycle_min: 0.5   # minimum gait cycle period, [s]
-    T_cycle_max: 1.2   # minimum gait cycle period, [s]
-    contact_min: 0.2   # minimum contact ratio (fast running)
-    contact_max: 1.0   # maximum contact ratio (fast running)
-    v_max: 2.0         # maximum COM velocity, [m/s]
+    v_min: 0.02     # minimum COM velocity, [m/s]
+    v_max: 2.00     # maximum COM velocity, [m/s]
+    T_coeffs: [0.19714, -0.44565, 0.84453]          # T_cycle quadratic fit coefficients
+    c_coeffs: [-0.24241, 0.91088, -1.1632, 0.87261] # c cubic fit coefficients
 
 
 ####################################################################
@@ -78,7 +77,7 @@ COST:
     w_friction: 0.01
 
     # gait cycle cost
-    gait_enabled: False
+    gait_enabled: True
     w_gait: 1.0
 
 

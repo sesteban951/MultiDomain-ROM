@@ -189,40 +189,32 @@ void Controller::initialize_reference_trajectories(YAML::Node config_file)
     X_leg_ref_L << r_des,  theta_x_des, theta_y_des, 0.0, 0.0, 0.0;
     X_leg_ref_R << r_des, -theta_x_des, theta_y_des, 0.0, 0.0, 0.0;
     Vector_12d X_leg_ref;
-
-    // set the gait cycle references
-    double T_cycle_static, T_cycle_min, T_cycle_max, contact_static, contact_min, contact_max, phase_static, v_max;
-    bool dynamic_cycle = config_file["REFERENCE"]["dynamic_cycle"].as<bool>();
-    T_cycle_static = config_file["REFERENCE"]["T_cycle_static"].as<double>();
-    T_cycle_min = config_file["REFERENCE"]["T_cycle_min"].as<double>();
-    T_cycle_max = config_file["REFERENCE"]["T_cycle_max"].as<double>();
-    contact_static = config_file["REFERENCE"]["contact_static"].as<double>();
-    contact_min = config_file["REFERENCE"]["contact_min"].as<double>();
-    contact_max = config_file["REFERENCE"]["contact_max"].as<double>();
-    phase_static = config_file["REFERENCE"]["phase_static"].as<double>();
-    v_max = config_file["REFERENCE"]["v_max"].as<double>();
-
+    
     // set the leg reference trajectory
     this->ref_sim.t_ref = time;
     this->ref_sim.p_com_ref = p_com_ref;
     this->ref_sim.X_leg_ref << X_leg_ref_L, X_leg_ref_R;
     this->ref_sim.N_ref = N_ref;
-    this->ref_sim.dynamic_cycle = dynamic_cycle;
-    this->ref_sim.T_cycle_static = T_cycle_static;
-    this->ref_sim.T_cycle_min = T_cycle_min;
-    this->ref_sim.T_cycle_max = T_cycle_max;
-    this->ref_sim.contact_static = contact_static;
-    this->ref_sim.contact_min = contact_min;
-    this->ref_sim.contact_max = contact_max;
-    this->ref_sim.phase_static = phase_static;
-    this->ref_sim.v_max = v_max;
+
+    this->ref_sim.dynamic_cycle = config_file["REFERENCE"]["dynamic_cycle"].as<bool>();
+    this->ref_sim.T_cycle_static = config_file["REFERENCE"]["T_cycle_static"].as<double>();
+    this->ref_sim.contact_static = config_file["REFERENCE"]["contact_static"].as<double>();
+    this->ref_sim.phase_static = config_file["REFERENCE"]["phase_static"].as<double>();
+    this->ref_sim.v_min = config_file["REFERENCE"]["v_min"].as<double>();
+    this->ref_sim.v_max = config_file["REFERENCE"]["v_max"].as<double>();
+    this->ref_sim.T_coeffs = config_file["REFERENCE"]["T_coeffs"].as<Vector_1d_List>();
+    this->ref_sim.c_coeffs = config_file["REFERENCE"]["c_coeffs"].as<Vector_1d_List>();
 
     // set the horizon reference
     this->ref_horizon.X_com_ref.resize(this->params.N_x);
     this->ref_horizon.X_leg_ref.resize(this->params.N_x);
     this->ref_horizon.domain_ref.resize(this->params.N_x);
-}
 
+    // default to static gait cycle params (but will modify if dynamic)
+    this->ref_horizon.T_cycle = this->ref_sim.T_cycle_static;
+    this->ref_horizon.contact_ratio = this->ref_sim.contact_static;
+    this->ref_horizon.phase = this->ref_sim.phase_static;
+}
 
 // construct the intial distribution
 void Controller::initialize_distribution(YAML::Node config_file)
@@ -409,13 +401,43 @@ void Controller::update_distribution_params(const Vector_6d_Traj_Bundle& U_elite
     this->dist.cov = Sigma;    
 }
 
+void Controller::update_gait_cycle_params(const Vector_3d& v_com) {
+    // get the xy velocity
+    Vector_2d v_com_xy = v_com.segment<2>(0);
+    double v_norm = v_com_xy.norm();
+
+    double aT, bT, cT, aC, bC, cC, dC;
+    aT = this->ref_sim.T_coeffs[0];
+    bT = this->ref_sim.T_coeffs[1];
+    cT = this->ref_sim.T_coeffs[2];
+    aC = this->ref_sim.c_coeffs[0];
+    bC = this->ref_sim.c_coeffs[1];
+    cC = this->ref_sim.c_coeffs[2];
+    dC = this->ref_sim.c_coeffs[3];
+
+    // very low velocity, fix it
+    if (v_norm <= 0.02) {
+        this->ref_horizon.T_cycle = aT * std::pow(0.02, 2) + bT * 0.02 + cT;
+        this->ref_horizon.contact_ratio = 1.0;
+        this->ref_horizon.phase = 0.5;
+    }
+    // on spline domain
+    else if (v_norm > 0.02 && v_norm <= 2.0) {
+        this->ref_horizon.T_cycle = aT * std::pow(v_norm, 2) + bT * v_norm + cT;
+        this->ref_horizon.contact_ratio = aC * std::pow(v_norm, 3) + bC * std::pow(v_norm, 2) + cC * v_norm + dC;
+        this->ref_horizon.phase = 0.5;
+    }
+    // very high velocity, beyond the spline domain
+    else {
+        this->ref_horizon.T_cycle = aT * std::pow(2.0, 2) + bT * 2.0 + cT;
+        this->ref_horizon.contact_ratio = aC * std::pow(2.0, 3) + bC * std::pow(2.0, 2) + cC * 2.0 + dC;
+        this->ref_horizon.phase = 0.5;
+    }
+}
 
 // generate a reference trajectory for the predictive control to track
 void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0_com)
 {
-    // grab the center of mass velocity
-    Vector_3d v_com = x0_com.segment<3>(3);
-
     // build the COM reference trajectory
     Vector_6d xi_com_ref;
     Vector_3d pi_com_ref, p0_com_ref, pf_com_ref;
@@ -451,33 +473,31 @@ void Controller::generate_reference_trajectory(double t_sim, const Vector_6d& x0
         // build the COM reference
         xi_com_ref << pi_com_ref, vi_com_ref;
 
-        // TODO: finish this contact reference
         // build the domain reference
         if (this->params.gait_enabled == true) {
 
-            // dynamic gait cycle
+            // FIXME: There seems to be some sketchiness when I use the dynamic gait cycle.
+            // I need to keep track of where I currently am in the phase.
+
+            // if dynamic gait cycle update based on COM velocity
             if (this->ref_sim.dynamic_cycle == true) {
-                // TODO: implement dynamic gait cycle
-                // use v_com
+                this->update_gait_cycle_params(x0_com.segment<3>(3));               
             }
 
-            // static gait cycle
+            // update the domain reference
+            if (std::fmod(t / this->ref_horizon.T_cycle, 1.0) <= this->ref_horizon.contact_ratio) {
+                d_ref(0) = 1;
+            }
             else {
-                // left leg contact reference
-                if (std::fmod(t / this->ref_sim.T_cycle_static, 1.0) <= this->ref_sim.contact_static) {
-                    d_ref(0) = 1;
-                }
-                else {
-                    d_ref(0) = 0;
-                }
+                d_ref(0) = 0;
+            }
 
-                // right leg contact reference (assuming a 50% offset)
-                if (std::fmod(t / this->ref_sim.T_cycle_static - this->ref_sim.phase_static, 1.0) <= this->ref_sim.contact_static) {
-                    d_ref(1) = 1;
-                }
-                else {
-                    d_ref(1) = 0;
-                }
+            // right leg contact reference
+            if (std::fmod(t / this->ref_horizon.T_cycle - this->ref_horizon.phase, 1.0) <= this->ref_horizon.contact_ratio) {
+                d_ref(1) = 1;
+            }
+            else {
+                d_ref(1) = 0;
             }
         }
 
