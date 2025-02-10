@@ -1,4 +1,4 @@
-#include "../inc/dynamics.h"
+#include "../inc/dynamics/dynamics.h"
 
 
 // populate the system parameters

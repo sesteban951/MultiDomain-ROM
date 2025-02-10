@@ -8,9 +8,9 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "../inc/types.h"
-#include "../inc/dynamics.h"
-#include "../inc/control.h"
+#include "../inc/types/types.h"
+#include "../inc/dynamics/dynamics.h"
+#include "../inc/control/control.h"
 
 int main()
 {

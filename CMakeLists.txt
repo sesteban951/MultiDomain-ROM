@@ -29,3 +29,7 @@ add_executable(s src/main_3D.cpp src/dynamics_3D.cpp src/control_3D.cpp)
 # link your executables
 target_link_libraries(a Eigen3::Eigen yaml-cpp::yaml-cpp)
 target_link_libraries(s Eigen3::Eigen yaml-cpp::yaml-cpp)
+
+# also add the mdrom as a library for the whole project
+add_library(control_3D SHARED src/control_3D.cpp)
+target_link_libraries(control_3D Eigen3::Eigen yaml-cpp::yaml-cpp)

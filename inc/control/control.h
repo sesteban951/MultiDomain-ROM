@@ -10,8 +10,8 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "types.h"
-#include "dynamics.h"
+#include "../types/types.h"
+#include "../dynamics/dynamics.h"
 
 // class for my controller
 class Controller

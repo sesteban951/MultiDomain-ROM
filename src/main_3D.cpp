@@ -8,9 +8,9 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "../inc/types_3D.h"
-#include "../inc/dynamics_3D.h"
-#include "../inc/control_3D.h"
+#include "../inc/types/types_3D.h"
+#include "../inc/dynamics/dynamics_3D.h"
+#include "../inc/control/control_3D.h"
 
 int main()
 {
