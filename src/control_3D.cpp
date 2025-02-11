@@ -146,7 +146,10 @@ void Controller::initialize_costs(YAML::Node config_file)
 
     // kinematic limits cost
     this->params.limits_enabled = config_file["COST"]["limits_enabled"].as<bool>();
-    this->params.w_limits = config_file["COST"]["w_limits"].as<double>();
+    this->params.pos_limits = config_file["COST"]["pos_limits"].as<bool>();
+    this->params.vel_limits = config_file["COST"]["vel_limits"].as<bool>();
+    this->params.w_pos_limits = config_file["COST"]["w_pos_limits"].as<double>();
+    this->params.w_vel_limits = config_file["COST"]["w_vel_limits"].as<double>();
 
     // frcition cone cost
     this->params.friction_enabled = config_file["COST"]["friction_enabled"].as<bool>();
@@ -524,7 +527,8 @@ double Controller::cost_limits(const Vector_12d& x_leg) {
     double theta_y_max = this->dynamics.params.theta_y_max;
     double rdot_lim = this->dynamics.params.rdot_lim;
     double thetadot_lim = this->dynamics.params.thetadot_lim;
-    double w_limits = this->params.w_limits;
+    double w_pos_limits = this->params.w_pos_limits;
+    double w_vel_limits = this->params.w_vel_limits;
 
     // compute the costs
     Vector_6d xi_leg;
@@ -540,27 +544,43 @@ double Controller::cost_limits(const Vector_12d& x_leg) {
         thetadot_x = xi_leg(4);
         thetadot_x = xi_leg(5);
 
-        // compute kinematic limits cost
-        J_limits += (r < r_min) ? w_limits * (r - r_min) * (r - r_min) :
-                    (r > r_max) ? w_limits * (r - r_max) * (r - r_max) : 0.0;
-        if (i == 0) {       // Left leg
-            J_limits += (theta_x < theta_x_min) ? w_limits * (theta_x - theta_x_min) * (theta_x - theta_x_min) :
-                        (theta_x > theta_x_max) ? w_limits * (theta_x - theta_x_max) * (theta_x - theta_x_max) : 0.0;
+        // compute position limits cost
+        if (this->params.pos_limits == true)
+        {
+            // r limit
+            J_limits += (r < r_min) ? w_pos_limits * (r - r_min) * (r - r_min) :
+                        (r > r_max) ? w_pos_limits * (r - r_max) * (r - r_max) : 0.0;
+            
+            // theta_x limit
+            if (i == 0) {       // Left leg
+                J_limits += (theta_x < theta_x_min) ? w_pos_limits * (theta_x - theta_x_min) * (theta_x - theta_x_min) :
+                            (theta_x > theta_x_max) ? w_pos_limits * (theta_x - theta_x_max) * (theta_x - theta_x_max) : 0.0;
+            }
+            else if (i == 1) {  // Right leg
+                J_limits += (theta_x < -theta_x_max) ? w_pos_limits * (theta_x + theta_x_max) * (theta_x + theta_x_max) :
+                            (theta_x > -theta_x_min) ? w_pos_limits * (theta_x + theta_x_min) * (theta_x + theta_x_min) : 0.0;
+            }
+
+            // theta_y limit
+            J_limits += (theta_y < theta_y_min) ? w_pos_limits * (theta_y - theta_y_min) * (theta_y - theta_y_min) :
+                        (theta_y > theta_y_max) ? w_pos_limits * (theta_y - theta_y_max) * (theta_y - theta_y_max) : 0.0;
         }
-        else if (i == 1) {  // Right leg
-            J_limits += (theta_x < -theta_x_max) ? w_limits * (theta_x + theta_x_max) * (theta_x + theta_x_max) :
-                        (theta_x > -theta_x_min) ? w_limits * (theta_x + theta_x_min) * (theta_x + theta_x_min) : 0.0;
-        }
-        J_limits += (theta_y < theta_y_min) ? w_limits * (theta_y - theta_y_min) * (theta_y - theta_y_min) :
-                    (theta_y > theta_y_max) ? w_limits * (theta_y - theta_y_max) * (theta_y - theta_y_max) : 0.0;
 
         // compute the velocity limits cost
-        J_limits += (rdot < -rdot_lim) ? w_limits * (rdot + rdot_lim) * (rdot + rdot_lim) :
-                    (rdot >  rdot_lim) ? w_limits * (rdot - rdot_lim) * (rdot - rdot_lim) : 0.0;
-        J_limits += (thetadot_x < -thetadot_lim) ? w_limits * (thetadot_x + thetadot_lim) * (thetadot_x + thetadot_lim) :
-                    (thetadot_x >  thetadot_lim) ? w_limits * (thetadot_x - thetadot_lim) * (thetadot_x - thetadot_lim) : 0.0;
-        J_limits += (thetadot_y < -thetadot_lim) ? w_limits * (thetadot_y + thetadot_lim) * (thetadot_y + thetadot_lim) :
-                    (thetadot_y >  thetadot_lim) ? w_limits * (thetadot_y - thetadot_lim) * (thetadot_y - thetadot_lim) : 0.0;
+        if (this->params.vel_limits == true)
+        {
+            // rdot limit
+            J_limits += (rdot < -rdot_lim) ? w_vel_limits * (rdot + rdot_lim) * (rdot + rdot_lim) :
+                        (rdot >  rdot_lim) ? w_vel_limits * (rdot - rdot_lim) * (rdot - rdot_lim) : 0.0;
+            
+            // thetadot_x limit
+            J_limits += (thetadot_x < -thetadot_lim) ? w_vel_limits * (thetadot_x + thetadot_lim) * (thetadot_x + thetadot_lim) :
+                        (thetadot_x >  thetadot_lim) ? w_vel_limits * (thetadot_x - thetadot_lim) * (thetadot_x - thetadot_lim) : 0.0;
+            
+            // thetadot_y limit
+            J_limits += (thetadot_y < -thetadot_lim) ? w_vel_limits * (thetadot_y + thetadot_lim) * (thetadot_y + thetadot_lim) :
+                        (thetadot_y >  thetadot_lim) ? w_vel_limits * (thetadot_y - thetadot_lim) * (thetadot_y - thetadot_lim) : 0.0;
+        }
     }
 
     return J_limits;

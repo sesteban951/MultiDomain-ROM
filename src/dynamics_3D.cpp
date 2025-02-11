@@ -10,6 +10,7 @@ Dynamics::Dynamics(YAML::Node config_file)
     this->params.k = config_file["SYS_PARAMS"]["k"].as<double>();
     this->params.b = config_file["SYS_PARAMS"]["b"].as<double>();
     this->params.l0 = config_file["SYS_PARAMS"]["l0"].as<double>();
+    this->params.pz_offset = config_file["SYS_PARAMS"]["pz_offset"].as<double>();
     this->params.r_min = config_file["SYS_PARAMS"]["r_min"].as<double>();
     this->params.r_max = config_file["SYS_PARAMS"]["r_max"].as<double>();
     this->params.theta_x_min = config_file["SYS_PARAMS"]["theta_x_min"].as<double>();
@@ -388,7 +389,7 @@ bool Dynamics::S_TD(Vector_12d x_feet, Leg_Idx leg_idx)
 
     // check the switching surface conditions
     bool gnd_pos, neg_vel, touchdown;
-    gnd_pos = pz_foot <= 0.0;       // foot penetrated the ground
+    gnd_pos = pz_foot <= this->params.pz_offset;       // foot penetrated the ground
     neg_vel = vz_foot <= 0.0;       // foot is moving downward
     touchdown = gnd_pos && neg_vel; // if true, the foot touched down 
 
@@ -508,7 +509,7 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_fe
                 Vector_3d p_foot_i_post;
 
                 // update the foot location (based on hueristic)
-                p_foot_i_post << p_foot(0), p_foot(1), 0.0;
+                p_foot_i_post << p_foot(0), p_foot(1), this->params.pz_offset;
                 p_feet_post.segment<3>(3*i) = p_foot_i_post;
 
                 // update the system state
