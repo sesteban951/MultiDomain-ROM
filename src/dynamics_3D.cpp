@@ -1,4 +1,4 @@
-#include "../inc/dynamics_3D.h"
+#include "../inc/dynamics/dynamics_3D.h"
 
 
 // populate the system parameters

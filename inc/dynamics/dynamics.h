@@ -8,7 +8,7 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "types.h"
+#include "../types/types.h"
 
 // class for system dynamics
 class Dynamics

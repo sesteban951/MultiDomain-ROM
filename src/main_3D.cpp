@@ -8,9 +8,9 @@
 #include "yaml-cpp/yaml.h"
 
 // custom includes
-#include "../inc/types_3D.h"
-#include "../inc/dynamics_3D.h"
-#include "../inc/control_3D.h"
+#include "../inc/types/types_3D.h"
+#include "../inc/dynamics/dynamics_3D.h"
+#include "../inc/control/control_3D.h"
 
 int main()
 {
@@ -190,14 +190,14 @@ int main()
     bool viability = sol.viability;
 
     // save the solution to a file
-    std::string time_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/time.csv";
-    std::string x_sys_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/state_sys.csv";
-    std::string x_leg_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/state_leg.csv";
-    std::string x_foot_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/state_foot.csv";
-    std::string u_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/input.csv";
-    std::string lambda_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/lambda.csv";
-    std::string tau_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/tau.csv";
-    std::string domain_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM//data/3D/domain.csv";
+    std::string time_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/time.csv";
+    std::string x_sys_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/state_sys.csv";
+    std::string x_leg_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/state_leg.csv";
+    std::string x_foot_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/state_foot.csv";
+    std::string u_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/input.csv";
+    std::string lambda_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/lambda.csv";
+    std::string tau_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/tau.csv";
+    std::string domain_file = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/domain.csv";
 
     int N_ = t.size();
 

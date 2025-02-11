@@ -1,4 +1,4 @@
-#include "../inc/control.h"
+#include "../inc/control/control.h"
 
 
 // Constructor

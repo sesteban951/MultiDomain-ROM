@@ -4,7 +4,7 @@
 clear all; close all; clc;
 
 % Load data
-data_folder = "../data/3D/";
+data_folder = "/home/sergio/projects/G1-Humanoid/MultiDomain-ROM/data/3D/";
 
 t = load(data_folder + 'time.csv');
 x_sys = load(data_folder + 'state_sys.csv');
@@ -50,7 +50,7 @@ d = downsample(d, nth_sample);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % plotting / animation
-animate = 0;   % animation = 1; plot states = 0
+animate = 1;   % animation = 1; plot states = 0
 rt = 1.0;      % realtime rate
 perspective = '';    % 'T'op, 'F'ront, 'S'ide
 replays = 3;   % how many times to replay the animation
