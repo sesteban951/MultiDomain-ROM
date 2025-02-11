@@ -66,6 +66,7 @@ struct SystemParams
     double k;                 // spring constant [N/m]
     double b;                 // damping constant [Ns/m]
     double l0;                // nominal rest length [m]
+    double pz_offset;        // z offset of the feet [m]
     double r_min;             // minimum rest length [m]
     double r_max;             // maximum rest length [m]
     double theta_x_min;       // minimum leg angle from vertical [rad]

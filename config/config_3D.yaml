@@ -98,6 +98,7 @@ SYS_PARAMS:
     k: 7500.0               # spring stiffness, [N/m]
     b: 75.0                 # damping coeff, [Ns/m]
     l0: 0.65                # nominal rest length, [m]
+    pz_offset: 0.025          # offset in z-dir, [m]
     r_min: 0.5              # min leg length, [m]
     r_max: 0.68              # max leg length, [m] (~0.72 for unitree)
     theta_x_min:  0.2         # min leg angle, x-dir [rad]
