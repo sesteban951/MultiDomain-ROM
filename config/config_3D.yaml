@@ -7,7 +7,7 @@ STATE:
          0.66, 0.227, 0.0, 0.66, -0.227, 0.0]  # COMMANDS: l0_command, thetadot_command_x, thetadot_command_y (single integrator state)
 
 SIM:
-    duration: 8.0         # simulation duration, [s]
+    duration: 4.0         # simulation duration, [s]
 
 
 ####################################################################
@@ -17,7 +17,7 @@ SIM:
 REFERENCE:
     
     # Desire Leg states (velocities are assumed to be zero)
-    r_des: 0.64          # desired leg length [m]
+    r_des: 0.6          # desired leg length [m]
     theta_x_des: 0.227    # desired leg angle [rad], about x-axis, left is (+) and right is (-)
     theta_y_des: 0.0    # desired leg angle [rad], about y-axis
 
@@ -98,7 +98,7 @@ SYS_PARAMS:
     k: 7500.0               # spring stiffness, [N/m]
     b: 75.0                 # damping coeff, [Ns/m]
     l0: 0.65                # nominal rest length, [m]
-    pz_offset: 0.025          # offset in z-dir, [m]
+    pz_offset: 0.0          # offset in z-dir, [m]
     r_min: 0.5              # min leg length, [m]
     r_max: 0.68              # max leg length, [m] (~0.72 for unitree)
     theta_x_min:  0.2         # min leg angle, x-dir [rad]
@@ -111,7 +111,8 @@ SYS_PARAMS:
     torque_ankle_lim: 3    # ankle torque limit, [Nm]
     torque_ankle_kp: 125.0  # ankle torque proportional gain
     torque_ankle_kd: 10.0   # ankle torque derivative gain
-    friction_coeff: 0.8     # friction coefficient
+    lambda_z_positive: True     # force positive z lambda at all times
+    friction_coeff: 0.5     # friction coefficient
     interp: 'L'             # control interpolation method
 
 ####################################################################

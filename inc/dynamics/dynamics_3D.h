@@ -52,7 +52,8 @@ class Dynamics
                           Vector_12d& x_legs, 
                           Vector_12d& x_feet, 
                           Vector_6d& u,
-                          Domain d_prev, 
+                          Vector_6d& p_feet,
+                          Domain& d_prev, 
                           Domain d_next);
 
         // interpolate the input signal
