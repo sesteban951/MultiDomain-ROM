@@ -15,6 +15,20 @@ lambd = load(data_folder + 'lambda.csv');
 tau = load(data_folder + 'tau.csv');
 d = load(data_folder + 'domain.csv');
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% downsample
+downsample = 0;
+hz = 40;
+
+% plotting / animation
+animate = 1;   % animation = 1; plot states = 0
+rt = 1.0;      % realtime rate
+perspective = '';    % 'T'op, 'F'ront, 'S'ide
+replays = 2;   % how many times to replay the animation
+plot_com = 1;  % plot the foot trajectory
+plot_foot = 1; % plot the foot trajectory
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
@@ -33,29 +47,20 @@ tau = tau(idx,:);
 d = d(idx,:);
 
 % frequency of the data
-dt_data = t(2) - t(1);
-hz = 40;
-nth_sample = round(1/(hz * dt_data));
+if downsample == 1
+    dt_data = t(2) - t(1);
+    nth_sample = round(1/(hz * dt_data));
 
-% downsample the data
-t = downsample(t, nth_sample);
-x_sys = downsample(x_sys, nth_sample);
-x_leg = downsample(x_leg, nth_sample);
-x_foot = downsample(x_foot, nth_sample);
-u = downsample(u, nth_sample);
-lambd = downsample(lambd, nth_sample);
-tau = downsample(tau, nth_sample);
-d = downsample(d, nth_sample);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% plotting / animation
-animate = 0;   % animation = 1; plot states = 0
-rt = 1.0;      % realtime rate
-perspective = '';    % 'T'op, 'F'ront, 'S'ide
-replays = 3;   % how many times to replay the animation
-plot_com = 1;  % plot the foot trajectory
-plot_foot = 1; % plot the foot trajectory
+    % downsample the data
+    t = downsample(t, nth_sample);
+    x_sys = downsample(x_sys, nth_sample);
+    x_leg = downsample(x_leg, nth_sample);
+    x_foot = downsample(x_foot, nth_sample);
+    u = downsample(u, nth_sample);
+    lambd = downsample(lambd, nth_sample);
+    tau = downsample(tau, nth_sample);
+    d = downsample(d, nth_sample);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

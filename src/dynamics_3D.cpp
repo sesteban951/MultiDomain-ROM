@@ -23,6 +23,7 @@ Dynamics::Dynamics(YAML::Node config_file)
     this->params.torque_ankle_lim = config_file["SYS_PARAMS"]["torque_ankle_lim"].as<double>();
     this->params.torque_ankle_kp = config_file["SYS_PARAMS"]["torque_ankle_kp"].as<double>();
     this->params.torque_ankle_kd = config_file["SYS_PARAMS"]["torque_ankle_kd"].as<double>();
+    this->params.lambda_z_positive = config_file["SYS_PARAMS"]["lambda_z_positive"].as<bool>();
     this->params.friction_coeff = config_file["SYS_PARAMS"]["friction_coeff"].as<double>();
     this->params.interp = config_file["SYS_PARAMS"]["interp"].as<char>();
 }
@@ -465,7 +466,7 @@ Domain Dynamics::check_switching_event(const Vector_12d& x_sys, const Vector_12d
 
 
 // apply the reset map
-void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_feet, Vector_6d& u, Domain d_prev, Domain d_next)
+void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_feet, Vector_6d& u, Vector_6d& p_feet, Domain& d_prev, Domain d_next)
 {
     // states to apply reset map to 
     Vector_12d x_sys_post;
@@ -559,6 +560,14 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_fe
     x_sys = x_sys_post;
     x_legs = x_legs_post;
     x_feet = x_feet_post;
+
+    // update the foot positions
+    for (int i = 0; i < this->n_leg; i++) {
+        p_feet.segment<3>(3*i) = x_feet.segment<3>(6*i);
+    }
+
+    // update the domain
+    d_prev = d_next;
 }
 
 
@@ -709,20 +718,28 @@ Solution Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& 
         // if there was a switching event, apply the reset map
         if (dk_next != dk) {
 
-            // update all the states
-            this->reset_map(xk_sys, xk_legs, xk_feet, u3, dk, dk_next);
-
-            // update the foot positions
-            for (int i = 0; i < this->n_leg; i++) {
-                p_feet.segment<3>(3*i) = xk_feet.segment<3>(6*i);
-            }
-
-            // update the domain
-            dk = dk_next;
+            // update all the states and feet position
+            this->reset_map(xk_sys, xk_legs, xk_feet, u3, p_feet, dk, dk_next);
         }
 
         // do a dynamics query to get the leg forces and torques
         res = this->dynamics(xk_sys, u3, p_feet, dk);
+
+        // check if the z-lambda is positive (I would rather have this fixed properly)
+        if (this->params.lambda_z_positive == true) {
+
+            // check the lambda_z values
+            for (int i = 0; i < this->n_leg; i++) {
+                // lambda_z is engative for the i-th leg, set entire lambda vector to zero
+                if (res.lambdas(3*i + 2) < 0.0) {
+                    res.lambdas(3*i) = 0.0;
+                    res.lambdas(3*i + 1) = 0.0;
+                    res.lambdas(3*i + 2) = 0.0;
+                } 
+            }
+        }
+
+        // update the leg forces and torques
         lambdak = res.lambdas;
         tauk = res.taus;
 
