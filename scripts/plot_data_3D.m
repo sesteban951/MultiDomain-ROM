@@ -15,6 +15,20 @@ lambd = load(data_folder + 'lambda.csv');
 tau = load(data_folder + 'tau.csv');
 d = load(data_folder + 'domain.csv');
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% downsample
+downsample = 0;
+hz = 40;
+
+% plotting / animation
+animate = 1;   % animation = 1; plot states = 0
+rt = 1.0;      % realtime rate
+perspective = '';    % 'T'op, 'F'ront, 'S'ide
+replays = 2;   % how many times to replay the animation
+plot_com = 1;  % plot the foot trajectory
+plot_foot = 1; % plot the foot trajectory
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % segment the time
@@ -33,29 +47,20 @@ tau = tau(idx,:);
 d = d(idx,:);
 
 % frequency of the data
-dt_data = t(2) - t(1);
-hz = 40;
-nth_sample = round(1/(hz * dt_data));
+if downsample == 1
+    dt_data = t(2) - t(1);
+    nth_sample = round(1/(hz * dt_data));
 
-% downsample the data
-t = downsample(t, nth_sample);
-x_sys = downsample(x_sys, nth_sample);
-x_leg = downsample(x_leg, nth_sample);
-x_foot = downsample(x_foot, nth_sample);
-u = downsample(u, nth_sample);
-lambd = downsample(lambd, nth_sample);
-tau = downsample(tau, nth_sample);
-d = downsample(d, nth_sample);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% plotting / animation
-animate = 0;   % animation = 1; plot states = 0
-rt = 1.0;      % realtime rate
-perspective = 'S';    % 'T'op, 'F'ront, 'S'ide
-replays = 3;   % how many times to replay the animation
-plot_com = 1;  % plot the foot trajectory
-plot_foot = 1; % plot the foot trajectory
+    % downsample the data
+    t = downsample(t, nth_sample);
+    x_sys = downsample(x_sys, nth_sample);
+    x_leg = downsample(x_leg, nth_sample);
+    x_foot = downsample(x_foot, nth_sample);
+    u = downsample(u, nth_sample);
+    lambd = downsample(lambd, nth_sample);
+    tau = downsample(tau, nth_sample);
+    d = downsample(d, nth_sample);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -73,6 +78,8 @@ theta_x_min = config.SYS_PARAMS.theta_x_min;
 theta_x_max = config.SYS_PARAMS.theta_x_max;
 theta_y_min = config.SYS_PARAMS.theta_y_min;
 theta_y_max = config.SYS_PARAMS.theta_y_max;
+rdot_lim = config.SYS_PARAMS.rdot_lim;
+thetadot_lim = config.SYS_PARAMS.thetadot_lim;
 
 % extract some variables
 interp = config.SYS_PARAMS.interp;
@@ -265,6 +272,10 @@ if animate == 0
     % plot(t, x_leg_commands_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,2), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     % plot(t, x_leg_commands_R(:,2), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(theta_x_min, '--', 'Min');
+    yline(theta_x_max, '--', 'Max');
+    yline(-theta_x_min, '--', 'Min');
+    yline(-theta_x_max, '--', 'Max');
     xlabel('Time [sec]');
     ylabel('$\theta_x$ [rad]', 'Interpreter', 'latex');
     title('LEG Angle x-axis');
@@ -289,6 +300,8 @@ if animate == 0
     % plot(t, u_L(:,1), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,4), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     % plot(t, u_R(:,1), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(-rdot_lim, '--', 'Min');
+    yline(rdot_lim, '--', 'Max');
     xlabel('Time [sec]');
     ylabel('$\dot{r}$ [m/s]', 'Interpreter', 'latex');
     title('LEG Length vel');
@@ -300,6 +313,8 @@ if animate == 0
     % plot(t, u_L(:,2), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,5), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     % plot(t, u_R(:,2), 'LineWideth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(-thetadot_lim, '--', 'Min');
+    yline(thetadot_lim, '--', 'Max');
     xlabel('Time [sec]');
     ylabel('$\dot{\theta}_x$ [rad/s]', 'Interpreter', 'latex');
     title('LEG Vel x-axis');
@@ -311,6 +326,8 @@ if animate == 0
     % plot(t, u_L(:,3), 'LineWidth', 1.0, 'Color', [0.8500 0.3250 0.0980]);
     plot(t, x_leg_R(:,6), 'LineWidth', 2, 'Color', [0.4940 0.1840 0.5560]);
     % plot(t, u_R(:,3), 'LineWidth', 1.0, 'Color', [0.4660 0.6740 0.1880]);
+    yline(-thetadot_lim, '--', 'Min');
+    yline(thetadot_lim, '--', 'Max');
     xlabel('Time [sec]');
     ylabel('$\dot{\theta}_y$ [rad/s]', 'Interpreter', 'latex');
     title('LEG Vel y-axis');

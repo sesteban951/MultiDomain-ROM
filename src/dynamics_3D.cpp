@@ -10,6 +10,7 @@ Dynamics::Dynamics(YAML::Node config_file)
     this->params.k = config_file["SYS_PARAMS"]["k"].as<double>();
     this->params.b = config_file["SYS_PARAMS"]["b"].as<double>();
     this->params.l0 = config_file["SYS_PARAMS"]["l0"].as<double>();
+    this->params.pz_offset = config_file["SYS_PARAMS"]["pz_offset"].as<double>();
     this->params.r_min = config_file["SYS_PARAMS"]["r_min"].as<double>();
     this->params.r_max = config_file["SYS_PARAMS"]["r_max"].as<double>();
     this->params.theta_x_min = config_file["SYS_PARAMS"]["theta_x_min"].as<double>();
@@ -22,6 +23,7 @@ Dynamics::Dynamics(YAML::Node config_file)
     this->params.torque_ankle_lim = config_file["SYS_PARAMS"]["torque_ankle_lim"].as<double>();
     this->params.torque_ankle_kp = config_file["SYS_PARAMS"]["torque_ankle_kp"].as<double>();
     this->params.torque_ankle_kd = config_file["SYS_PARAMS"]["torque_ankle_kd"].as<double>();
+    this->params.lambda_z_positive = config_file["SYS_PARAMS"]["lambda_z_positive"].as<bool>();
     this->params.friction_coeff = config_file["SYS_PARAMS"]["friction_coeff"].as<double>();
     this->params.interp = config_file["SYS_PARAMS"]["interp"].as<char>();
 }
@@ -388,7 +390,7 @@ bool Dynamics::S_TD(Vector_12d x_feet, Leg_Idx leg_idx)
 
     // check the switching surface conditions
     bool gnd_pos, neg_vel, touchdown;
-    gnd_pos = pz_foot <= 0.0;       // foot penetrated the ground
+    gnd_pos = pz_foot <= this->params.pz_offset;       // foot penetrated the ground
     neg_vel = vz_foot <= 0.0;       // foot is moving downward
     touchdown = gnd_pos && neg_vel; // if true, the foot touched down 
 
@@ -464,7 +466,7 @@ Domain Dynamics::check_switching_event(const Vector_12d& x_sys, const Vector_12d
 
 
 // apply the reset map
-void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_feet, Vector_6d& u, Domain d_prev, Domain d_next)
+void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_feet, Vector_6d& u, Vector_6d& p_feet, Domain& d_prev, Domain d_next)
 {
     // states to apply reset map to 
     Vector_12d x_sys_post;
@@ -508,7 +510,7 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_fe
                 Vector_3d p_foot_i_post;
 
                 // update the foot location (based on hueristic)
-                p_foot_i_post << p_foot(0), p_foot(1), 0.0;
+                p_foot_i_post << p_foot(0), p_foot(1), this->params.pz_offset;
                 p_feet_post.segment<3>(3*i) = p_foot_i_post;
 
                 // update the system state
@@ -558,6 +560,14 @@ void Dynamics::reset_map(Vector_12d& x_sys, Vector_12d& x_legs, Vector_12d& x_fe
     x_sys = x_sys_post;
     x_legs = x_legs_post;
     x_feet = x_feet_post;
+
+    // update the foot positions
+    for (int i = 0; i < this->n_leg; i++) {
+        p_feet.segment<3>(3*i) = x_feet.segment<3>(6*i);
+    }
+
+    // update the domain
+    d_prev = d_next;
 }
 
 
@@ -708,20 +718,28 @@ Solution Dynamics::RK3_rollout(const Vector_1d_Traj& T_x, const Vector_1d_Traj& 
         // if there was a switching event, apply the reset map
         if (dk_next != dk) {
 
-            // update all the states
-            this->reset_map(xk_sys, xk_legs, xk_feet, u3, dk, dk_next);
-
-            // update the foot positions
-            for (int i = 0; i < this->n_leg; i++) {
-                p_feet.segment<3>(3*i) = xk_feet.segment<3>(6*i);
-            }
-
-            // update the domain
-            dk = dk_next;
+            // update all the states and feet position
+            this->reset_map(xk_sys, xk_legs, xk_feet, u3, p_feet, dk, dk_next);
         }
 
         // do a dynamics query to get the leg forces and torques
         res = this->dynamics(xk_sys, u3, p_feet, dk);
+
+        // check if the z-lambda is positive (I would rather have this fixed properly)
+        if (this->params.lambda_z_positive == true) {
+
+            // check the lambda_z values
+            for (int i = 0; i < this->n_leg; i++) {
+                // lambda_z is engative for the i-th leg, set entire lambda vector to zero
+                if (res.lambdas(3*i + 2) < 0.0) {
+                    res.lambdas(3*i) = 0.0;
+                    res.lambdas(3*i + 1) = 0.0;
+                    res.lambdas(3*i + 2) = 0.0;
+                } 
+            }
+        }
+
+        // update the leg forces and torques
         lambdak = res.lambdas;
         tauk = res.taus;
 

@@ -66,6 +66,7 @@ struct SystemParams
     double k;                 // spring constant [N/m]
     double b;                 // damping constant [Ns/m]
     double l0;                // nominal rest length [m]
+    double pz_offset;         // z offset of the feet [m]
     double r_min;             // minimum rest length [m]
     double r_max;             // maximum rest length [m]
     double theta_x_min;       // minimum leg angle from vertical [rad]
@@ -78,6 +79,7 @@ struct SystemParams
     double torque_ankle_lim;  // enable ankle torque 
     double torque_ankle_kp;   // proportional gain for ankle torque
     double torque_ankle_kd;   // derivative gain for ankle torque
+    bool lambda_z_positive;   // force positive leg force
     double friction_coeff;    // friction coefficient
     char interp;              // control interpolation type
 };
@@ -101,7 +103,10 @@ struct ControlParams
     Matrix_6d R;              // diagonal elements of R matrix
     Matrix_6d R_rate;         // diagonal elements of R rate matrix
     bool limits_enabled;      // enable kineamtic limits cost
-    double w_limits;          // kinematic limits cost
+    bool pos_limits;          // enable position limits cost
+    bool vel_limits;          // enable velocity limits cost
+    double w_pos_limits;      // kinematic limits cost
+    double w_vel_limits;      // velocity limits cost
     bool friction_enabled;    // enable friction cone cost
     double w_friction;        // friction cone cost
     bool gait_enabled;        // enable gait cycle cost
