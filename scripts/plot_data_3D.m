@@ -18,7 +18,7 @@ d = load(data_folder + 'domain.csv');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % downsample
-downsample = 0;
+down_sample = 1;
 hz = 40;
 
 % plotting / animation
@@ -47,7 +47,7 @@ tau = tau(idx,:);
 d = d(idx,:);
 
 % frequency of the data
-if downsample == 1
+if down_sample == 1
     dt_data = t(2) - t(1);
     nth_sample = round(1/(hz * dt_data));
 
